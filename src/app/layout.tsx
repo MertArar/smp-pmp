@@ -3,9 +3,10 @@ import localFont from "next/font/local";
 
 import Header from "@/components/layout/Header/Header";
 import Footer from "@/components/layout/Footer/Footer";
-import SmoothScroll from "@/components/layout/SmoothScroll";
+import SmoothScrollProvider from "@/components/providers/SmoothScrollProvider";
 
 import "./globals.css";
+import "lenis/dist/lenis.css";
 
 const sfPro = localFont({
   src: "../assets/fonts/SF-Pro.ttf",
@@ -38,13 +39,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en">
       <body className={sfPro.variable}>
-        <SmoothScroll />
-        <Header />
-
-        {children}
-        <Footer />
+        <SmoothScrollProvider>
+          <Header />
+          {children}
+          <Footer />
+        </SmoothScrollProvider>
       </body>
     </html>
   );

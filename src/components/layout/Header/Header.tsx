@@ -38,7 +38,7 @@ export const HEADER_DEFAULT_TEXT_COLORS: HeaderTextColors = {
 // Nested paths inherit their closest configured parent. IM logo is independent.
 export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
   // White / basic
-  "/": { variant: "white" },
+  "/": { variant: "white", textColors: { contactUs: "#F7F7F7" } },
   "/history": { variant: "white" },
   "/global": { variant: "white" },
   "/contact": { variant: "white" },
@@ -62,7 +62,13 @@ export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
   "/pump-series": { variant: "blue" },
   "/product-detail": { variant: "blue" },
   // Gray uses the complete static Sempa logo.
-  "/about-us": { variant: "gray" },
+  "/about-us": {
+    variant: "gray",
+    textColors: {
+      pumpSelection: "#9EB7D0",
+      contactUs: "#9EB7D0",
+    },
+  },
   "/green-pump": {
     variant: "green",
     textColors: {
@@ -217,6 +223,42 @@ const HEADER_THEMES: Record<HeaderVariant, HeaderTheme> = {
     }),
   },
 };
+// About Us uses the PNG logo; keep a fallback if the file cannot load.
+const GRAY_LOGO_CANDIDATES = ["/header/sempa-gray.png"] as const;
+
+function GrayHeaderLogo({ className }: { className: string }) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const useFallback = sourceIndex >= GRAY_LOGO_CANDIDATES.length;
+  const src = useFallback
+    ? "/header/sempa-white.png"
+    : (GRAY_LOGO_CANDIDATES[sourceIndex] ?? "/header/sempa-white.png");
+
+  return (
+    <Image
+      key={src}
+      src={src}
+      alt="Sempa"
+      width={155}
+      height={40}
+      priority
+      unoptimized
+      onError={() => {
+        if (!useFallback) {
+          setSourceIndex((current) =>
+            Math.min(current + 1, GRAY_LOGO_CANDIDATES.length),
+          );
+        }
+      }}
+      style={{
+        filter: useFallback
+          ? "brightness(0) saturate(100%) opacity(.85)"
+          : "none",
+      }}
+      className={className}
+    />
+  );
+}
+
 function HeaderLogo({ variant }: { variant: HeaderVariant }) {
   const [fallback, setFallback] = useState(false);
   const [motionEnabled, setMotionEnabled] = useState(false);
@@ -262,7 +304,12 @@ function HeaderLogo({ variant }: { variant: HeaderVariant }) {
       video.pause();
     };
   }, [motionEnabled]);
-  if (!animated)
+  if (!animated) {
+    if (variant === "gray") {
+      return (
+        <GrayHeaderLogo className="h-auto w-[155px] object-contain max-[380px]:w-[108px] min-[1024px]:w-[calc(172*var(--header-unit))]" />
+      );
+    }
     return (
       <Image
         src={fallback ? "/header/sempa-white.png" : theme.logo}
@@ -275,6 +322,7 @@ function HeaderLogo({ variant }: { variant: HeaderVariant }) {
         className="h-auto w-[155px] object-contain max-[380px]:w-[108px] min-[1024px]:w-[calc(172*var(--header-unit))]"
       />
     );
+  }
   return (
     <span
       ref={rootRef}
@@ -458,6 +506,9 @@ export default function Header(options: HeaderOptions = {}) {
     };
   }, []);
   const isHomePage = pathname === "/";
+  const isAboutUsPage =
+    pathname === "/about-us" || pathname.startsWith("/about-us/");
+  const useMatchingButtonStyles = isHomePage || isAboutUsPage;
   const overlaysHero =
     isHomePage ||
     pathname === "/contact" ||
@@ -577,17 +628,21 @@ export default function Header(options: HeaderOptions = {}) {
               data-hero-scatter={isHomePage ? "logo" : undefined}
             >
               <span className="site-header__mobile-logo hidden">
-                <Image
-                  src={
-                    appearance.variant === "blue"
-                      ? "/header/sempa-blue.png"
-                      : "/header/sempa-white.png"
-                  }
-                  alt="Sempa"
-                  width={155}
-                  height={40}
-                  priority
-                />
+                {appearance.variant === "gray" ? (
+                  <GrayHeaderLogo className="h-auto w-[155px] object-contain" />
+                ) : (
+                  <Image
+                    src={
+                      appearance.variant === "blue"
+                        ? "/header/sempa-blue.png"
+                        : "/header/sempa-white.png"
+                    }
+                    alt="Sempa"
+                    width={155}
+                    height={40}
+                    priority
+                  />
+                )}
               </span>
               <span className="site-header__desktop-logo">
                 <HeaderLogo
@@ -622,7 +677,9 @@ export default function Header(options: HeaderOptions = {}) {
               data-header-blast-control={isHomePage ? "selection" : undefined}
               className="group relative flex h-[36px] w-[162px] items-center overflow-hidden rounded-[16px] border border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white hover:bg-white shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(180*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))]"
             >
-              <span className="relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-selection-text)] group-hover:text-[#0D5792] transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!">
+              <span
+                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-selection-text)] ${useMatchingButtonStyles ? "group-hover:text-[#27272A]" : "group-hover:text-[#0D5792]"} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
+              >
                 Pump Selection
               </span>
               <span className="absolute left-[calc(100%-32px)] top-1/2 z-[3] flex h-[26px] w-[26px] -translate-y-1/2 items-center justify-center rounded-full [background:var(--header-orb)] shadow-[var(--header-orb-shadow)] transition-[left] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:left-[5px] min-[1024px]:h-[calc(28*var(--header-unit))] min-[1024px]:w-[calc(28*var(--header-unit))] min-[1024px]:left-[calc(100%-34*var(--header-unit))] min-[1024px]:group-hover:left-[calc(5*var(--header-unit))]">
@@ -638,9 +695,15 @@ export default function Header(options: HeaderOptions = {}) {
               href="/contact"
               data-header-action="contact"
               data-header-blast-control={isHomePage ? "contact" : undefined}
-              className="group relative flex h-[36px] w-[158px] items-center overflow-hidden rounded-[16px] border border-[#c8d7e5] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)] shadow-[0_4px_12px_rgba(26,80,126,0.06)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(176*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))]"
+              className={`group relative flex h-[36px] w-[158px] items-center overflow-hidden rounded-[16px] border shadow-[0_4px_12px_rgba(26,80,126,0.06)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(176*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
+                useMatchingButtonStyles
+                  ? "border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white hover:bg-white"
+                  : "border-[#c8d7e5] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)]"
+              }`}
             >
-              <span className="relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-contact-text)] transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!">
+              <span
+                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-contact-text)] ${useMatchingButtonStyles ? "group-hover:text-[#27272A]" : ""} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
+              >
                 Contact Us
               </span>
               <span className="absolute left-[calc(100%-32px)] top-1/2 z-[3] flex h-[26px] w-[26px] -translate-y-1/2 items-center justify-center rounded-full [background:var(--header-orb)] shadow-[var(--header-orb-shadow)] transition-[left] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:left-[5px] min-[1024px]:h-[calc(28*var(--header-unit))] min-[1024px]:w-[calc(28*var(--header-unit))] min-[1024px]:left-[calc(100%-34*var(--header-unit))] min-[1024px]:group-hover:left-[calc(5*var(--header-unit))]">
@@ -658,18 +721,30 @@ export default function Header(options: HeaderOptions = {}) {
               data-header-action="menu"
               onClick={openMenu}
               data-header-blast-control={isHomePage ? "menu" : undefined}
-              className="group/menu flex h-[36px] w-[115px] cursor-pointer items-center justify-center rounded-[16px] border border-[var(--header-border)] [background:var(--header-menu-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] transform-gpu transition-[scale,transform,filter,box-shadow,border-color] duration-[1100ms] ease-[cubic-bezier(0.45,0,0.55,1)] hover:scale-[1.025] hover:brightness-[1.06] motion-reduce:transition-none hover:shadow-[0_10px_28px_rgba(10,36,65,0.19),inset_0_1px_0_rgba(255,255,255,0.30)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--header-menu-text)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(128*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))]"
+              className={`group/menu flex h-[36px] w-[115px] cursor-pointer items-center justify-center rounded-[16px] border border-[var(--header-border)] [background:var(--header-menu-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] transform-gpu transition-[scale,transform,filter,box-shadow,border-color,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] hover:scale-[1.025] hover:brightness-[1.06] motion-reduce:transition-none hover:shadow-[0_10px_28px_rgba(10,36,65,0.19),inset_0_1px_0_rgba(255,255,255,0.30)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--header-menu-text)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(128*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
+                useMatchingButtonStyles
+                  ? "hover:border-white hover:bg-white"
+                  : ""
+              }`}
             >
-              <span className="mr-[11px] text-[var(--header-menu-text)] [font-family:var(--font-sf-pro)]! [font-weight:550]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_550,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:mr-[calc(12*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!">
+              <span
+                className={`mr-[11px] text-[var(--header-menu-text)] ${isAboutUsPage ? "transition-colors duration-[450ms] group-hover/menu:text-[#0D5792]" : ""} [font-family:var(--font-sf-pro)]! [font-weight:550]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_550,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:mr-[calc(12*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
+              >
                 MENU
               </span>
               <span
                 aria-hidden="true"
                 className="flex w-[19px] flex-col gap-[3px] min-[1024px]:w-[calc(21*var(--header-unit))] min-[1024px]:gap-[calc(3*var(--header-unit))]"
               >
-                <span className="h-[2px] w-full rounded-full bg-[var(--header-menu-text)] transition-transform duration-[1100ms] ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]" />
-                <span className="h-[2px] w-full rounded-full bg-[var(--header-menu-text)] transition-transform duration-[1100ms] ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:-translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]" />
-                <span className="h-[2px] w-full rounded-full bg-[var(--header-menu-text)] transition-transform duration-[1100ms] ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]" />
+                <span
+                  className={`h-[2px] w-full rounded-full bg-[var(--header-menu-text)] ${isAboutUsPage ? "group-hover/menu:bg-[#0D5792]" : ""} transition-[transform,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]`}
+                />
+                <span
+                  className={`h-[2px] w-full rounded-full bg-[var(--header-menu-text)] ${isAboutUsPage ? "group-hover/menu:bg-[#0D5792]" : ""} transition-[transform,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:-translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]`}
+                />
+                <span
+                  className={`h-[2px] w-full rounded-full bg-[var(--header-menu-text)] ${isAboutUsPage ? "group-hover/menu:bg-[#0D5792]" : ""} transition-[transform,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] group-hover/menu:translate-x-[2px] min-[1024px]:h-[calc(2*var(--header-unit))]`}
+                />
               </span>
             </button>
             {/* LANGUAGE — expanded selector matches the closed button width */}

@@ -1,442 +1,2196 @@
 "use client";
+
 import Image from "next/image";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { gsap } from "gsap";
+import { animate, motion, useReducedMotion } from "framer-motion";
+import {
+  FiAlertTriangle,
+  FiArrowUpRight,
+  FiCheck,
+  FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
+  FiSearch,
+} from "react-icons/fi";
 import UncompromisingPerformance from "@/components/UncompromissingPerformence/UncompromisingPerformance";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { gsap } from "gsap";
-import { FiAlertTriangle, FiArrowUpRight, FiChevronDown, FiChevronLeft, FiChevronRight, FiCheck, FiCloud, FiSearch, FiTool } from "react-icons/fi";
-const SERVICE_HERO_IMAGE = "/e-service/e-service%20hero.webp";
-const serviceTitleLines = ["What is Sempa", "e-service Team?"];
+
+// ============================================================
+// FRAMER MOTION
+// ============================================================
+
+type Direction = "up" | "left" | "right";
+
+const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+function reveal(
+  direction: Direction = "up",
+  delay = 0,
+  reduced = false,
+  once = false,
+) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : {
+          opacity: 0,
+          x: direction === "left" ? -36 : direction === "right" ? 36 : 0,
+          y: direction === "up" ? 35 : 12,
+          filter: "blur(6px)",
+        },
+    whileInView: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      filter: "blur(0px)",
+    },
+    viewport: {
+      once,
+      amount: 0.16,
+      margin: "0px 0px -7% 0px",
+    },
+    transition: {
+      duration: reduced ? 0 : 0.9,
+      delay: reduced ? 0 : delay,
+      ease,
+    },
+  };
+}
+
+// Sayfa yüklenince çalışan giriş animasyonu.
+// Scroll veya görünürlük kontrolü kullanılmaz.
+function revealOnLoad(delay = 0, reduced = false) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : {
+          opacity: 0,
+          y: 30,
+          filter: "blur(6px)",
+        },
+    animate: {
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+    },
+    transition: {
+      duration: reduced ? 0 : 0.9,
+      delay: reduced ? 0 : delay,
+      ease,
+    },
+  };
+}
+
+// ============================================================
+// FEATURES
+// ============================================================
+
+const FEATURES = [
+  {
+    id: "cloud",
+    icon: "/e-service/cloud.webp",
+    title: "Sempa Cloud Platform",
+    description: "Centralized ticket processing and live status tracking.",
+  },
+  {
+    id: "serial",
+    icon: "/e-service/qr.webp",
+    title: "Product Serial ID",
+    description:
+      "Instant access to warranty, hydraulic curve and history by serial number.",
+  },
+  {
+    id: "parts",
+    icon: "/e-service/shield.webp",
+    title: "Original Spare Parts",
+    description:
+      "100% genuine factory-certified impellers, shafts and mechanical seals.",
+  },
+  {
+    id: "network",
+    icon: "/e-service/tool.webp",
+    title: "Certified Service Network",
+    description:
+      "Rigorously scored, trained and audited technical service teams.",
+  },
+];
+
+// ============================================================
+// GSAP SIGNAL TITLE
+// ============================================================
 
 function ServiceSignalTitle() {
-    const ref = useRef<HTMLHeadingElement>(null);
-    useLayoutEffect(() => {
-        const heading = ref.current;
-        if (!heading) return;
-        const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        let visible = false;
-        const characters = heading.querySelectorAll(".service-signal-character");
-        const scans = heading.querySelectorAll(".service-signal-scan");
-        const context = gsap.context(() => {}, heading);
-        let timeline: gsap.core.Timeline;
-        context.add(() => {
-            timeline = gsap.timeline({ paused: true, repeat: -1, repeatDelay: 1.8 });
-            timeline.set(characters, { opacity: 0, x: 0, skewX: 0, clipPath: "none", textShadow: "none" }, 0);
-            heading.querySelectorAll(".service-signal-line").forEach((line, lineIndex) => {
-                const letters = line.querySelectorAll(".service-signal-character");
-                const scan = line.querySelector(".service-signal-scan");
-                const start = lineIndex * .65;
-                timeline.fromTo(scan, { left: "0%", opacity: 0 }, { opacity: .65, duration: .08 }, start);
-                timeline.to(scan, { left: "100%", duration: .7, ease: "none" }, start);
-                timeline.to(scan, { opacity: 0, duration: .12 }, start + .65);
-                letters.forEach((letter, index) => {
-                    const reveal = start + index / letters.length * .65;
-                    timeline.fromTo(letter, { opacity: 0, x: -2, skewX: -5, clipPath: "inset(38% 0 37% 0)", textShadow: "-1px 0 #6bd8ff, 1px 0 #e8a5bd" },
-                        { opacity: 1, x: 1, skewX: 2, clipPath: "inset(0% 0 0% 0)", duration: .1, ease: "power2.out", immediateRender: false }, reveal);
-                    timeline.to(letter, { x: 0, skewX: 0, textShadow: "0 0 8px rgba(91,195,255,.55)", duration: .12, ease: "power2.out" }, reveal + .1);
-                    timeline.to(letter, { textShadow: "0 0 0px rgba(91,195,255,0)", duration: .18 }, reveal + .22);
-                });
-            });
-            timeline.to(characters, { textShadow: "0 0 6px rgba(190,235,255,.65)", duration: .08, stagger: .009 }, 1.65);
-            timeline.to(characters, { textShadow: "0 0 0px rgba(190,235,255,0)", duration: .16, stagger: .009 }, 1.79);
+  const ref = useRef<HTMLHeadingElement>(null);
+  const lines = ["What is Sempa", "e-service Team?"];
+
+  useLayoutEffect(() => {
+    const heading = ref.current;
+    if (!heading) return;
+
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const characters = heading.querySelectorAll(".signal-letter");
+    const scans = heading.querySelectorAll(".signal-scan");
+    const context = gsap.context(() => {}, heading);
+
+    let timeline: gsap.core.Timeline;
+
+    context.add(() => {
+      timeline = gsap.timeline({
+        paused: true,
+        repeat: -1,
+        repeatDelay: 1.8,
+      });
+
+      timeline.set(
+        characters,
+        {
+          opacity: 0,
+          x: 0,
+          skewX: 0,
+          clipPath: "none",
+          textShadow: "none",
+        },
+        0,
+      );
+
+      heading.querySelectorAll(".signal-line").forEach((line, lineIndex) => {
+        const letters = line.querySelectorAll(".signal-letter");
+        const scan = line.querySelector(".signal-scan");
+        const start = lineIndex * 0.65;
+
+        timeline.fromTo(
+          scan,
+          { left: "0%", opacity: 0 },
+          { opacity: 0.65, duration: 0.08 },
+          start,
+        );
+
+        timeline.to(
+          scan,
+          {
+            left: "100%",
+            duration: 0.7,
+            ease: "none",
+          },
+          start,
+        );
+
+        timeline.to(
+          scan,
+          {
+            opacity: 0,
+            duration: 0.12,
+          },
+          start + 0.65,
+        );
+
+        letters.forEach((letter, index) => {
+          const time = start + (index / Math.max(letters.length, 1)) * 0.65;
+
+          timeline.fromTo(
+            letter,
+            {
+              opacity: 0,
+              x: -2,
+              skewX: -5,
+              clipPath: "inset(38% 0 37% 0)",
+              textShadow: "-1px 0 #6bd8ff, 1px 0 #e8a5bd",
+            },
+            {
+              opacity: 1,
+              x: 1,
+              skewX: 2,
+              clipPath: "inset(0% 0 0% 0)",
+              duration: 0.1,
+              ease: "power2.out",
+              immediateRender: false,
+            },
+            time,
+          );
+
+          timeline.to(
+            letter,
+            {
+              x: 0,
+              skewX: 0,
+              textShadow: "0 0 8px rgba(91,195,255,.55)",
+              duration: 0.12,
+            },
+            time + 0.1,
+          );
+
+          timeline.to(
+            letter,
+            {
+              textShadow: "none",
+              duration: 0.18,
+            },
+            time + 0.22,
+          );
         });
-        const sync = () => {
-            if (visible && !document.hidden && !motion.matches) {
-                gsap.set(characters, { opacity: 0 });
-                timeline.restart();
-            } else {
-                timeline.pause(0);
-                gsap.set(characters, { opacity: 1, x: 0, skewX: 0, clipPath: "none", textShadow: "none" });
-                gsap.set(scans, { opacity: 0 });
-            }
-        };
-        const observer = new IntersectionObserver(([entry]) => {
-            visible = entry.isIntersecting && entry.intersectionRatio >= .5;
-            sync();
-        }, { threshold: .5 });
-        observer.observe(heading);
-        document.addEventListener("visibilitychange", sync);
-        motion.addEventListener("change", sync);
-        return () => {
-            observer.disconnect();
-            document.removeEventListener("visibilitychange", sync);
-            motion.removeEventListener("change", sync);
-            context.revert();
-            gsap.set(characters, { clearProps: "all" });
-            gsap.set(scans, { clearProps: "all" });
-        };
-    }, []);
-    return <h2 ref={ref} aria-label={serviceTitleLines.join(" ")}>
-      {serviceTitleLines.map(line => <span key={line} aria-hidden="true" className="service-signal-line relative block w-fit max-w-full">
-        {line.split(" ").map((word, index) => <span key={word}>{index > 0 && " "}<span className="whitespace-nowrap">
-          {Array.from(word, (letter, letterIndex) => <span key={letterIndex} className="service-signal-character inline-block">{letter}</span>)}
-        </span></span>)}
-        <span className="service-signal-scan pointer-events-none absolute top-0 bottom-0 left-0 w-px bg-[#80d8ff] opacity-0 shadow-[0_0_7px_#57bbff]" />
-      </span>)}
-      <style>{`
-        @media (prefers-reduced-motion: no-preference) {
-          .service-signal-character { opacity: 0; }
-        }
-      `}</style>
-    </h2>;
+      });
+
+      timeline.to(
+        characters,
+        {
+          textShadow: "0 0 6px rgba(190,235,255,.65)",
+          duration: 0.08,
+          stagger: 0.009,
+        },
+        1.65,
+      );
+
+      timeline.to(
+        characters,
+        {
+          textShadow: "none",
+          duration: 0.16,
+          stagger: 0.009,
+        },
+        1.79,
+      );
+    });
+
+    const sync = () => {
+      if (!document.hidden && !media.matches) {
+        gsap.set(characters, { opacity: 0 });
+        timeline.restart();
+      } else {
+        timeline.pause(0);
+
+        gsap.set(characters, {
+          opacity: 1,
+          x: 0,
+          skewX: 0,
+          clipPath: "none",
+          textShadow: "none",
+        });
+
+        gsap.set(scans, { opacity: 0 });
+      }
+    };
+
+    // Başlığın animasyonu sayfa açıldığında başlar.
+    // IntersectionObserver kaldırıldı.
+    sync();
+
+    document.addEventListener("visibilitychange", sync);
+    media.addEventListener("change", sync);
+
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      media.removeEventListener("change", sync);
+
+      context.revert();
+
+      gsap.set(characters, {
+        clearProps: "all",
+      });
+
+      gsap.set(scans, {
+        clearProps: "all",
+      });
+    };
+  }, []);
+
+  return (
+    <h2 ref={ref} aria-label={lines.join(" ")} className="signal-heading">
+      {lines.map((line) => (
+        <span key={line} className="signal-line" aria-hidden="true">
+          {line.split(" ").map((word, i) => (
+            <span key={`${word}-${i}`}>
+              {i > 0 ? " " : null}
+              <span className="whitespace-nowrap">
+                {Array.from(word).map((character, index) => (
+                  <span className="signal-letter" key={index}>
+                    {character}
+                  </span>
+                ))}
+              </span>
+            </span>
+          ))}
+          <span className="signal-scan" />
+        </span>
+      ))}
+    </h2>
+  );
 }
 
-type ServiceFeature = {
-    id: string;
-    title: string;
-    description: string;
-    icon: "cloud" | "scan" | "shield" | "wrench";
-};
-const serviceFeatures: ServiceFeature[] = [
-    { id: "cloud", title: "Sempa Cloud Platform", description: "Centralized ticket processing and live status tracking.", icon: "cloud" },
-    { id: "serial", title: "Product Serial ID", description: "Instant access to warranty, hydraulic curve and history by serial number.", icon: "scan" },
-    { id: "parts", title: "Original Spare Parts", description: "100% genuine factory-certified impellers, shafts and mechanical seals.", icon: "shield" },
-    { id: "network", title: "Certified Service Network", description: "Rigorously scored, trained and audited technical service teams.", icon: "wrench" },
-];
-function ServiceFeatureIcon({ icon }: {
-    icon: ServiceFeature["icon"];
+// ============================================================
+// FEATURE CARD
+// ============================================================
+
+function FeatureCard({
+  feature,
+  index,
+}: {
+  feature: (typeof FEATURES)[number];
+  index: number;
 }) {
-    if (icon === "cloud")
-        return <FiCloud />;
-    if (icon === "wrench")
-        return <FiTool />;
-    return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {icon === "shield" ? (<><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></>) : (<><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><rect x="7" y="7" width="3" height="3" rx=".4"/><rect x="14" y="7" width="3" height="3" rx=".4"/><rect x="7" y="14" width="3" height="3" rx=".4"/><path d="M14 14h3v3h-3M14 17v-3"/></>)}
-    </svg>);
-}
-function EServiceFeatureCard({ feature }: {
-    feature: ServiceFeature;
-}) {
-    return (<article className="e-service-feature-card [.e-service-page_&]:[min-width:0] [.e-service-page_&]:[min-height:calc(233_*_var(--service-unit))] [.e-service-page_&]:[padding-top:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-right:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-bottom:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-left:calc(24_*_var(--service-unit))] [.e-service-page_&]:[border:1px_solid_#fff] [.e-service-page_&]:[border-radius:calc(16_*_var(--service-unit))] [.e-service-page_&]:[background:#ffffff26] [.e-service-page_&]:[box-shadow:0_2px_8px_#00000008] [.e-service-page_&]:[letter-spacing:-0.04em] [.e-service-page_&_h3]:[margin-top:calc(24_*_var(--service-unit))] [.e-service-page_&_h3]:[margin-right:0] [.e-service-page_&_h3]:[margin-bottom:0] [.e-service-page_&_h3]:[margin-left:0] [.e-service-page_&_h3]:[font-size:calc(15_*_var(--service-unit))]! [.e-service-page_&_h3]:[font-weight:540]! [.e-service-page_&_h3]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_h3]:[line-height:1.12]! [.e-service-page_&_h3]:[color:#0d5792]! [.e-service-page_&_p]:[margin-top:calc(12_*_var(--service-unit))] [.e-service-page_&_p]:[margin-right:0] [.e-service-page_&_p]:[margin-bottom:0] [.e-service-page_&_p]:[margin-left:0] [.e-service-page_&_p]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_p]:[line-height:1.12]! [.e-service-page_&_p]:[color:#27272a]! max-[1200px]:[.e-service-page_&]:[flex:0_0_calc((100%_-_48px)_/_2)] max-[1200px]:[.e-service-page_&]:[scroll-snap-align:start] max-[768px]:[.e-service-page_&]:[flex:0_0_72vw] max-[768px]:[.e-service-page_&]:[min-height:233px] max-[768px]:[.e-service-page_&]:[padding-top:28px] max-[768px]:[.e-service-page_&]:[padding-right:28px] max-[768px]:[.e-service-page_&]:[padding-bottom:28px] max-[768px]:[.e-service-page_&]:[padding-left:28px] max-[768px]:[.e-service-page_&]:[scroll-snap-align:start] [backdrop-filter:blur(30px)] [-webkit-backdrop-filter:blur(30px)]">
-      <span className="e-service-feature-icon [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[place-items:center] [.e-service-page_&]:[width:calc(48_*_var(--service-unit))] [.e-service-page_&]:[height:calc(48_*_var(--service-unit))] [.e-service-page_&]:[border:1px_solid_#cbeedc] [.e-service-page_&]:[border-radius:calc(12_*_var(--service-unit))] [.e-service-page_&]:[background:#eefaf4] [.e-service-page_&]:[color:#005eff]! [.e-service-page_&_svg]:[width:55%] [.e-service-page_&_svg]:[height:55%] [.e-service-page_&_svg]:[stroke-width:1.8]" aria-hidden="true"><ServiceFeatureIcon icon={feature.icon}/></span>
+  const reduced = useReducedMotion() ?? false;
+
+  return (
+    <motion.article
+      {...reveal(index % 2 ? "right" : "up", index * 0.075, reduced)}
+      className="feature-card"
+    >
+      <span className="feature-icon" aria-hidden="true">
+        <Image
+          src={feature.icon}
+          width={36}
+          height={36}
+          alt=""
+          className="object-contain"
+        />
+      </span>
+
       <h3>{feature.title}</h3>
       <p>{feature.description}</p>
-    </article>);
+    </motion.article>
+  );
 }
+
+// ============================================================
+// HERO
+// ============================================================
+
 function EServiceHero() {
-    const [imageUnavailable, setImageUnavailable] = useState(false);
-    const featureTrack = useRef<HTMLDivElement>(null);
-    const drag = useRef<{
-        x: number;
-        scroll: number;
-    } | null>(null);
-    const moveFeatures = (direction: number) => {
-        const track = featureTrack.current;
-        const card = track?.firstElementChild;
-        if (!track || !card)
-            return;
-        track.scrollBy({ left: direction * (card.getBoundingClientRect().width + parseFloat(getComputedStyle(track).gap)), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    };
-    return (<section className="e-service-hero [.e-service-page_&]:[position:relative] [.e-service-page_&]:[isolation:isolate] [.e-service-page_&]:[padding-top:calc(641_*_var(--service-unit))] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(80_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] max-[1200px]:[.e-service-page_&]:[padding-top:500px] max-[768px]:[.e-service-page_&]:[padding-top:clamp(380px,_99vw,_650px)] max-[768px]:[.e-service-page_&]:[padding-right:32px] max-[768px]:[.e-service-page_&]:[padding-bottom:64px] max-[768px]:[.e-service-page_&]:[padding-left:32px] [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]" aria-labelledby="e-service-title">
-      <div className="e-service-background [.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:0] [.e-service-page_&]:[right:0] [.e-service-page_&]:[bottom:auto] [.e-service-page_&]:[left:0] [.e-service-page_&]:[z-index:-1] [.e-service-page_&]:[height:calc(966_*_var(--service-unit))] [.e-service-page_&]:[background:#061521] [.e-service-page_&]:[overflow:hidden] [.e-service-page_&]:[pointer-events:none] max-[1200px]:[.e-service-page_&]:[height:880px] max-[768px]:[.e-service-page_&]:[height:clamp(680px,_174vw,_1100px)]" aria-hidden="true">
-        {!imageUnavailable && (<picture>
-            {/* Mobile cover crops need the original resolution, not a viewport-wide thumbnail. */}
-            <source media="(max-width: 767px)" srcSet={SERVICE_HERO_IMAGE}/>
-            <Image src={SERVICE_HERO_IMAGE} alt="" fill sizes="100vw" preload className="e-service-background-image [.e-service-page_&]:[object-fit:cover] [.e-service-page_&]:[object-position:center] max-[1200px]:[.e-service-page_&]:[object-position:65%_center] max-[768px]:[.e-service-page_&]:[object-position:60%_top]" onError={() => setImageUnavailable(true)}/>
-          </picture>)}
-        <div className="e-service-background-fade [.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:auto] [.e-service-page_&]:[right:0] [.e-service-page_&]:[bottom:0] [.e-service-page_&]:[left:0] [.e-service-page_&]:[height:calc(250_*_var(--service-unit))] [.e-service-page_&]:[background:linear-gradient(transparent,_#d5eaf8)] max-[768px]:[.e-service-page_&]:[height:230px]"/>
+  const reduced = useReducedMotion() ?? false;
+  const [imageUnavailable, setImageUnavailable] = useState(false);
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<{
+    x: number;
+    scroll: number;
+  } | null>(null);
+
+  function move(direction: number) {
+    const element = track.current;
+    const card = element?.firstElementChild;
+    if (!element || !card) return;
+
+    const gap = Number.parseFloat(getComputedStyle(element).gap) || 0;
+
+    element.scrollBy({
+      left: direction * (card.getBoundingClientRect().width + gap),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  }
+
+  return (
+    <section className="service-hero" aria-labelledby="service-page-heading">
+      <div className="hero-background" aria-hidden="true">
+        {!imageUnavailable && (
+          <picture>
+            <source
+              media="(max-width: 767px)"
+              srcSet="/e-service/e-service%20hero.webp"
+            />
+            <Image
+              src="/e-service/e-service%20hero.webp"
+              fill
+              preload
+              sizes="100vw"
+              alt=""
+              onError={() => setImageUnavailable(true)}
+              className="hero-background-image"
+            />
+          </picture>
+        )}
       </div>
-      <h1 id="e-service-title" className="e-service-title [.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:calc(182_*_var(--service-unit))] [.e-service-page_&]:[left:calc(120_*_var(--service-unit))] [.e-service-page_&]:[margin-top:0] [.e-service-page_&]:[margin-right:0] [.e-service-page_&]:[margin-bottom:0] [.e-service-page_&]:[margin-left:0] [.e-service-page_&]:[font-size:calc(36_*_var(--service-unit))]! [.e-service-page_&]:[font-weight:410]! [.e-service-page_&]:[line-height:1]! [.e-service-page_&]:[color:#9eb7d0]! max-[1200px]:[.e-service-page_&]:[left:32px] max-[1200px]:[.e-service-page_&]:[top:160px] max-[1200px]:[.e-service-page_&]:[font-size:32px]! max-[768px]:[.e-service-page_&]:[top:154px] max-[768px]:[.e-service-page_&]:[left:20px] max-[768px]:[.e-service-page_&]:[font-size:28px]!">E-Service</h1>
-      <div className="e-service-inner [.e-service-page_&]:[width:100%] [.e-service-page_&]:[max-width:calc(1200_*_var(--service-unit))] [.e-service-page_&]:[margin-left:auto] [.e-service-page_&]:[margin-right:auto]">
-        <div className="e-service-introduction [.e-service-page_&]:[letter-spacing:-0.04em] [.e-service-page_&_h2]:[margin-top:0] [.e-service-page_&_h2]:[margin-right:0] [.e-service-page_&_h2]:[margin-bottom:0] [.e-service-page_&_h2]:[margin-left:0] [.e-service-page_&_h2]:[font-size:calc(50_*_var(--service-unit))]! [.e-service-page_&_h2]:[font-weight:410]! [.e-service-page_&_h2]:[line-height:1]! [.e-service-page_&_h2]:[color:#f7f7f7]! [.e-service-page_&_>_p]:[width:calc(869_*_var(--service-unit))] [.e-service-page_&_>_p]:[max-width:100%] [.e-service-page_&_>_p]:[margin-top:calc(47_*_var(--service-unit))] [.e-service-page_&_>_p]:[margin-right:0] [.e-service-page_&_>_p]:[margin-bottom:0] [.e-service-page_&_>_p]:[margin-left:0] [.e-service-page_&_>_p]:[font-size:calc(20_*_var(--service-unit))]! [.e-service-page_&_>_p]:[line-height:1.07]! [.e-service-page_&_>_p]:[color:#9eb7d0]! max-[1200px]:[.e-service-page_&_h2]:[font-size:44px]! max-[1200px]:[.e-service-page_&_>_p]:[font-size:18px]! max-[1200px]:[.e-service-page_&_>_p]:[line-height:1.2]! max-[768px]:[.e-service-page_&_h2]:[font-size:clamp(28px,_7.8vw,_42px)]! max-[768px]:[.e-service-page_&_>_p]:[margin-top:24px] max-[768px]:[.e-service-page_&_>_p]:[font-size:16px]! max-[768px]:[.e-service-page_&_>_p]:[line-height:1.07]!">
-          <ServiceSignalTitle />
-          <p>Your digital gateway to uninterrupted performance. The Sempa e-service Team provides rapid online technical support, remote troubleshooting, and expert guidance to keep your critical systems running smoothly worldwide.</p>
+
+      <motion.h1
+        {...reveal("left", 0.02, reduced)}
+        id="service-page-heading"
+        className="service-page-title"
+      >
+        E-Service
+      </motion.h1>
+
+      <div className="service-inner">
+        <div className="hero-introduction">
+          <motion.div {...revealOnLoad(0.08, reduced)}>
+            <ServiceSignalTitle />
+          </motion.div>
+
+          <motion.p {...revealOnLoad(0.23, reduced)}>
+            Your digital gateway to uninterrupted performance. The Sempa
+            e-service Team provides rapid online technical support, remote
+            troubleshooting, and expert guidance to keep your critical systems
+            running smoothly worldwide.
+          </motion.p>
         </div>
-        <div className="e-service-feature-grid [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[grid-template-columns:repeat(4,_minmax(0,_1fr))] [.e-service-page_&]:[gap:calc(20_*_var(--service-unit))] [.e-service-page_&]:[margin-top:calc(48_*_var(--service-unit))] [.e-service-page_&:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&:focus-visible]:[outline-offset:4px] max-[1200px]:[.e-service-page_&]:[display:flex]! max-[1200px]:[.e-service-page_&]:[overflow-x:auto] max-[1200px]:[.e-service-page_&]:[gap:24px] max-[1200px]:[.e-service-page_&]:[padding-bottom:8px] max-[1200px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory] max-[1200px]:[.e-service-page_&]:[scrollbar-width:thin] max-[1200px]:[.e-service-page_&]:[scrollbar-color:#9eb7d0_transparent] max-[1200px]:[.e-service-page_&]:[cursor:grab] max-[1200px]:[.e-service-page_&]:[touch-action:pan-x_pan-y] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[cursor:grabbing] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[scroll-snap-type:none] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[user-select:none] max-[768px]:[.e-service-page_&]:[display:flex]! max-[768px]:[.e-service-page_&]:[overflow-x:auto] max-[768px]:[.e-service-page_&]:[margin-top:40px] max-[768px]:[.e-service-page_&]:[margin-right:-32px] max-[768px]:[.e-service-page_&]:[margin-bottom:0] max-[768px]:[.e-service-page_&]:[margin-left:-32px] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:32px] max-[768px]:[.e-service-page_&]:[padding-bottom:4px] max-[768px]:[.e-service-page_&]:[padding-left:32px] max-[768px]:[.e-service-page_&]:[gap:24px] max-[768px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory] max-[768px]:[.e-service-page_&]:[scroll-padding-inline:32px] max-[768px]:[.e-service-page_&]:[scrollbar-width:none] max-[768px]:[.e-service-page_&::-webkit-scrollbar]:[display:none]!" ref={featureTrack} role="region" aria-label="E-Service benefits" tabIndex={0} onKeyDown={(event) => {
-            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
-                return;
+
+        <div
+          ref={track}
+          className="feature-track"
+          role="region"
+          aria-label="E-Service benefits"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
             event.preventDefault();
-            moveFeatures(event.key === "ArrowRight" ? 1 : -1);
-        }} onPointerDown={(event) => {
-            const track = event.currentTarget;
-            if (event.pointerType !== "mouse" || event.button !== 0 || track.scrollWidth <= track.clientWidth)
-                return;
-            drag.current = { x: event.clientX, scroll: track.scrollLeft };
-            track.dataset.dragging = "true";
-            track.setPointerCapture(event.pointerId);
-        }} onPointerMove={(event) => {
-            if (drag.current)
-                event.currentTarget.scrollLeft = drag.current.scroll - (event.clientX - drag.current.x);
-        }} onPointerUp={(event) => { drag.current = null; delete event.currentTarget.dataset.dragging; }} onPointerCancel={(event) => { drag.current = null; delete event.currentTarget.dataset.dragging; }} onLostPointerCapture={(event) => { drag.current = null; delete event.currentTarget.dataset.dragging; }}>
-          {serviceFeatures.map((feature) => <EServiceFeatureCard key={feature.id} feature={feature}/>)}
+            move(event.key === "ArrowRight" ? 1 : -1);
+          }}
+          onPointerDown={(event) => {
+            const element = event.currentTarget;
+
+            if (
+              event.pointerType !== "mouse" ||
+              event.button !== 0 ||
+              element.scrollWidth <= element.clientWidth
+            )
+              return;
+
+            drag.current = {
+              x: event.clientX,
+              scroll: element.scrollLeft,
+            };
+
+            element.dataset.dragging = "true";
+            element.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (drag.current) {
+              event.currentTarget.scrollLeft =
+                drag.current.scroll - (event.clientX - drag.current.x);
+            }
+          }}
+          onPointerUp={(event) => {
+            drag.current = null;
+            delete event.currentTarget.dataset.dragging;
+          }}
+          onPointerCancel={(event) => {
+            drag.current = null;
+            delete event.currentTarget.dataset.dragging;
+          }}
+          onLostPointerCapture={(event) => {
+            drag.current = null;
+            delete event.currentTarget.dataset.dragging;
+          }}
+        >
+          {FEATURES.map((feature, index) => (
+            <FeatureCard key={feature.id} feature={feature} index={index} />
+          ))}
         </div>
-        <nav className="e-service-feature-navigation [.e-service-page_&]:[display:none]! max-[1200px]:[.e-service-page_&]:[display:flex]! max-[1200px]:[.e-service-page_&]:[justify-content:center] max-[1200px]:[.e-service-page_&]:[gap:12px] max-[1200px]:[.e-service-page_&]:[margin-top:16px] max-[1200px]:[.e-service-page_&_button]:[display:grid]! max-[1200px]:[.e-service-page_&_button]:[place-items:center] max-[1200px]:[.e-service-page_&_button]:[width:44px] max-[1200px]:[.e-service-page_&_button]:[height:44px] max-[1200px]:[.e-service-page_&_button]:[border:1px_solid_#9eb7d080] max-[1200px]:[.e-service-page_&_button]:[border-radius:50%] max-[1200px]:[.e-service-page_&_button]:[background:#ffffff80] max-[1200px]:[.e-service-page_&_button]:[color:#0d5792]! max-[1200px]:[.e-service-page_&_button]:[cursor:pointer] max-[1200px]:[.e-service-page_&_button]:[transition:background_200ms_ease] max-[1200px]:[.e-service-page_&_button:hover]:[background:#fff] max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff] max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline-offset:3px]" aria-label="Browse E-Service benefits">
-          <button type="button" aria-label="Previous benefit" onClick={() => moveFeatures(-1)}><FiChevronLeft aria-hidden="true"/></button>
-          <button type="button" aria-label="Next benefit" onClick={() => moveFeatures(1)}><FiChevronRight aria-hidden="true"/></button>
+
+        <nav
+          className="feature-navigation"
+          aria-label="Browse E-Service benefits"
+        >
+          <button
+            type="button"
+            aria-label="Previous benefit"
+            onClick={() => move(-1)}
+          >
+            <FiChevronLeft />
+          </button>
+
+          <button
+            type="button"
+            aria-label="Next benefit"
+            onClick={() => move(1)}
+          >
+            <FiChevronRight />
+          </button>
         </nav>
       </div>
-    </section>);
+    </section>
+  );
 }
-type ServiceTab = "request" | "network";
-type ServiceFormValues = {
-    expertise: string;
-    serial: string;
-    requestType: string;
-    location: string;
-    contact: string;
-    company: string;
-    phone: string;
-    details: string;
+
+// ============================================================
+// FORM DATA
+// ============================================================
+
+type Tab = "request" | "network";
+
+type Values = {
+  expertise: string;
+  serial: string;
+  requestType: string;
+  location: string;
+  contact: string;
+  company: string;
+  phone: string;
+  details: string;
 };
-const serviceFormCopy = {
-    request: {
-        expertiseLabel: "Pump Model / Type",
-        expertisePlaceholder: "Örn: TKF-K 100-250, ARS veya Dikey Milli",
-        serialLabel: "Serial Number (If available)",
-        serialPlaceholder: "Örn: 2024-88421 veya etiket no",
-        typeLabel: "Request Type",
-        options: ["Breakdown & Urgent Repair", "Maintenance Request", "Spare Parts Request", "Technical Support", "Installation & Commissioning", "Other"],
-        locationLabel: "City / Plant Location",
-        locationPlaceholder: "Örn: Konya, İstanbul, İzmir veya Ülke",
-        detailsLabel: "Issue / Request Details",
-        detailsPlaceholder: "Describe the issue (vibration, pressure drop, leak, or required part details).",
-        notice: "For critical emergencies, call our hotline directly:",
-    },
-    network: {
-        expertiseLabel: "Service Expertise / Specialization",
-        expertisePlaceholder: "Örn: Pompa bakımı, mekanik onarım veya devreye alma",
-        serialLabel: "Certification / Registration No (If available)",
-        serialPlaceholder: "Örn: Servis sertifikası veya firma kayıt numarası",
-        typeLabel: "Application Type",
-        options: ["Authorized Service Partnership", "Maintenance & Repair Partner", "Installation & Commissioning Partner", "Spare Parts Partner", "Technical Support Partner", "Other"],
-        locationLabel: "Service Region / City",
-        locationPlaceholder: "Örn: Konya, İstanbul, İzmir veya hizmet bölgeniz",
-        detailsLabel: "Service Network Application Details",
-        detailsPlaceholder: "Describe your technical experience, team, facilities and service coverage.",
-        notice: "For service network enquiries, call our team directly:",
-    },
+
+const FORM_COPY = {
+  request: {
+    expertiseLabel: "Pump Model / Type",
+    expertisePlaceholder: "Örn: TKF-K 100-250, ARS veya Dikey Milli",
+    serialLabel: "Serial Number (If available)",
+    serialPlaceholder: "Örn: 2024-88421 veya etiket no",
+    typeLabel: "Request Type",
+    options: [
+      "Breakdown & Urgent Repair",
+      "Maintenance Request",
+      "Spare Parts Request",
+      "Technical Support",
+      "Installation & Commissioning",
+      "Other",
+    ],
+    locationLabel: "City / Plant Location",
+    locationPlaceholder: "Örn: Konya, İstanbul, İzmir veya Ülke",
+    detailsLabel: "Issue / Request Details",
+    detailsPlaceholder:
+      "Describe the issue (vibration, pressure drop, leak, or required part details).",
+    notice: "For critical emergencies, call our hotline directly:",
+  },
+
+  network: {
+    expertiseLabel: "Service Expertise / Specialization",
+    expertisePlaceholder: "Örn: Pompa bakımı, mekanik onarım veya devreye alma",
+    serialLabel: "Certification / Registration No (If available)",
+    serialPlaceholder: "Örn: Servis sertifikası veya firma kayıt numarası",
+    typeLabel: "Application Type",
+    options: [
+      "Authorized Service Partnership",
+      "Maintenance & Repair Partner",
+      "Installation & Commissioning Partner",
+      "Spare Parts Partner",
+      "Technical Support Partner",
+      "Other",
+    ],
+    locationLabel: "Service Region / City",
+    locationPlaceholder: "Örn: Konya, İstanbul, İzmir veya hizmet bölgeniz",
+    detailsLabel: "Service Network Application Details",
+    detailsPlaceholder:
+      "Describe your technical experience, team, facilities and service coverage.",
+    notice: "For service network enquiries, call our team directly:",
+  },
 };
-function createServiceFormValues(tab: ServiceTab): ServiceFormValues {
-    return { expertise: "", serial: "", requestType: serviceFormCopy[tab].options[0], location: "", contact: "", company: "", phone: "", details: "" };
+
+function emptyValues(tab: Tab): Values {
+  return {
+    expertise: "",
+    serial: "",
+    requestType: FORM_COPY[tab].options[0],
+    location: "",
+    contact: "",
+    company: "",
+    phone: "",
+    details: "",
+  };
 }
-function formatServicePhone(value: string) {
-    let digits = value.replace(/\D/g, "");
-    if (digits.startsWith("90") && digits.length > 10)
-        digits = digits.slice(2);
-    if (digits.length === 10 && !digits.startsWith("0"))
-        digits = `0${digits}`;
-    digits = digits.slice(0, 11);
-    return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)].filter(Boolean).join(" ");
+
+function formatPhone(value: string) {
+  let digits = value.replace(/\D/g, "");
+
+  if (digits.startsWith("90") && digits.length > 10) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.length === 10 && !digits.startsWith("0")) {
+    digits = `0${digits}`;
+  }
+
+  digits = digits.slice(0, 11);
+
+  return [
+    digits.slice(0, 4),
+    digits.slice(4, 7),
+    digits.slice(7, 9),
+    digits.slice(9, 11),
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
-function ServiceRequestTabs({ activeTab, onSelect }: {
-    activeTab: ServiceTab;
-    onSelect: (tab: ServiceTab) => void;
+
+// ============================================================
+// FORM TABS
+// ============================================================
+
+function RequestTabs({
+  activeTab,
+  onSelect,
+}: {
+  activeTab: Tab;
+  onSelect: (value: Tab) => void;
 }) {
-    const tabs: {
-        id: ServiceTab;
-        label: string;
-    }[] = [
-        { id: "request", label: "Quick Service Request" },
-        { id: "network", label: "Join Service Network" },
-    ];
-    return (<div className="service-request-tabs [.e-service-page_&]:[display:flex]! [.e-service-page_&]:[border-bottom:1px_solid_#9eb7d066] [.e-service-page_&]:[gap:calc(32_*_var(--service-unit))] [.e-service-page_&_button]:[display:flex]! [.e-service-page_&_button]:[align-items:center] [.e-service-page_&_button]:[gap:calc(10_*_var(--service-unit))] [.e-service-page_&_button]:[padding-top:calc(16_*_var(--service-unit))] [.e-service-page_&_button]:[padding-right:calc(4_*_var(--service-unit))] [.e-service-page_&_button]:[padding-bottom:calc(16_*_var(--service-unit))] [.e-service-page_&_button]:[padding-left:calc(4_*_var(--service-unit))] [.e-service-page_&_button]:[border-top:0] [.e-service-page_&_button]:[border-right:0] [.e-service-page_&_button]:[border-left:0] [.e-service-page_&_button]:[border-bottom:2px_solid_transparent] [.e-service-page_&_button]:[margin-bottom:-1px] [.e-service-page_&_button]:[background:transparent] [.e-service-page_&_button]:[color:#64748b]! [.e-service-page_&_button]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_button]:[font-weight:540]! [.e-service-page_&_button]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_button]:[line-height:1.12]! [.e-service-page_&_button]:[text-align:left] [.e-service-page_&_button]:[cursor:pointer] [.e-service-page_&_svg]:[flex-shrink:0] [.e-service-page_&_svg]:[width:calc(18_*_var(--service-unit))] [.e-service-page_&_svg]:[height:calc(18_*_var(--service-unit))] [.e-service-page_&_svg]:[color:#94a3b8]! [.e-service-page_&_button[aria-selected='true']]:[color:#0f172a]! [.e-service-page_&_button[aria-selected='true']]:[border-bottom-color:#005eff] [.e-service-page_&_button[aria-selected='true']_svg]:[color:#005eff]! [.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&_button:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[flex-direction:column] max-[768px]:[.e-service-page_&]:[align-items:stretch] max-[768px]:[.e-service-page_&]:[gap:0] max-[768px]:[.e-service-page_&_button]:[flex:none] max-[768px]:[.e-service-page_&_button]:[padding-top:16px] max-[768px]:[.e-service-page_&_button]:[padding-bottom:16px]" role="tablist" aria-label="Service forms">
-      {tabs.map((tab, index) => (<button key={tab.id} id={`service-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="service-form-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => onSelect(tab.id)} onKeyDown={(event) => {
-                if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key))
-                    return;
-                event.preventDefault();
-                const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : (index + 1) % 2;
-                onSelect(tabs[next].id);
-                document.getElementById(`service-tab-${tabs[next].id}`)?.focus();
-            }}>
-          {tab.id === "request" ? <FiAlertTriangle aria-hidden="true"/> : (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 4h5a3 3 0 1 1 6 0h5v5a3 3 0 1 0 0 6v5h-5a3 3 0 1 0-6 0H4v-5a3 3 0 1 1 0-6V4Z"/>
-            </svg>)}
-          <span>{tab.label}</span>
-        </button>))}
-    </div>);
-}
-type ServiceFormFieldProps = {
-    name: keyof ServiceFormValues;
+  const reduced = useReducedMotion() ?? false;
+
+  const tabs: {
+    id: Tab;
     label: string;
-    value: string;
-    onChange: (name: keyof ServiceFormValues, value: string) => void;
-    placeholder?: string;
-    required?: boolean;
-    options?: string[];
-    type?: "text" | "tel";
-    search?: boolean;
-    multiline?: boolean;
-    autoComplete?: string;
-};
-function ServiceSelect({ id, name, value, options, required, onChange }: {
-    id: string;
-    name: keyof ServiceFormValues;
-    value: string;
-    options: string[];
-    required?: boolean;
-    onChange: ServiceFormFieldProps["onChange"];
+    icon: string;
+  }[] = [
+    {
+      id: "request",
+      label: "Quick Service Request",
+      icon: "/e-service/arrow.webp",
+    },
+    {
+      id: "network",
+      label: "Join Service Network",
+      icon: "/e-service/puzzle.webp",
+    },
+  ];
+
+  return (
+    <motion.div
+      {...reveal("up", 0, reduced, true)}
+      role="tablist"
+      aria-label="Service forms"
+      className="request-tabs"
+    >
+      {tabs.map((tab, index) => (
+        <button
+          type="button"
+          role="tab"
+          key={tab.id}
+          id={`service-tab-${tab.id}`}
+          aria-selected={activeTab === tab.id}
+          aria-controls="service-form-panel"
+          tabIndex={activeTab === tab.id ? 0 : -1}
+          onClick={() => onSelect(tab.id)}
+          onKeyDown={(event) => {
+            if (
+              ![
+                "ArrowLeft",
+                "ArrowRight",
+                "ArrowUp",
+                "ArrowDown",
+                "Home",
+                "End",
+              ].includes(event.key)
+            )
+              return;
+
+            event.preventDefault();
+
+            const next =
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? 1
+                  : (index + 1) % 2;
+
+            onSelect(tabs[next].id);
+
+            document.getElementById(`service-tab-${tabs[next].id}`)?.focus();
+          }}
+        >
+          <Image
+            src={tab.icon}
+            alt=""
+            aria-hidden="true"
+            width={18}
+            height={18}
+          />
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
+// ============================================================
+// CUSTOM SELECT
+// ============================================================
+
+function ServiceSelect({
+  id,
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  name: keyof Values;
+  value: string;
+  options: string[];
+  onChange: (name: keyof Values, value: string) => void;
 }) {
-    const [open, setOpen] = useState(false);
-    const [highlighted, setHighlighted] = useState(0);
-    const root = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!open)
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+
+  const root = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const dismiss = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !root.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", dismiss);
+
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      menu.current?.querySelector('[data-highlighted="true"]')?.scrollIntoView({
+        block: "nearest",
+      });
+    }
+  }, [open, highlighted]);
+
+  const choose = (index: number) => {
+    if (!options[index]) return;
+
+    onChange(name, options[index]);
+    setOpen(false);
+  };
+
+  return (
+    <div
+      ref={root}
+      className={`service-select ${open ? "is-open" : ""}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+        }
+      }}
+    >
+      <input type="hidden" name={name} value={value} />
+
+      <button
+        id={id}
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-options`}
+        aria-labelledby={`${id}-label`}
+        aria-activedescendant={open ? `${id}-option-${highlighted}` : undefined}
+        onClick={() => {
+          setHighlighted(Math.max(0, options.indexOf(value)));
+          setOpen(!open);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setOpen(false);
             return;
-        const dismiss = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node))
-            setOpen(false); };
-        document.addEventListener("pointerdown", dismiss);
-        return () => document.removeEventListener("pointerdown", dismiss);
-    }, [open]);
-    useEffect(() => {
-        if (open)
-            root.current?.querySelector('[data-highlighted="true"]')?.scrollIntoView({ block: "nearest" });
-    }, [open, highlighted]);
-    const choose = (index: number) => { onChange(name, options[index]); setOpen(false); };
-    return <div ref={root} className="service-select [.e-service-page_&]:[position:relative] [.e-service-page_&]:[min-width:0] [.e-service-page_&_input[type='hidden']]:[display:none]! [.e-service-page_&:has([aria-expanded='true'])]:[z-index:5] [.e-service-page_&_>_button]:[display:flex]! [.e-service-page_&_>_button]:[align-items:center] [.e-service-page_&_>_button]:[justify-content:space-between] [.e-service-page_&_>_button]:[gap:12px] [.e-service-page_&_>_button]:[width:100%] [.e-service-page_&_>_button]:[min-height:48px] [.e-service-page_&_>_button]:[padding-top:13px] [.e-service-page_&_>_button]:[padding-right:16px] [.e-service-page_&_>_button]:[padding-bottom:13px] [.e-service-page_&_>_button]:[padding-left:16px] [.e-service-page_&_>_button]:[border:1px_solid_#cbddeb] [.e-service-page_&_>_button]:[border-radius:12px] [.e-service-page_&_>_button]:[background:linear-gradient(180deg,_#fff,_#f7fbff)] [.e-service-page_&_>_button]:[box-shadow:0_3px_10px_#0d579208] [.e-service-page_&_>_button]:[color:#1e293b]! [.e-service-page_&_>_button]:[font-style:inherit] [.e-service-page_&_>_button]:[font-variant:inherit] [.e-service-page_&_>_button]:[font-weight:inherit]! [.e-service-page_&_>_button]:[font-stretch:inherit]! [.e-service-page_&_>_button]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]! [.e-service-page_&_>_button]:[line-height:1.35]! [.e-service-page_&_>_button]:[font-family:inherit]! [.e-service-page_&_>_button]:[font-feature-settings:inherit] [.e-service-page_&_>_button]:[font-variation-settings:inherit]! [.e-service-page_&_>_button]:[text-align:left] [.e-service-page_&_>_button]:[cursor:pointer] [.e-service-page_&_>_button]:[transition:border-color_200ms_ease,_box-shadow_200ms_ease] [.e-service-page_&_>_button_span]:[min-width:0] [.e-service-page_&_>_button_span]:[overflow-wrap:anywhere] [.e-service-page_&_>_button_svg]:[flex:0_0_18px] [.e-service-page_&_>_button_svg]:[width:18px] [.e-service-page_&_>_button_svg]:[height:18px] [.e-service-page_&_>_button_svg]:[color:#0d5792]! [.e-service-page_&_>_button_svg]:[transition:transform_200ms_ease] [.e-service-page_&_>_button[aria-expanded='true']_svg]:[transform:rotate(180deg)] [.e-service-page_&_>_button:hover]:[border-color:#80afd7] [.e-service-page_&_>_button:focus-visible]:[outline:none] [.e-service-page_&_>_button:focus-visible]:[border-color:#005eff] [.e-service-page_&_>_button:focus-visible]:[box-shadow:0_0_0_3px_#005eff14] [.e-service-page_&_>_button[aria-expanded='true']]:[outline:none] [.e-service-page_&_>_button[aria-expanded='true']]:[border-color:#005eff] [.e-service-page_&_>_button[aria-expanded='true']]:[box-shadow:0_0_0_3px_#005eff14] [.e-service-page_&_ul]:[position:absolute] [.e-service-page_&_ul]:[z-index:6] [.e-service-page_&_ul]:[top:calc(100%_+_8px)] [.e-service-page_&_ul]:[left:0] [.e-service-page_&_ul]:[right:0] [.e-service-page_&_ul]:[max-height:min(300px,_45svh)] [.e-service-page_&_ul]:[overflow-y:auto] [.e-service-page_&_ul]:[margin-top:0] [.e-service-page_&_ul]:[margin-right:0] [.e-service-page_&_ul]:[margin-bottom:0] [.e-service-page_&_ul]:[margin-left:0] [.e-service-page_&_ul]:[padding-top:6px] [.e-service-page_&_ul]:[padding-right:6px] [.e-service-page_&_ul]:[padding-bottom:6px] [.e-service-page_&_ul]:[padding-left:6px] [.e-service-page_&_ul]:[border:1px_solid_#d0dfec] [.e-service-page_&_ul]:[border-radius:14px] [.e-service-page_&_ul]:[background:#fbfdff] [.e-service-page_&_ul]:[box-shadow:0_14px_32px_#0d579225] [.e-service-page_&_ul]:[list-style:none] [.e-service-page_&_li]:[display:flex]! [.e-service-page_&_li]:[align-items:center] [.e-service-page_&_li]:[justify-content:space-between] [.e-service-page_&_li]:[gap:10px] [.e-service-page_&_li]:[min-height:44px] [.e-service-page_&_li]:[padding-top:10px] [.e-service-page_&_li]:[padding-right:12px] [.e-service-page_&_li]:[padding-bottom:10px] [.e-service-page_&_li]:[padding-left:12px] [.e-service-page_&_li]:[border-radius:8px] [.e-service-page_&_li]:[color:#334155]! [.e-service-page_&_li]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]! [.e-service-page_&_li]:[line-height:1.35]! [.e-service-page_&_li]:[overflow-wrap:anywhere] [.e-service-page_&_li]:[cursor:pointer] [.e-service-page_&_li[aria-selected='true']]:[background:#e8f2ff] [.e-service-page_&_li[aria-selected='true']]:[color:#0d5792]! [.e-service-page_&_li[data-highlighted='true']]:[background:#dcecff] [.e-service-page_&_li[data-highlighted='true']]:[color:#005eff]! [.e-service-page_&_li_svg]:[flex-shrink:0] [.e-service-page_&_li_svg]:[width:16px] [.e-service-page_&_li_svg]:[height:16px]" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget))
-        setOpen(false); }}>
-    <input type="hidden" name={name} value={value}/>
-    <button id={id} type="button" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-options`} aria-required={required} aria-labelledby={`${id}-label`} aria-activedescendant={open ? `${id}-option-${highlighted}` : undefined} onClick={() => { setHighlighted(Math.max(0, options.indexOf(value))); setOpen(!open); }} onKeyDown={(event) => {
-            if (event.key === "Escape") {
-                event.preventDefault();
-                setOpen(false);
-                return;
+          }
+
+          if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+            event.preventDefault();
+
+            const current = open
+              ? highlighted
+              : Math.max(0, options.indexOf(value));
+
+            setHighlighted(
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? options.length - 1
+                  : Math.max(
+                      0,
+                      Math.min(
+                        options.length - 1,
+                        current + (event.key === "ArrowDown" ? 1 : -1),
+                      ),
+                    ),
+            );
+
+            setOpen(true);
+          } else if ((event.key === "Enter" || event.key === " ") && open) {
+            event.preventDefault();
+            choose(highlighted);
+          } else if (event.key.length === 1 && event.key !== " ") {
+            const index = options.findIndex((option) =>
+              option.toLowerCase().startsWith(event.key.toLowerCase()),
+            );
+
+            if (index >= 0) {
+              event.preventDefault();
+              setHighlighted(index);
+              setOpen(true);
             }
-            if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-                event.preventDefault();
-                const current = open ? highlighted : Math.max(0, options.indexOf(value));
-                setHighlighted(event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : Math.max(0, Math.min(options.length - 1, current + (event.key === "ArrowDown" ? 1 : -1))));
-                setOpen(true);
-            }
-            else if ((event.key === "Enter" || event.key === " ") && open) {
-                event.preventDefault();
-                choose(highlighted);
-            }
-            else if (event.key.length === 1 && event.key !== " ") {
-                const index = options.findIndex(option => option.toLowerCase().startsWith(event.key.toLowerCase()));
-                if (index >= 0) {
-                    event.preventDefault();
-                    setHighlighted(index);
-                    setOpen(true);
-                }
-            }
-        }}>
-      <span>{value}</span><FiChevronDown aria-hidden="true"/>
-    </button>
-    {open && <ul id={`${id}-options`} role="listbox" aria-labelledby={`${id}-label`}>
-      {options.map((option, index) => <li key={option} id={`${id}-option-${index}`} role="option" aria-selected={value === option} data-highlighted={highlighted === index} onPointerDown={event => event.preventDefault()} onPointerMove={() => setHighlighted(index)} onClick={() => choose(index)}><span>{option}</span>{value === option && <FiCheck aria-hidden="true"/>}</li>)}
-    </ul>}
-  </div>;
+          }
+        }}
+      >
+        <span>{value}</span>
+        <FiChevronDown aria-hidden="true" />
+      </button>
+
+      {open && (
+        <ul
+          ref={menu}
+          id={`${id}-options`}
+          role="listbox"
+          aria-labelledby={`${id}-label`}
+        >
+          {options.map((option, index) => (
+            <li
+              key={option}
+              id={`${id}-option-${index}`}
+              role="option"
+              aria-selected={value === option}
+              data-highlighted={highlighted === index}
+              onPointerDown={(event) => event.preventDefault()}
+              onPointerMove={() => setHighlighted(index)}
+              onClick={() => choose(index)}
+            >
+              <span>{option}</span>
+              {value === option && <FiCheck aria-hidden="true" />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
-function ServiceFormField({ name, label, value, onChange, placeholder, required, options, type = "text", search, multiline, autoComplete }: ServiceFormFieldProps) {
-    const id = `service-field-${name}`;
-    return (<div className="service-form-field [.e-service-page_&]:[min-width:0] [.e-service-page_&_label]:[display:block]! [.e-service-page_&_label]:[margin-bottom:calc(10_*_var(--service-unit))] [.e-service-page_&_label]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_label]:[font-weight:540]! [.e-service-page_&_label]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_label]:[line-height:1.12]! [.e-service-page_&_label]:[color:#334155]!">
-      <label id={`${id}-label`} htmlFor={id}>{label}{required && <><span className="service-required [.e-service-page_&]:[color:#dc2626]!" aria-hidden="true"> *</span><span className="sr-only"> (required)</span></>}</label>
-      <div className={tweservicePage(`service-control${search ? " service-control--search" : ""}`)}>
-        {search && <FiSearch className="service-input-search [.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:50%] [.e-service-page_&]:[transform:translateY(-50%)] [.e-service-page_&]:[width:calc(16_*_var(--service-unit))] [.e-service-page_&]:[height:calc(16_*_var(--service-unit))] [.e-service-page_&]:[color:#94a3b8]! [.e-service-page_&]:[pointer-events:none] [.e-service-page_&]:[left:calc(16_*_var(--service-unit))]" aria-hidden="true"/>}
-        {options ? (<ServiceSelect id={id} name={name} required={required} value={value} options={options} onChange={onChange}/>) : multiline ? (<textarea id={id} name={name} required={required} value={value} placeholder={placeholder} onChange={(event) => onChange(name, event.target.value)}/>) : (<input id={id} name={name} type={type} required={required} value={value} placeholder={placeholder} autoComplete={autoComplete} inputMode={type === "tel" ? "tel" : undefined} pattern={type === "tel" ? "0[0-9]{3} [0-9]{3} [0-9]{2} [0-9]{2}" : undefined} title={type === "tel" ? "Telefon numarasını 05XX XXX XX XX formatında giriniz." : undefined} onChange={(event) => onChange(name, type === "tel" ? formatServicePhone(event.target.value) : event.target.value)}/>)}
+
+// ============================================================
+// FORM FIELD
+// ============================================================
+
+type FieldProps = {
+  name: keyof Values;
+  label: string;
+  value: string;
+  onChange: (name: keyof Values, value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+  type?: "text" | "tel";
+  search?: boolean;
+  multiline?: boolean;
+  autoComplete?: string;
+};
+
+function FormField({
+  name,
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  options,
+  type = "text",
+  search,
+  multiline,
+  autoComplete,
+}: FieldProps) {
+  const id = `service-field-${name}`;
+
+  return (
+    <div className="service-field">
+      <label htmlFor={id} id={`${id}-label`}>
+        {label}
+        {required && <span className="required"> *</span>}
+      </label>
+
+      <div className={`service-control ${search ? "has-search" : ""}`}>
+        {search && <FiSearch className="search-icon" aria-hidden="true" />}
+
+        {options ? (
+          <ServiceSelect
+            id={id}
+            name={name}
+            value={value}
+            options={options}
+            onChange={onChange}
+          />
+        ) : multiline ? (
+          <textarea
+            id={id}
+            name={name}
+            required={required}
+            value={value}
+            placeholder={placeholder}
+            onChange={(event) => onChange(name, event.target.value)}
+          />
+        ) : (
+          <input
+            id={id}
+            name={name}
+            type={type}
+            required={required}
+            value={value}
+            placeholder={placeholder}
+            autoComplete={autoComplete}
+            inputMode={type === "tel" ? "tel" : undefined}
+            pattern={
+              type === "tel"
+                ? "0[0-9]{3} [0-9]{3} [0-9]{2} [0-9]{2}"
+                : undefined
+            }
+            title={
+              type === "tel"
+                ? "Telefon numarasını 05XX XXX XX XX formatında giriniz."
+                : undefined
+            }
+            onChange={(event) =>
+              onChange(
+                name,
+                type === "tel"
+                  ? formatPhone(event.target.value)
+                  : event.target.value,
+              )
+            }
+          />
+        )}
       </div>
-    </div>);
+    </div>
+  );
 }
-function ServiceSendButton() {
-    return <button type="submit" className="service-send-button [.e-service-page_&]:[position:relative] [.e-service-page_&]:[display:flex]! [.e-service-page_&]:[flex-shrink:0] [.e-service-page_&]:[align-items:center] [.e-service-page_&]:[overflow:hidden] [.e-service-page_&]:[width:calc(141_*_var(--service-unit))] [.e-service-page_&]:[height:calc(43_*_var(--service-unit))] [.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:0] [.e-service-page_&]:[padding-bottom:0] [.e-service-page_&]:[padding-left:0] [.e-service-page_&]:[border:1px_solid_#c8d7e5] [.e-service-page_&]:[border-radius:999px] [.e-service-page_&]:[background:linear-gradient(180deg,_#fff,_#f6f9fc)] [.e-service-page_&]:[box-shadow:0_4px_12px_#1a507e0f] [.e-service-page_&]:[color:#27272a]! [.e-service-page_&]:[font-style:inherit] [.e-service-page_&]:[font-variant:inherit] [.e-service-page_&]:[font-weight:inherit]! [.e-service-page_&]:[font-stretch:inherit]! [.e-service-page_&]:[font-size:calc(15_*_var(--service-unit))]! [.e-service-page_&]:[line-height:inherit]! [.e-service-page_&]:[font-family:inherit]! [.e-service-page_&]:[font-feature-settings:inherit] [.e-service-page_&]:[font-variation-settings:inherit]! [.e-service-page_&]:[cursor:pointer] [.e-service-page_&:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[align-self:flex-end] max-[768px]:[.e-service-page_&]:[min-height:44px]"><span className="service-send-label [.e-service-page_&]:[position:relative] [.e-service-page_&]:[z-index:2] [.e-service-page_&]:[margin-left:calc(16_*_var(--service-unit))] [.e-service-page_&]:[white-space:nowrap] [.e-service-page_&]:[transition:transform_650ms_cubic-bezier(0.22,_1,_0.36,_1)] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[transform:translateX(calc(37_*_var(--service-unit)))] motion-reduce:[.e-service-page_&]:[transition:none]">Send</span><span className="service-send-orb [.e-service-page_&]:[position:absolute] [.e-service-page_&]:[left:calc(100%_-_37_*_var(--service-unit))] [.e-service-page_&]:[top:50%] [.e-service-page_&]:[z-index:3] [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[place-items:center] [.e-service-page_&]:[transform:translateY(-50%)] [.e-service-page_&]:[width:calc(31_*_var(--service-unit))] [.e-service-page_&]:[height:calc(31_*_var(--service-unit))] [.e-service-page_&]:[border-radius:50%] [.e-service-page_&]:[background:linear-gradient(135deg,_#005eff,_#001ea2)] [.e-service-page_&]:[box-shadow:0_0_12px_#005eff61,_0_5px_14px_#001ea247] [.e-service-page_&]:[transition:left_650ms_cubic-bezier(0.22,_1,_0.36,_1)] [.e-service-page_&_svg]:[width:calc(21_*_var(--service-unit))] [.e-service-page_&_svg]:[height:calc(21_*_var(--service-unit))] [.e-service-page_&_svg]:[color:#fff]! [.e-service-page_&_svg]:[opacity:0] [.e-service-page_&_svg]:[transform:scale(0.78)] [.e-service-page_&_svg]:[transition:opacity_350ms_ease-out,_transform_350ms_ease-out] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[left:calc(6_*_var(--service-unit))] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[opacity:1] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[transform:scale(1)] motion-reduce:[.e-service-page_&]:[transition:none] motion-reduce:[.e-service-page_&_svg]:[transition:none]" aria-hidden="true"><FiArrowUpRight strokeWidth={3.2}/></span></button>;
+
+// ============================================================
+// SEND BUTTON
+// ============================================================
+
+function SendButton() {
+  return (
+    <button type="submit" className="send-button">
+      <span className="send-label">Send</span>
+      <span className="send-orb" aria-hidden="true">
+        <FiArrowUpRight strokeWidth={3.2} />
+      </span>
+    </button>
+  );
 }
+
+// ============================================================
+// REQUEST SECTION
+// ============================================================
+
 function EServiceRequestSection() {
-    const [activeTab, setActiveTab] = useState<ServiceTab>("request");
-    const [forms, setForms] = useState<Record<ServiceTab, ServiceFormValues>>(() => ({ request: createServiceFormValues("request"), network: createServiceFormValues("network") }));
-    const [feedback, setFeedback] = useState("");
-    const copy = serviceFormCopy[activeTab];
-    const values = forms[activeTab];
-    const updateField = (name: keyof ServiceFormValues, value: string) => {
-        setForms((current) => ({ ...current, [activeTab]: { ...current[activeTab], [name]: value } }));
-        setFeedback("");
-    };
-    const submitPreview = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!event.currentTarget.reportValidity())
-            return;
-        // Frontend preview only; no transport, registration or email is performed.
-        setFeedback("Form gönderimi henüz aktif değil. Bilgileriniz gönderilmedi.");
-    };
-    return (<section className="service-request-section [.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(80_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] [.e-service-page_&]:[letter-spacing:-0.04em] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:20px] max-[768px]:[.e-service-page_&]:[padding-bottom:64px] max-[768px]:[.e-service-page_&]:[padding-left:20px] [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]" aria-label="Service request and network application">
-      <div className="service-request-inner [.e-service-page_&]:[width:100%] [.e-service-page_&]:[max-width:calc(1201_*_var(--service-unit))] [.e-service-page_&]:[margin-left:auto] [.e-service-page_&]:[margin-right:auto]">
-        <ServiceRequestTabs activeTab={activeTab} onSelect={(tab) => { setActiveTab(tab); setFeedback(""); }}/>
-        <div id="service-form-panel" role="tabpanel" aria-labelledby={`service-tab-${activeTab}`}>
-          <form className="service-request-form [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-top:calc(30_*_var(--service-unit))]" noValidate onSubmit={submitPreview}>
-            <div className="service-form-row service-form-row--two [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]">
-              <ServiceFormField name="expertise" label={copy.expertiseLabel} placeholder={copy.expertisePlaceholder} required value={values.expertise} onChange={updateField}/>
-              <ServiceFormField name="serial" label={copy.serialLabel} placeholder={copy.serialPlaceholder} search value={values.serial} onChange={updateField}/>
-            </div>
-            <div className="service-form-row service-form-row--two [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]">
-              <ServiceFormField name="requestType" label={copy.typeLabel} options={copy.options} required value={values.requestType} onChange={updateField}/>
-              <ServiceFormField name="location" label={copy.locationLabel} placeholder={copy.locationPlaceholder} required value={values.location} onChange={updateField}/>
-            </div>
-            <div className="service-form-row service-form-row--three [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&&]:[grid-template-columns:repeat(3,_minmax(0,_1fr))] max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]">
-              <ServiceFormField name="contact" label="Contact Person" placeholder="Adınız Soyadınız" autoComplete="name" required value={values.contact} onChange={updateField}/>
-              <ServiceFormField name="company" label="Company Name" placeholder="Örn: XYZ Sanayi A.Ş." autoComplete="organization" value={values.company} onChange={updateField}/>
-              <ServiceFormField name="phone" label="Phone Number" placeholder="05XX XXX XX XX" autoComplete="tel-national" type="tel" required value={values.phone} onChange={updateField}/>
-            </div>
-            <ServiceFormField name="details" label={copy.detailsLabel} placeholder={copy.detailsPlaceholder} required multiline value={values.details} onChange={updateField}/>
-            <div className="service-form-footer [.e-service-page_&]:[display:flex]! [.e-service-page_&]:[align-items:center] [.e-service-page_&]:[justify-content:space-between] [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&_p]:[display:flex]! [.e-service-page_&_p]:[align-items:center] [.e-service-page_&_p]:[gap:calc(10_*_var(--service-unit))] [.e-service-page_&_p]:[margin-top:0] [.e-service-page_&_p]:[margin-right:0] [.e-service-page_&_p]:[margin-bottom:0] [.e-service-page_&_p]:[margin-left:0] [.e-service-page_&_p]:[color:#9eb7d0]! [.e-service-page_&_p]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_p]:[line-height:1.12]! [.e-service-page_&_p_svg]:[flex-shrink:0] [.e-service-page_&_p_svg]:[width:calc(18_*_var(--service-unit))] [.e-service-page_&_p_svg]:[height:calc(18_*_var(--service-unit))] [.e-service-page_&_p_svg]:[color:#005eff]! [.e-service-page_&_a]:[color:#334155]! [.e-service-page_&_a]:[white-space:nowrap] [.e-service-page_&_a:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&_a:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[align-items:flex-start] max-[768px]:[.e-service-page_&]:[flex-direction:column] max-[768px]:[.e-service-page_&]:[gap:26px] max-[768px]:[.e-service-page_&]:[margin-top:4px] max-[768px]:[.e-service-page_&_p]:[align-items:center] max-[768px]:[.e-service-page_&_p]:[font-size:12px]! max-[768px]:[.e-service-page_&_p]:[line-height:1.12]!">
-              <p><FiAlertTriangle aria-hidden="true"/><span>{copy.notice} <a href="tel:4446413">444 6 413.</a></span></p>
-              <ServiceSendButton />
-            </div>
-            <p className="service-form-feedback [.e-service-page_&]:[min-height:calc(16_*_var(--service-unit))] [.e-service-page_&]:[margin-top:0] [.e-service-page_&]:[margin-right:0] [.e-service-page_&]:[margin-bottom:0] [.e-service-page_&]:[margin-left:0] [.e-service-page_&]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&]:[line-height:1.2]! [.e-service-page_&]:[color:#0d5792]!" role="status" aria-live="polite" lang="tr">{feedback}</p>
+  const reduced = useReducedMotion() ?? false;
+  const [activeTab, setActiveTab] = useState<Tab>("request");
+
+  const [forms, setForms] = useState<Record<Tab, Values>>(() => ({
+    request: emptyValues("request"),
+    network: emptyValues("network"),
+  }));
+
+  const [feedback, setFeedback] = useState("");
+  const copy = FORM_COPY[activeTab];
+  const values = forms[activeTab];
+
+  const update = (name: keyof Values, value: string) => {
+    setForms((previous) => ({
+      ...previous,
+      [activeTab]: {
+        ...previous[activeTab],
+        [name]: value,
+      },
+    }));
+    setFeedback("");
+  };
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!event.currentTarget.reportValidity()) {
+      return;
+    }
+
+    // Backend henüz bağlı değil.
+    // Gerçek e-posta veya API isteği yapılmaz.
+    setFeedback("Form gönderimi henüz aktif değil. Bilgileriniz gönderilmedi.");
+  }
+
+  return (
+    <section
+      className="request-section"
+      aria-label="Service request and network application"
+    >
+      <div className="request-inner">
+        <RequestTabs
+          activeTab={activeTab}
+          onSelect={(tab) => {
+            setActiveTab(tab);
+            setFeedback("");
+          }}
+        />
+
+        <div
+          id="service-form-panel"
+          role="tabpanel"
+          aria-labelledby={`service-tab-${activeTab}`}
+        >
+          <form className="request-form" noValidate onSubmit={submit}>
+            <motion.div
+              {...reveal("left", 0.04, reduced, true)}
+              className="form-row two"
+            >
+              <FormField
+                name="expertise"
+                label={copy.expertiseLabel}
+                placeholder={copy.expertisePlaceholder}
+                required
+                value={values.expertise}
+                onChange={update}
+              />
+
+              <FormField
+                name="serial"
+                label={copy.serialLabel}
+                placeholder={copy.serialPlaceholder}
+                search
+                value={values.serial}
+                onChange={update}
+              />
+            </motion.div>
+
+            <motion.div
+              {...reveal("right", 0.06, reduced, true)}
+              className="form-row two"
+            >
+              <FormField
+                name="requestType"
+                label={copy.typeLabel}
+                options={copy.options}
+                required
+                value={values.requestType}
+                onChange={update}
+              />
+
+              <FormField
+                name="location"
+                label={copy.locationLabel}
+                placeholder={copy.locationPlaceholder}
+                required
+                value={values.location}
+                onChange={update}
+              />
+            </motion.div>
+
+            <motion.div
+              {...reveal("up", 0.06, reduced, true)}
+              className="form-row three"
+            >
+              <FormField
+                name="contact"
+                label="Contact Person"
+                placeholder="Adınız Soyadınız"
+                autoComplete="name"
+                required
+                value={values.contact}
+                onChange={update}
+              />
+
+              <FormField
+                name="company"
+                label="Company Name"
+                placeholder="Örn: XYZ Sanayi A.Ş."
+                autoComplete="organization"
+                value={values.company}
+                onChange={update}
+              />
+
+              <FormField
+                name="phone"
+                label="Phone Number"
+                placeholder="05XX XXX XX XX"
+                autoComplete="tel-national"
+                type="tel"
+                required
+                value={values.phone}
+                onChange={update}
+              />
+            </motion.div>
+
+            <motion.div
+              {...reveal("up", 0.03, reduced, true)}
+              className="form-row"
+            >
+              <FormField
+                name="details"
+                label={copy.detailsLabel}
+                placeholder={copy.detailsPlaceholder}
+                multiline
+                required
+                value={values.details}
+                onChange={update}
+              />
+            </motion.div>
+
+            <motion.div
+              {...reveal("up", 0.02, reduced, true)}
+              className="form-footer"
+            >
+              <p>
+                <FiAlertTriangle aria-hidden="true" />
+                <span>
+                  {copy.notice} <a href="tel:4446413">444 6 413.</a>
+                </span>
+              </p>
+
+              <SendButton />
+            </motion.div>
+
+            <p
+              className="form-feedback"
+              role="status"
+              aria-live="polite"
+              lang="tr"
+            >
+              {feedback}
+            </p>
           </form>
         </div>
       </div>
-      
-    </section>);
-}
-export default function EServicePage() {
-    const pageRef = useRef<HTMLElement>(null);
-    useEffect(() => {
-        const page = pageRef.current;
-        const header = document.querySelector<HTMLElement>(".site-header");
-        if (!page || !header)
-            return;
-        const syncHeaderOffset = () => {
-            const inFlow = !["absolute", "fixed"].includes(getComputedStyle(header).position);
-            page.style.setProperty("--service-header-offset", inFlow ? `${header.getBoundingClientRect().height}px` : "0px");
-        };
-        syncHeaderOffset();
-        const observer = new ResizeObserver(syncHeaderOffset);
-        observer.observe(header);
-        return () => observer.disconnect();
-    }, []);
-    return (<main ref={pageRef} className="e-service-page font-sans [&_.service-select-arrow]:[position:absolute] [&_.service-select-arrow]:[top:50%] [&_.service-select-arrow]:[transform:translateY(-50%)] [&_.service-select-arrow]:[width:calc(16_*_var(--service-unit))] [&_.service-select-arrow]:[height:calc(16_*_var(--service-unit))] [&_.service-select-arrow]:[color:#94a3b8]! [&_.service-select-arrow]:[pointer-events:none] [&_.service-select-arrow]:[right:calc(16_*_var(--service-unit))] [--service-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [--service-header-offset:97px] [width:100%] [margin-top:calc(-1_*_var(--service-header-offset))] [background:#e8f4fb] max-[1200px]:[--service-unit:1px]">
-      <EServiceHero />
-      <EServiceRequestSection />
-      <div className="e-service-closing [.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(115_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:20px] max-[768px]:[.e-service-page_&]:[padding-bottom:80px] max-[768px]:[.e-service-page_&]:[padding-left:20px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[--glass-top:clamp(78px,_22vw,_150px)] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-top:64px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-right:0] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-bottom:88px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-left:0] max-[768px]:[.e-service-page_&_.uncompromising-stage]:[height:300px] max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[font-size:clamp(38px,_12.5vw,_80px)]! max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[line-height:1.07]! max-[768px]:[.e-service-page_&_.uncompromising-glass]:[width:60%] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[max-width:300px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-top:22px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-right:16px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-bottom:22px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-left:16px] max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[font-size:16px]! max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[line-height:1]! max-[768px]:[.e-service-page_&_.uncompromising-glow]:[top:var(--glass-top)] max-[768px]:[.e-service-page_&_.uncompromising-glow]:[height:240px] max-[768px]:[.e-service-page_&_.uncompromising-glow]:[width:90%]">
-        <UncompromisingPerformance wideDescription titleLines={["if we stop,", "life stops!"]} description={"Water is the lifeblood of the world, and our pumps are its beating heart.\nWe ensure uninterrupted flow for cities, industries, and critical systems 24/7."}/>
-        <NewsletterSubscription requireValidInput scaled/>
-      </div>
-      
-    </main>);
+    </section>
+  );
 }
 
-// Tailwind presets retain marker classes used by animation and carousel selectors.
-const tweservicePageRules: Record<string, string> = {
-  "service-request-section": "[.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(80_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] [.e-service-page_&]:[letter-spacing:-0.04em] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:20px] max-[768px]:[.e-service-page_&]:[padding-bottom:64px] max-[768px]:[.e-service-page_&]:[padding-left:20px]",
-  "service-request-inner": "[.e-service-page_&]:[width:100%] [.e-service-page_&]:[max-width:calc(1201_*_var(--service-unit))] [.e-service-page_&]:[margin-left:auto] [.e-service-page_&]:[margin-right:auto]",
-  "service-request-tabs": "[.e-service-page_&]:[display:flex]! [.e-service-page_&]:[border-bottom:1px_solid_#9eb7d066] [.e-service-page_&]:[gap:calc(32_*_var(--service-unit))] [.e-service-page_&_button]:[display:flex]! [.e-service-page_&_button]:[align-items:center] [.e-service-page_&_button]:[gap:calc(10_*_var(--service-unit))] [.e-service-page_&_button]:[padding-top:calc(16_*_var(--service-unit))] [.e-service-page_&_button]:[padding-right:calc(4_*_var(--service-unit))] [.e-service-page_&_button]:[padding-bottom:calc(16_*_var(--service-unit))] [.e-service-page_&_button]:[padding-left:calc(4_*_var(--service-unit))] [.e-service-page_&_button]:[border-top:0] [.e-service-page_&_button]:[border-right:0] [.e-service-page_&_button]:[border-left:0] [.e-service-page_&_button]:[border-bottom:2px_solid_transparent] [.e-service-page_&_button]:[margin-bottom:-1px] [.e-service-page_&_button]:[background:transparent] [.e-service-page_&_button]:[color:#64748b]! [.e-service-page_&_button]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_button]:[font-weight:540]! [.e-service-page_&_button]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_button]:[line-height:1.12]! [.e-service-page_&_button]:[text-align:left] [.e-service-page_&_button]:[cursor:pointer] [.e-service-page_&_svg]:[flex-shrink:0] [.e-service-page_&_svg]:[width:calc(18_*_var(--service-unit))] [.e-service-page_&_svg]:[height:calc(18_*_var(--service-unit))] [.e-service-page_&_svg]:[color:#94a3b8]! [.e-service-page_&_button[aria-selected='true']]:[color:#0f172a]! [.e-service-page_&_button[aria-selected='true']]:[border-bottom-color:#005eff] [.e-service-page_&_button[aria-selected='true']_svg]:[color:#005eff]! [.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&_button:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[flex-direction:column] max-[768px]:[.e-service-page_&]:[align-items:stretch] max-[768px]:[.e-service-page_&]:[gap:0] max-[768px]:[.e-service-page_&_button]:[flex:none] max-[768px]:[.e-service-page_&_button]:[padding-top:16px] max-[768px]:[.e-service-page_&_button]:[padding-bottom:16px]",
-  "service-request-form": "[.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-top:calc(30_*_var(--service-unit))]",
-  "service-form-row": "[.e-service-page_&]:[display:grid]! [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))]",
-  "service-form-row--two": "[.e-service-page_&&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]",
-  "service-form-row--three": "[.e-service-page_&&]:[grid-template-columns:repeat(3,_minmax(0,_1fr))] max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]",
-  "service-form-field": "[.e-service-page_&]:[min-width:0] [.e-service-page_&_label]:[display:block]! [.e-service-page_&_label]:[margin-bottom:calc(10_*_var(--service-unit))] [.e-service-page_&_label]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_label]:[font-weight:540]! [.e-service-page_&_label]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_label]:[line-height:1.12]! [.e-service-page_&_label]:[color:#334155]!",
-  "service-required": "[.e-service-page_&]:[color:#dc2626]!",
-  "service-control": "[.e-service-page_&]:[position:relative] [.e-service-page_&_input]:[display:block]! [.e-service-page_&_input]:[width:100%] [.e-service-page_&_input]:[min-width:0] [.e-service-page_&_input]:[height:calc(48_*_var(--service-unit))] [.e-service-page_&_input]:[min-height:44px] [.e-service-page_&_input]:[padding-top:calc(14_*_var(--service-unit))] [.e-service-page_&_input]:[padding-right:calc(16_*_var(--service-unit))] [.e-service-page_&_input]:[padding-bottom:calc(14_*_var(--service-unit))] [.e-service-page_&_input]:[padding-left:calc(16_*_var(--service-unit))] [.e-service-page_&_input]:[border:1px_solid_transparent] [.e-service-page_&_input]:[border-radius:calc(12_*_var(--service-unit))] [.e-service-page_&_input]:[background:#fff] [.e-service-page_&_input]:[color:#1e293b]! [.e-service-page_&_input]:[font-style:inherit] [.e-service-page_&_input]:[font-variant:inherit] [.e-service-page_&_input]:[font-weight:inherit]! [.e-service-page_&_input]:[font-stretch:inherit]! [.e-service-page_&_input]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_input]:[line-height:1.12]! [.e-service-page_&_input]:[font-family:inherit]! [.e-service-page_&_input]:[font-feature-settings:inherit] [.e-service-page_&_input]:[font-variation-settings:inherit]! [.e-service-page_&_select]:[display:block]! [.e-service-page_&_select]:[width:100%] [.e-service-page_&_select]:[min-width:0] [.e-service-page_&_select]:[height:calc(48_*_var(--service-unit))] [.e-service-page_&_select]:[min-height:44px] [.e-service-page_&_select]:[padding-top:calc(14_*_var(--service-unit))] [.e-service-page_&_select]:[padding-right:calc(42_*_var(--service-unit))] [.e-service-page_&_select]:[padding-bottom:calc(14_*_var(--service-unit))] [.e-service-page_&_select]:[padding-left:calc(16_*_var(--service-unit))] [.e-service-page_&_select]:[border:1px_solid_transparent] [.e-service-page_&_select]:[border-radius:calc(12_*_var(--service-unit))] [.e-service-page_&_select]:[background:#fff] [.e-service-page_&_select]:[color:#1e293b]! [.e-service-page_&_select]:[font-style:inherit] [.e-service-page_&_select]:[font-variant:inherit] [.e-service-page_&_select]:[font-weight:inherit]! [.e-service-page_&_select]:[font-stretch:inherit]! [.e-service-page_&_select]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_select]:[line-height:1.12]! [.e-service-page_&_select]:[font-family:inherit]! [.e-service-page_&_select]:[font-feature-settings:inherit] [.e-service-page_&_select]:[font-variation-settings:inherit]! [.e-service-page_&_textarea]:[display:block]! [.e-service-page_&_textarea]:[width:100%] [.e-service-page_&_textarea]:[min-width:0] [.e-service-page_&_textarea]:[height:calc(105_*_var(--service-unit))] [.e-service-page_&_textarea]:[min-height:44px] [.e-service-page_&_textarea]:[padding-top:calc(16_*_var(--service-unit))] [.e-service-page_&_textarea]:[padding-right:calc(16_*_var(--service-unit))] [.e-service-page_&_textarea]:[padding-bottom:calc(14_*_var(--service-unit))] [.e-service-page_&_textarea]:[padding-left:calc(16_*_var(--service-unit))] [.e-service-page_&_textarea]:[border:1px_solid_transparent] [.e-service-page_&_textarea]:[border-radius:calc(12_*_var(--service-unit))] [.e-service-page_&_textarea]:[background:#fff] [.e-service-page_&_textarea]:[color:#1e293b]! [.e-service-page_&_textarea]:[font-style:inherit] [.e-service-page_&_textarea]:[font-variant:inherit] [.e-service-page_&_textarea]:[font-weight:inherit]! [.e-service-page_&_textarea]:[font-stretch:inherit]! [.e-service-page_&_textarea]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_textarea]:[line-height:1.12]! [.e-service-page_&_textarea]:[font-family:inherit]! [.e-service-page_&_textarea]:[font-feature-settings:inherit] [.e-service-page_&_textarea]:[font-variation-settings:inherit]! [.e-service-page_&_input::placeholder]:[color:#94a3b8]! [.e-service-page_&_input::placeholder]:[opacity:1] [.e-service-page_&_textarea::placeholder]:[color:#94a3b8]! [.e-service-page_&_textarea::placeholder]:[opacity:1] [.e-service-page_&_select]:[appearance:none] [.e-service-page_&_textarea]:[resize:none] [.e-service-page_&_textarea]:[overflow-y:auto] [.e-service-page_&_input:focus]:[outline:none] [.e-service-page_&_input:focus]:[border-color:#005eff] [.e-service-page_&_input:focus]:[box-shadow:0_0_0_2px_#005eff12] [.e-service-page_&_select:focus]:[outline:none] [.e-service-page_&_select:focus]:[border-color:#005eff] [.e-service-page_&_select:focus]:[box-shadow:0_0_0_2px_#005eff12] [.e-service-page_&_textarea:focus]:[outline:none] [.e-service-page_&_textarea:focus]:[border-color:#005eff] [.e-service-page_&_textarea:focus]:[box-shadow:0_0_0_2px_#005eff12] max-[768px]:[.e-service-page_&_input]:[font-size:13px]! max-[768px]:[.e-service-page_&_select]:[font-size:13px]! max-[768px]:[.e-service-page_&_textarea]:[font-size:13px]! max-[768px]:[.e-service-page_&_textarea]:[height:105px]",
-  "service-select": "[.e-service-page_&]:[position:relative] [.e-service-page_&]:[min-width:0] [.e-service-page_&_input[type='hidden']]:[display:none]! [.e-service-page_&:has([aria-expanded='true'])]:[z-index:5] [.e-service-page_&_>_button]:[display:flex]! [.e-service-page_&_>_button]:[align-items:center] [.e-service-page_&_>_button]:[justify-content:space-between] [.e-service-page_&_>_button]:[gap:12px] [.e-service-page_&_>_button]:[width:100%] [.e-service-page_&_>_button]:[min-height:48px] [.e-service-page_&_>_button]:[padding-top:13px] [.e-service-page_&_>_button]:[padding-right:16px] [.e-service-page_&_>_button]:[padding-bottom:13px] [.e-service-page_&_>_button]:[padding-left:16px] [.e-service-page_&_>_button]:[border:1px_solid_#cbddeb] [.e-service-page_&_>_button]:[border-radius:12px] [.e-service-page_&_>_button]:[background:linear-gradient(180deg,_#fff,_#f7fbff)] [.e-service-page_&_>_button]:[box-shadow:0_3px_10px_#0d579208] [.e-service-page_&_>_button]:[color:#1e293b]! [.e-service-page_&_>_button]:[font-style:inherit] [.e-service-page_&_>_button]:[font-variant:inherit] [.e-service-page_&_>_button]:[font-weight:inherit]! [.e-service-page_&_>_button]:[font-stretch:inherit]! [.e-service-page_&_>_button]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]! [.e-service-page_&_>_button]:[line-height:1.35]! [.e-service-page_&_>_button]:[font-family:inherit]! [.e-service-page_&_>_button]:[font-feature-settings:inherit] [.e-service-page_&_>_button]:[font-variation-settings:inherit]! [.e-service-page_&_>_button]:[text-align:left] [.e-service-page_&_>_button]:[cursor:pointer] [.e-service-page_&_>_button]:[transition:border-color_200ms_ease,_box-shadow_200ms_ease] [.e-service-page_&_>_button_span]:[min-width:0] [.e-service-page_&_>_button_span]:[overflow-wrap:anywhere] [.e-service-page_&_>_button_svg]:[flex:0_0_18px] [.e-service-page_&_>_button_svg]:[width:18px] [.e-service-page_&_>_button_svg]:[height:18px] [.e-service-page_&_>_button_svg]:[color:#0d5792]! [.e-service-page_&_>_button_svg]:[transition:transform_200ms_ease] [.e-service-page_&_>_button[aria-expanded='true']_svg]:[transform:rotate(180deg)] [.e-service-page_&_>_button:hover]:[border-color:#80afd7] [.e-service-page_&_>_button:focus-visible]:[outline:none] [.e-service-page_&_>_button:focus-visible]:[border-color:#005eff] [.e-service-page_&_>_button:focus-visible]:[box-shadow:0_0_0_3px_#005eff14] [.e-service-page_&_>_button[aria-expanded='true']]:[outline:none] [.e-service-page_&_>_button[aria-expanded='true']]:[border-color:#005eff] [.e-service-page_&_>_button[aria-expanded='true']]:[box-shadow:0_0_0_3px_#005eff14] [.e-service-page_&_ul]:[position:absolute] [.e-service-page_&_ul]:[z-index:6] [.e-service-page_&_ul]:[top:calc(100%_+_8px)] [.e-service-page_&_ul]:[left:0] [.e-service-page_&_ul]:[right:0] [.e-service-page_&_ul]:[max-height:min(300px,_45svh)] [.e-service-page_&_ul]:[overflow-y:auto] [.e-service-page_&_ul]:[margin-top:0] [.e-service-page_&_ul]:[margin-right:0] [.e-service-page_&_ul]:[margin-bottom:0] [.e-service-page_&_ul]:[margin-left:0] [.e-service-page_&_ul]:[padding-top:6px] [.e-service-page_&_ul]:[padding-right:6px] [.e-service-page_&_ul]:[padding-bottom:6px] [.e-service-page_&_ul]:[padding-left:6px] [.e-service-page_&_ul]:[border:1px_solid_#d0dfec] [.e-service-page_&_ul]:[border-radius:14px] [.e-service-page_&_ul]:[background:#fbfdff] [.e-service-page_&_ul]:[box-shadow:0_14px_32px_#0d579225] [.e-service-page_&_ul]:[list-style:none] [.e-service-page_&_li]:[display:flex]! [.e-service-page_&_li]:[align-items:center] [.e-service-page_&_li]:[justify-content:space-between] [.e-service-page_&_li]:[gap:10px] [.e-service-page_&_li]:[min-height:44px] [.e-service-page_&_li]:[padding-top:10px] [.e-service-page_&_li]:[padding-right:12px] [.e-service-page_&_li]:[padding-bottom:10px] [.e-service-page_&_li]:[padding-left:12px] [.e-service-page_&_li]:[border-radius:8px] [.e-service-page_&_li]:[color:#334155]! [.e-service-page_&_li]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]! [.e-service-page_&_li]:[line-height:1.35]! [.e-service-page_&_li]:[overflow-wrap:anywhere] [.e-service-page_&_li]:[cursor:pointer] [.e-service-page_&_li[aria-selected='true']]:[background:#e8f2ff] [.e-service-page_&_li[aria-selected='true']]:[color:#0d5792]! [.e-service-page_&_li[data-highlighted='true']]:[background:#dcecff] [.e-service-page_&_li[data-highlighted='true']]:[color:#005eff]! [.e-service-page_&_li_svg]:[flex-shrink:0] [.e-service-page_&_li_svg]:[width:16px] [.e-service-page_&_li_svg]:[height:16px]",
-  "service-control--search": "[.e-service-page_&&_input]:[padding-left:calc(42_*_var(--service-unit))]",
-  "service-input-search": "[.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:50%] [.e-service-page_&]:[transform:translateY(-50%)] [.e-service-page_&]:[width:calc(16_*_var(--service-unit))] [.e-service-page_&]:[height:calc(16_*_var(--service-unit))] [.e-service-page_&]:[color:#94a3b8]! [.e-service-page_&]:[pointer-events:none] [.e-service-page_&]:[left:calc(16_*_var(--service-unit))]",
-  "e-service-page": "[&_.service-select-arrow]:[position:absolute] [&_.service-select-arrow]:[top:50%] [&_.service-select-arrow]:[transform:translateY(-50%)] [&_.service-select-arrow]:[width:calc(16_*_var(--service-unit))] [&_.service-select-arrow]:[height:calc(16_*_var(--service-unit))] [&_.service-select-arrow]:[color:#94a3b8]! [&_.service-select-arrow]:[pointer-events:none] [&_.service-select-arrow]:[right:calc(16_*_var(--service-unit))] [--service-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [--service-header-offset:97px] [width:100%] [margin-top:calc(-1_*_var(--service-header-offset))] [background:#e8f4fb] max-[1200px]:[--service-unit:1px]",
-  "service-form-footer": "[.e-service-page_&]:[display:flex]! [.e-service-page_&]:[align-items:center] [.e-service-page_&]:[justify-content:space-between] [.e-service-page_&]:[gap:calc(24_*_var(--service-unit))] [.e-service-page_&_p]:[display:flex]! [.e-service-page_&_p]:[align-items:center] [.e-service-page_&_p]:[gap:calc(10_*_var(--service-unit))] [.e-service-page_&_p]:[margin-top:0] [.e-service-page_&_p]:[margin-right:0] [.e-service-page_&_p]:[margin-bottom:0] [.e-service-page_&_p]:[margin-left:0] [.e-service-page_&_p]:[color:#9eb7d0]! [.e-service-page_&_p]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_p]:[line-height:1.12]! [.e-service-page_&_p_svg]:[flex-shrink:0] [.e-service-page_&_p_svg]:[width:calc(18_*_var(--service-unit))] [.e-service-page_&_p_svg]:[height:calc(18_*_var(--service-unit))] [.e-service-page_&_p_svg]:[color:#005eff]! [.e-service-page_&_a]:[color:#334155]! [.e-service-page_&_a]:[white-space:nowrap] [.e-service-page_&_a:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&_a:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[align-items:flex-start] max-[768px]:[.e-service-page_&]:[flex-direction:column] max-[768px]:[.e-service-page_&]:[gap:26px] max-[768px]:[.e-service-page_&]:[margin-top:4px] max-[768px]:[.e-service-page_&_p]:[align-items:center] max-[768px]:[.e-service-page_&_p]:[font-size:12px]! max-[768px]:[.e-service-page_&_p]:[line-height:1.12]!",
-  "service-send-button": "[.e-service-page_&]:[position:relative] [.e-service-page_&]:[display:flex]! [.e-service-page_&]:[flex-shrink:0] [.e-service-page_&]:[align-items:center] [.e-service-page_&]:[overflow:hidden] [.e-service-page_&]:[width:calc(141_*_var(--service-unit))] [.e-service-page_&]:[height:calc(43_*_var(--service-unit))] [.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:0] [.e-service-page_&]:[padding-bottom:0] [.e-service-page_&]:[padding-left:0] [.e-service-page_&]:[border:1px_solid_#c8d7e5] [.e-service-page_&]:[border-radius:999px] [.e-service-page_&]:[background:linear-gradient(180deg,_#fff,_#f6f9fc)] [.e-service-page_&]:[box-shadow:0_4px_12px_#1a507e0f] [.e-service-page_&]:[color:#27272a]! [.e-service-page_&]:[font-style:inherit] [.e-service-page_&]:[font-variant:inherit] [.e-service-page_&]:[font-weight:inherit]! [.e-service-page_&]:[font-stretch:inherit]! [.e-service-page_&]:[font-size:calc(15_*_var(--service-unit))]! [.e-service-page_&]:[line-height:inherit]! [.e-service-page_&]:[font-family:inherit]! [.e-service-page_&]:[font-feature-settings:inherit] [.e-service-page_&]:[font-variation-settings:inherit]! [.e-service-page_&]:[cursor:pointer] [.e-service-page_&:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&:focus-visible]:[outline-offset:3px] max-[768px]:[.e-service-page_&]:[align-self:flex-end] max-[768px]:[.e-service-page_&]:[min-height:44px]",
-  "service-send-label": "[.e-service-page_&]:[position:relative] [.e-service-page_&]:[z-index:2] [.e-service-page_&]:[margin-left:calc(16_*_var(--service-unit))] [.e-service-page_&]:[white-space:nowrap] [.e-service-page_&]:[transition:transform_650ms_cubic-bezier(0.22,_1,_0.36,_1)] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[transform:translateX(calc(37_*_var(--service-unit)))] motion-reduce:[.e-service-page_&]:[transition:none]",
-  "service-send-orb": "[.e-service-page_&]:[position:absolute] [.e-service-page_&]:[left:calc(100%_-_37_*_var(--service-unit))] [.e-service-page_&]:[top:50%] [.e-service-page_&]:[z-index:3] [.e-service-page_&]:[display:grid]! [.e-service-page_&]:[place-items:center] [.e-service-page_&]:[transform:translateY(-50%)] [.e-service-page_&]:[width:calc(31_*_var(--service-unit))] [.e-service-page_&]:[height:calc(31_*_var(--service-unit))] [.e-service-page_&]:[border-radius:50%] [.e-service-page_&]:[background:linear-gradient(135deg,_#005eff,_#001ea2)] [.e-service-page_&]:[box-shadow:0_0_12px_#005eff61,_0_5px_14px_#001ea247] [.e-service-page_&]:[transition:left_650ms_cubic-bezier(0.22,_1,_0.36,_1)] [.e-service-page_&_svg]:[width:calc(21_*_var(--service-unit))] [.e-service-page_&_svg]:[height:calc(21_*_var(--service-unit))] [.e-service-page_&_svg]:[color:#fff]! [.e-service-page_&_svg]:[opacity:0] [.e-service-page_&_svg]:[transform:scale(0.78)] [.e-service-page_&_svg]:[transition:opacity_350ms_ease-out,_transform_350ms_ease-out] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[left:calc(6_*_var(--service-unit))] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[opacity:1] [.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[transform:scale(1)] motion-reduce:[.e-service-page_&]:[transition:none] motion-reduce:[.e-service-page_&_svg]:[transition:none]",
-  "service-form-feedback": "[.e-service-page_&]:[min-height:calc(16_*_var(--service-unit))] [.e-service-page_&]:[margin-top:0] [.e-service-page_&]:[margin-right:0] [.e-service-page_&]:[margin-bottom:0] [.e-service-page_&]:[margin-left:0] [.e-service-page_&]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&]:[line-height:1.2]! [.e-service-page_&]:[color:#0d5792]!",
-  "e-service-closing": "[.e-service-page_&]:[padding-top:0] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(115_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:20px] max-[768px]:[.e-service-page_&]:[padding-bottom:80px] max-[768px]:[.e-service-page_&]:[padding-left:20px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[--glass-top:clamp(78px,_22vw,_150px)] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-top:64px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-right:0] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-bottom:88px] max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-left:0] max-[768px]:[.e-service-page_&_.uncompromising-stage]:[height:300px] max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[font-size:clamp(38px,_12.5vw,_80px)]! max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[line-height:1.07]! max-[768px]:[.e-service-page_&_.uncompromising-glass]:[width:60%] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[max-width:300px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-top:22px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-right:16px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-bottom:22px] max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-left:16px] max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[font-size:16px]! max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[line-height:1]! max-[768px]:[.e-service-page_&_.uncompromising-glow]:[top:var(--glass-top)] max-[768px]:[.e-service-page_&_.uncompromising-glow]:[height:240px] max-[768px]:[.e-service-page_&_.uncompromising-glow]:[width:90%]",
-  "e-service-hero": "[.e-service-page_&]:[position:relative] [.e-service-page_&]:[isolation:isolate] [.e-service-page_&]:[padding-top:calc(641_*_var(--service-unit))] [.e-service-page_&]:[padding-right:24px] [.e-service-page_&]:[padding-bottom:calc(80_*_var(--service-unit))] [.e-service-page_&]:[padding-left:24px] [.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)] max-[1200px]:[.e-service-page_&]:[padding-top:500px] max-[768px]:[.e-service-page_&]:[padding-top:clamp(380px,_99vw,_650px)] max-[768px]:[.e-service-page_&]:[padding-right:32px] max-[768px]:[.e-service-page_&]:[padding-bottom:64px] max-[768px]:[.e-service-page_&]:[padding-left:32px]",
-  "e-service-background": "[.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:0] [.e-service-page_&]:[right:0] [.e-service-page_&]:[bottom:auto] [.e-service-page_&]:[left:0] [.e-service-page_&]:[z-index:-1] [.e-service-page_&]:[height:calc(966_*_var(--service-unit))] [.e-service-page_&]:[background:#061521] [.e-service-page_&]:[overflow:hidden] [.e-service-page_&]:[pointer-events:none] max-[1200px]:[.e-service-page_&]:[height:880px] max-[768px]:[.e-service-page_&]:[height:clamp(680px,_174vw,_1100px)]",
-  "e-service-background-image": "[.e-service-page_&]:[object-fit:cover] [.e-service-page_&]:[object-position:center] max-[1200px]:[.e-service-page_&]:[object-position:65%_center] max-[768px]:[.e-service-page_&]:[object-position:60%_top]",
-  "e-service-background-fade": "[.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:auto] [.e-service-page_&]:[right:0] [.e-service-page_&]:[bottom:0] [.e-service-page_&]:[left:0] [.e-service-page_&]:[height:calc(250_*_var(--service-unit))] [.e-service-page_&]:[background:linear-gradient(transparent,_#d5eaf8)] max-[768px]:[.e-service-page_&]:[height:230px]",
-  "e-service-title": "[.e-service-page_&]:[position:absolute] [.e-service-page_&]:[top:calc(182_*_var(--service-unit))] [.e-service-page_&]:[left:calc(120_*_var(--service-unit))] [.e-service-page_&]:[margin-top:0] [.e-service-page_&]:[margin-right:0] [.e-service-page_&]:[margin-bottom:0] [.e-service-page_&]:[margin-left:0] [.e-service-page_&]:[font-size:calc(36_*_var(--service-unit))]! [.e-service-page_&]:[font-weight:410]! [.e-service-page_&]:[line-height:1]! [.e-service-page_&]:[color:#9eb7d0]! max-[1200px]:[.e-service-page_&]:[left:32px] max-[1200px]:[.e-service-page_&]:[top:160px] max-[1200px]:[.e-service-page_&]:[font-size:32px]! max-[768px]:[.e-service-page_&]:[top:154px] max-[768px]:[.e-service-page_&]:[left:20px] max-[768px]:[.e-service-page_&]:[font-size:28px]!",
-  "e-service-inner": "[.e-service-page_&]:[width:100%] [.e-service-page_&]:[max-width:calc(1200_*_var(--service-unit))] [.e-service-page_&]:[margin-left:auto] [.e-service-page_&]:[margin-right:auto]",
-  "e-service-introduction": "[.e-service-page_&]:[letter-spacing:-0.04em] [.e-service-page_&_h2]:[margin-top:0] [.e-service-page_&_h2]:[margin-right:0] [.e-service-page_&_h2]:[margin-bottom:0] [.e-service-page_&_h2]:[margin-left:0] [.e-service-page_&_h2]:[font-size:calc(50_*_var(--service-unit))]! [.e-service-page_&_h2]:[font-weight:410]! [.e-service-page_&_h2]:[line-height:1]! [.e-service-page_&_h2]:[color:#f7f7f7]! [.e-service-page_&_>_p]:[width:calc(869_*_var(--service-unit))] [.e-service-page_&_>_p]:[max-width:100%] [.e-service-page_&_>_p]:[margin-top:calc(47_*_var(--service-unit))] [.e-service-page_&_>_p]:[margin-right:0] [.e-service-page_&_>_p]:[margin-bottom:0] [.e-service-page_&_>_p]:[margin-left:0] [.e-service-page_&_>_p]:[font-size:calc(20_*_var(--service-unit))]! [.e-service-page_&_>_p]:[line-height:1.07]! [.e-service-page_&_>_p]:[color:#9eb7d0]! max-[1200px]:[.e-service-page_&_h2]:[font-size:44px]! max-[1200px]:[.e-service-page_&_>_p]:[font-size:18px]! max-[1200px]:[.e-service-page_&_>_p]:[line-height:1.2]! max-[768px]:[.e-service-page_&_h2]:[font-size:clamp(28px,_7.8vw,_42px)]! max-[768px]:[.e-service-page_&_>_p]:[margin-top:24px] max-[768px]:[.e-service-page_&_>_p]:[font-size:16px]! max-[768px]:[.e-service-page_&_>_p]:[line-height:1.07]!",
-  "e-service-feature-grid": "[.e-service-page_&]:[display:grid]! [.e-service-page_&]:[grid-template-columns:repeat(4,_minmax(0,_1fr))] [.e-service-page_&]:[gap:calc(20_*_var(--service-unit))] [.e-service-page_&]:[margin-top:calc(48_*_var(--service-unit))] [.e-service-page_&:focus-visible]:[outline:2px_solid_#005eff] [.e-service-page_&:focus-visible]:[outline-offset:4px] max-[1200px]:[.e-service-page_&]:[display:flex]! max-[1200px]:[.e-service-page_&]:[overflow-x:auto] max-[1200px]:[.e-service-page_&]:[gap:24px] max-[1200px]:[.e-service-page_&]:[padding-bottom:8px] max-[1200px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory] max-[1200px]:[.e-service-page_&]:[scrollbar-width:thin] max-[1200px]:[.e-service-page_&]:[scrollbar-color:#9eb7d0_transparent] max-[1200px]:[.e-service-page_&]:[cursor:grab] max-[1200px]:[.e-service-page_&]:[touch-action:pan-x_pan-y] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[cursor:grabbing] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[scroll-snap-type:none] max-[1200px]:[.e-service-page_&[data-dragging='true']]:[user-select:none] max-[768px]:[.e-service-page_&]:[display:flex]! max-[768px]:[.e-service-page_&]:[overflow-x:auto] max-[768px]:[.e-service-page_&]:[margin-top:40px] max-[768px]:[.e-service-page_&]:[margin-right:-32px] max-[768px]:[.e-service-page_&]:[margin-bottom:0] max-[768px]:[.e-service-page_&]:[margin-left:-32px] max-[768px]:[.e-service-page_&]:[padding-top:0] max-[768px]:[.e-service-page_&]:[padding-right:32px] max-[768px]:[.e-service-page_&]:[padding-bottom:4px] max-[768px]:[.e-service-page_&]:[padding-left:32px] max-[768px]:[.e-service-page_&]:[gap:24px] max-[768px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory] max-[768px]:[.e-service-page_&]:[scroll-padding-inline:32px] max-[768px]:[.e-service-page_&]:[scrollbar-width:none] max-[768px]:[.e-service-page_&::-webkit-scrollbar]:[display:none]!",
-  "e-service-feature-navigation": "[.e-service-page_&]:[display:none]! max-[1200px]:[.e-service-page_&]:[display:flex]! max-[1200px]:[.e-service-page_&]:[justify-content:center] max-[1200px]:[.e-service-page_&]:[gap:12px] max-[1200px]:[.e-service-page_&]:[margin-top:16px] max-[1200px]:[.e-service-page_&_button]:[display:grid]! max-[1200px]:[.e-service-page_&_button]:[place-items:center] max-[1200px]:[.e-service-page_&_button]:[width:44px] max-[1200px]:[.e-service-page_&_button]:[height:44px] max-[1200px]:[.e-service-page_&_button]:[border:1px_solid_#9eb7d080] max-[1200px]:[.e-service-page_&_button]:[border-radius:50%] max-[1200px]:[.e-service-page_&_button]:[background:#ffffff80] max-[1200px]:[.e-service-page_&_button]:[color:#0d5792]! max-[1200px]:[.e-service-page_&_button]:[cursor:pointer] max-[1200px]:[.e-service-page_&_button]:[transition:background_200ms_ease] max-[1200px]:[.e-service-page_&_button:hover]:[background:#fff] max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff] max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline-offset:3px]",
-  "e-service-feature-card": "[.e-service-page_&]:[min-width:0] [.e-service-page_&]:[min-height:calc(233_*_var(--service-unit))] [.e-service-page_&]:[padding-top:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-right:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-bottom:calc(24_*_var(--service-unit))] [.e-service-page_&]:[padding-left:calc(24_*_var(--service-unit))] [.e-service-page_&]:[border:1px_solid_#fff] [.e-service-page_&]:[border-radius:calc(16_*_var(--service-unit))] [.e-service-page_&]:[background:#ffffff26] [.e-service-page_&]:[box-shadow:0_2px_8px_#00000008] [.e-service-page_&]:[letter-spacing:-0.04em] [.e-service-page_&_h3]:[margin-top:calc(24_*_var(--service-unit))] [.e-service-page_&_h3]:[margin-right:0] [.e-service-page_&_h3]:[margin-bottom:0] [.e-service-page_&_h3]:[margin-left:0] [.e-service-page_&_h3]:[font-size:calc(15_*_var(--service-unit))]! [.e-service-page_&_h3]:[font-weight:540]! [.e-service-page_&_h3]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.e-service-page_&_h3]:[line-height:1.12]! [.e-service-page_&_h3]:[color:#0d5792]! [.e-service-page_&_p]:[margin-top:calc(12_*_var(--service-unit))] [.e-service-page_&_p]:[margin-right:0] [.e-service-page_&_p]:[margin-bottom:0] [.e-service-page_&_p]:[margin-left:0] [.e-service-page_&_p]:[font-size:calc(12_*_var(--service-unit))]! [.e-service-page_&_p]:[line-height:1.12]! [.e-service-page_&_p]:[color:#27272a]! max-[1200px]:[.e-service-page_&]:[flex:0_0_calc((100%_-_48px)_/_2)] max-[1200px]:[.e-service-page_&]:[scroll-snap-align:start] max-[768px]:[.e-service-page_&]:[flex:0_0_72vw] max-[768px]:[.e-service-page_&]:[min-height:233px] max-[768px]:[.e-service-page_&]:[padding-top:28px] max-[768px]:[.e-service-page_&]:[padding-right:28px] max-[768px]:[.e-service-page_&]:[padding-bottom:28px] max-[768px]:[.e-service-page_&]:[padding-left:28px] max-[768px]:[.e-service-page_&]:[scroll-snap-align:start]",
-  "e-service-feature-icon": "[.e-service-page_&]:[display:grid]! [.e-service-page_&]:[place-items:center] [.e-service-page_&]:[width:calc(48_*_var(--service-unit))] [.e-service-page_&]:[height:calc(48_*_var(--service-unit))] [.e-service-page_&]:[border:1px_solid_#cbeedc] [.e-service-page_&]:[border-radius:calc(12_*_var(--service-unit))] [.e-service-page_&]:[background:#eefaf4] [.e-service-page_&]:[color:#005eff]! [.e-service-page_&_svg]:[width:55%] [.e-service-page_&_svg]:[height:55%] [.e-service-page_&_svg]:[stroke-width:1.8]"
-};
-const tweservicePagePriority: Record<string, number> = {"[.e-service-page_&]:[padding-top:0]":376,"[.e-service-page_&]:[padding-right:24px]":384,"[.e-service-page_&]:[padding-bottom:calc(80_*_var(--service-unit))]":385,"[.e-service-page_&]:[padding-left:24px]":386,"[.e-service-page_&]:[background:linear-gradient(110deg,_#d5eaf8,_#e8f4fb)]":387,"[.e-service-page_&]:[letter-spacing:-0.04em]":457,"[.e-service-page_&]:[width:100%]":418,"[.e-service-page_&]:[max-width:calc(1201_*_var(--service-unit))]":8,"[.e-service-page_&]:[margin-left:auto]":420,"[.e-service-page_&]:[margin-right:auto]":421,"[.e-service-page_&]:[display:flex]!":275,"[.e-service-page_&]:[border-bottom:1px_solid_#9eb7d066]":12,"[.e-service-page_&]:[gap:calc(32_*_var(--service-unit))]":13,"[.e-service-page_&_button]:[display:flex]!":14,"[.e-service-page_&_button]:[align-items:center]":15,"[.e-service-page_&_button]:[gap:calc(10_*_var(--service-unit))]":16,"[.e-service-page_&_button]:[padding-top:calc(16_*_var(--service-unit))]":17,"[.e-service-page_&_button]:[padding-right:calc(4_*_var(--service-unit))]":18,"[.e-service-page_&_button]:[padding-bottom:calc(16_*_var(--service-unit))]":19,"[.e-service-page_&_button]:[padding-left:calc(4_*_var(--service-unit))]":20,"[.e-service-page_&_button]:[border-top:0] [.e-service-page_&_button]:[border-right:0] [.e-service-page_&_button]:[border-left:0]":21,"[.e-service-page_&_button]:[border-bottom:2px_solid_transparent]":22,"[.e-service-page_&_button]:[margin-bottom:-1px]":23,"[.e-service-page_&_button]:[background:transparent]":24,"[.e-service-page_&_button]:[color:#64748b]!":25,"[.e-service-page_&_button]:[font-size:calc(12_*_var(--service-unit))]!":26,"[.e-service-page_&_button]:[font-weight:540]!":27,"[.e-service-page_&_button]:[font-variation-settings:'wght'_540,_'wdth'_125]!":28,"[.e-service-page_&_button]:[line-height:1.12]!":29,"[.e-service-page_&_button]:[text-align:left]":30,"[.e-service-page_&_button]:[cursor:pointer]":31,"[.e-service-page_&_svg]:[flex-shrink:0]":32,"[.e-service-page_&_svg]:[width:calc(18_*_var(--service-unit))]":33,"[.e-service-page_&_svg]:[height:calc(18_*_var(--service-unit))]":34,"[.e-service-page_&_svg]:[color:#94a3b8]!":35,"[.e-service-page_&_button[aria-selected='true']]:[color:#0f172a]!":36,"[.e-service-page_&_button[aria-selected='true']]:[border-bottom-color:#005eff]":37,"[.e-service-page_&_button[aria-selected='true']_svg]:[color:#005eff]!":38,"[.e-service-page_&]:[display:grid]!":458,"[.e-service-page_&]:[gap:calc(24_*_var(--service-unit))]":257,"[.e-service-page_&]:[padding-top:calc(30_*_var(--service-unit))]":41,"[.e-service-page_&&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))]":44,"[.e-service-page_&&]:[grid-template-columns:repeat(3,_minmax(0,_1fr))]":45,"[.e-service-page_&]:[min-width:0]":447,"[.e-service-page_&_label]:[display:block]!":47,"[.e-service-page_&_label]:[margin-bottom:calc(10_*_var(--service-unit))]":48,"[.e-service-page_&_label]:[font-size:calc(12_*_var(--service-unit))]!":49,"[.e-service-page_&_label]:[font-weight:540]!":50,"[.e-service-page_&_label]:[font-variation-settings:'wght'_540,_'wdth'_125]!":51,"[.e-service-page_&_label]:[line-height:1.12]!":52,"[.e-service-page_&_label]:[color:#334155]!":53,"[.e-service-page_&]:[color:#dc2626]!":54,"[.e-service-page_&]:[position:relative]":381,"[.e-service-page_&_input]:[display:block]!":56,"[.e-service-page_&_input]:[width:100%]":57,"[.e-service-page_&_input]:[min-width:0]":58,"[.e-service-page_&_input]:[height:calc(48_*_var(--service-unit))]":59,"[.e-service-page_&_input]:[min-height:44px]":60,"[.e-service-page_&_input]:[padding-top:calc(14_*_var(--service-unit))]":61,"[.e-service-page_&_input]:[padding-right:calc(16_*_var(--service-unit))]":62,"[.e-service-page_&_input]:[padding-bottom:calc(14_*_var(--service-unit))]":63,"[.e-service-page_&_input]:[padding-left:calc(16_*_var(--service-unit))]":64,"[.e-service-page_&_input]:[border:1px_solid_transparent]":65,"[.e-service-page_&_input]:[border-radius:calc(12_*_var(--service-unit))]":66,"[.e-service-page_&_input]:[background:#fff]":67,"[.e-service-page_&_input]:[color:#1e293b]!":68,"[.e-service-page_&_input]:[font-style:inherit]":69,"[.e-service-page_&_input]:[font-variant:inherit]":70,"[.e-service-page_&_input]:[font-weight:inherit]!":71,"[.e-service-page_&_input]:[font-stretch:inherit]!":72,"[.e-service-page_&_input]:[font-size:inherit]!":73,"[.e-service-page_&_input]:[line-height:inherit]!":74,"[.e-service-page_&_input]:[font-family:inherit]!":75,"[.e-service-page_&_input]:[font-feature-settings:inherit]":76,"[.e-service-page_&_input]:[font-variation-settings:inherit]!":77,"[.e-service-page_&_input]:[font-size:calc(12_*_var(--service-unit))]!":78,"[.e-service-page_&_input]:[line-height:1.12]!":79,"[.e-service-page_&_select]:[display:block]!":80,"[.e-service-page_&_select]:[width:100%]":81,"[.e-service-page_&_select]:[min-width:0]":82,"[.e-service-page_&_select]:[height:calc(48_*_var(--service-unit))]":83,"[.e-service-page_&_select]:[min-height:44px]":84,"[.e-service-page_&_select]:[padding-top:calc(14_*_var(--service-unit))]":85,"[.e-service-page_&_select]:[padding-right:calc(16_*_var(--service-unit))]":86,"[.e-service-page_&_select]:[padding-bottom:calc(14_*_var(--service-unit))]":87,"[.e-service-page_&_select]:[padding-left:calc(16_*_var(--service-unit))]":88,"[.e-service-page_&_select]:[border:1px_solid_transparent]":89,"[.e-service-page_&_select]:[border-radius:calc(12_*_var(--service-unit))]":90,"[.e-service-page_&_select]:[background:#fff]":91,"[.e-service-page_&_select]:[color:#1e293b]!":92,"[.e-service-page_&_select]:[font-style:inherit]":93,"[.e-service-page_&_select]:[font-variant:inherit]":94,"[.e-service-page_&_select]:[font-weight:inherit]!":95,"[.e-service-page_&_select]:[font-stretch:inherit]!":96,"[.e-service-page_&_select]:[font-size:inherit]!":97,"[.e-service-page_&_select]:[line-height:inherit]!":98,"[.e-service-page_&_select]:[font-family:inherit]!":99,"[.e-service-page_&_select]:[font-feature-settings:inherit]":100,"[.e-service-page_&_select]:[font-variation-settings:inherit]!":101,"[.e-service-page_&_select]:[font-size:calc(12_*_var(--service-unit))]!":102,"[.e-service-page_&_select]:[line-height:1.12]!":103,"[.e-service-page_&_textarea]:[display:block]!":104,"[.e-service-page_&_textarea]:[width:100%]":105,"[.e-service-page_&_textarea]:[min-width:0]":106,"[.e-service-page_&_textarea]:[height:calc(48_*_var(--service-unit))]":107,"[.e-service-page_&_textarea]:[min-height:44px]":108,"[.e-service-page_&_textarea]:[padding-top:calc(14_*_var(--service-unit))]":109,"[.e-service-page_&_textarea]:[padding-right:calc(16_*_var(--service-unit))]":110,"[.e-service-page_&_textarea]:[padding-bottom:calc(14_*_var(--service-unit))]":111,"[.e-service-page_&_textarea]:[padding-left:calc(16_*_var(--service-unit))]":112,"[.e-service-page_&_textarea]:[border:1px_solid_transparent]":113,"[.e-service-page_&_textarea]:[border-radius:calc(12_*_var(--service-unit))]":114,"[.e-service-page_&_textarea]:[background:#fff]":115,"[.e-service-page_&_textarea]:[color:#1e293b]!":116,"[.e-service-page_&_textarea]:[font-style:inherit]":117,"[.e-service-page_&_textarea]:[font-variant:inherit]":118,"[.e-service-page_&_textarea]:[font-weight:inherit]!":119,"[.e-service-page_&_textarea]:[font-stretch:inherit]!":120,"[.e-service-page_&_textarea]:[font-size:inherit]!":121,"[.e-service-page_&_textarea]:[line-height:inherit]!":122,"[.e-service-page_&_textarea]:[font-family:inherit]!":123,"[.e-service-page_&_textarea]:[font-feature-settings:inherit]":124,"[.e-service-page_&_textarea]:[font-variation-settings:inherit]!":125,"[.e-service-page_&_textarea]:[font-size:calc(12_*_var(--service-unit))]!":126,"[.e-service-page_&_textarea]:[line-height:1.12]!":127,"[.e-service-page_&_input::placeholder]:[color:#94a3b8]!":128,"[.e-service-page_&_input::placeholder]:[opacity:1]":129,"[.e-service-page_&_textarea::placeholder]:[color:#94a3b8]!":130,"[.e-service-page_&_textarea::placeholder]:[opacity:1]":131,"[.e-service-page_&_select]:[appearance:none]":132,"[.e-service-page_&_select]:[padding-right:calc(42_*_var(--service-unit))]":133,"[.e-service-page_&_input[type='hidden']]:[display:none]!":136,"[.e-service-page_&:has([aria-expanded='true'])]:[z-index:5]":137,"[.e-service-page_&_>_button]:[display:flex]!":138,"[.e-service-page_&_>_button]:[align-items:center]":139,"[.e-service-page_&_>_button]:[justify-content:space-between]":140,"[.e-service-page_&_>_button]:[gap:12px]":141,"[.e-service-page_&_>_button]:[width:100%]":142,"[.e-service-page_&_>_button]:[min-height:48px]":143,"[.e-service-page_&_>_button]:[padding-top:13px]":144,"[.e-service-page_&_>_button]:[padding-right:16px]":145,"[.e-service-page_&_>_button]:[padding-bottom:13px]":146,"[.e-service-page_&_>_button]:[padding-left:16px]":147,"[.e-service-page_&_>_button]:[border:1px_solid_#cbddeb]":148,"[.e-service-page_&_>_button]:[border-radius:12px]":149,"[.e-service-page_&_>_button]:[background:linear-gradient(180deg,_#fff,_#f7fbff)]":150,"[.e-service-page_&_>_button]:[box-shadow:0_3px_10px_#0d579208]":151,"[.e-service-page_&_>_button]:[color:#1e293b]!":152,"[.e-service-page_&_>_button]:[font-style:inherit]":153,"[.e-service-page_&_>_button]:[font-variant:inherit]":154,"[.e-service-page_&_>_button]:[font-weight:inherit]!":155,"[.e-service-page_&_>_button]:[font-stretch:inherit]!":156,"[.e-service-page_&_>_button]:[font-size:inherit]!":157,"[.e-service-page_&_>_button]:[line-height:inherit]!":158,"[.e-service-page_&_>_button]:[font-family:inherit]!":159,"[.e-service-page_&_>_button]:[font-feature-settings:inherit]":160,"[.e-service-page_&_>_button]:[font-variation-settings:inherit]!":161,"[.e-service-page_&_>_button]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]!":162,"[.e-service-page_&_>_button]:[text-align:left]":163,"[.e-service-page_&_>_button]:[line-height:1.35]!":164,"[.e-service-page_&_>_button]:[cursor:pointer]":165,"[.e-service-page_&_>_button]:[transition:border-color_200ms_ease,_box-shadow_200ms_ease]":166,"[.e-service-page_&_>_button_span]:[min-width:0]":167,"[.e-service-page_&_>_button_span]:[overflow-wrap:anywhere]":168,"[.e-service-page_&_>_button_svg]:[flex:0_0_18px]":169,"[.e-service-page_&_>_button_svg]:[width:18px]":170,"[.e-service-page_&_>_button_svg]:[height:18px]":171,"[.e-service-page_&_>_button_svg]:[color:#0d5792]!":172,"[.e-service-page_&_>_button_svg]:[transition:transform_200ms_ease]":173,"[.e-service-page_&_>_button[aria-expanded='true']_svg]:[transform:rotate(180deg)]":174,"[.e-service-page_&_>_button:hover]:[border-color:#80afd7]":175,"[.e-service-page_&_>_button:focus-visible]:[outline:none]":176,"[.e-service-page_&_>_button:focus-visible]:[border-color:#005eff]":177,"[.e-service-page_&_>_button:focus-visible]:[box-shadow:0_0_0_3px_#005eff14]":178,"[.e-service-page_&_>_button[aria-expanded='true']]:[outline:none]":179,"[.e-service-page_&_>_button[aria-expanded='true']]:[border-color:#005eff]":180,"[.e-service-page_&_>_button[aria-expanded='true']]:[box-shadow:0_0_0_3px_#005eff14]":181,"[.e-service-page_&_ul]:[position:absolute]":182,"[.e-service-page_&_ul]:[z-index:6]":183,"[.e-service-page_&_ul]:[top:calc(100%_+_8px)]":184,"[.e-service-page_&_ul]:[left:0]":185,"[.e-service-page_&_ul]:[right:0]":186,"[.e-service-page_&_ul]:[max-height:min(300px,_45svh)]":187,"[.e-service-page_&_ul]:[overflow-y:auto]":188,"[.e-service-page_&_ul]:[margin-top:0]":189,"[.e-service-page_&_ul]:[margin-right:0]":190,"[.e-service-page_&_ul]:[margin-bottom:0]":191,"[.e-service-page_&_ul]:[margin-left:0]":192,"[.e-service-page_&_ul]:[padding-top:6px]":193,"[.e-service-page_&_ul]:[padding-right:6px]":194,"[.e-service-page_&_ul]:[padding-bottom:6px]":195,"[.e-service-page_&_ul]:[padding-left:6px]":196,"[.e-service-page_&_ul]:[border:1px_solid_#d0dfec]":197,"[.e-service-page_&_ul]:[border-radius:14px]":198,"[.e-service-page_&_ul]:[background:#fbfdff]":199,"[.e-service-page_&_ul]:[box-shadow:0_14px_32px_#0d579225]":200,"[.e-service-page_&_ul]:[list-style:none]":201,"[.e-service-page_&_li]:[display:flex]!":202,"[.e-service-page_&_li]:[align-items:center]":203,"[.e-service-page_&_li]:[justify-content:space-between]":204,"[.e-service-page_&_li]:[gap:10px]":205,"[.e-service-page_&_li]:[min-height:44px]":206,"[.e-service-page_&_li]:[padding-top:10px]":207,"[.e-service-page_&_li]:[padding-right:12px]":208,"[.e-service-page_&_li]:[padding-bottom:10px]":209,"[.e-service-page_&_li]:[padding-left:12px]":210,"[.e-service-page_&_li]:[border-radius:8px]":211,"[.e-service-page_&_li]:[color:#334155]!":212,"[.e-service-page_&_li]:[font-size:clamp(13px,_calc(12_*_var(--service-unit)),_18px)]!":213,"[.e-service-page_&_li]:[line-height:1.35]!":214,"[.e-service-page_&_li]:[overflow-wrap:anywhere]":215,"[.e-service-page_&_li]:[cursor:pointer]":216,"[.e-service-page_&_li[aria-selected='true']]:[background:#e8f2ff]":217,"[.e-service-page_&_li[aria-selected='true']]:[color:#0d5792]!":218,"[.e-service-page_&_li[data-highlighted='true']]:[background:#dcecff]":219,"[.e-service-page_&_li[data-highlighted='true']]:[color:#005eff]!":220,"[.e-service-page_&_li_svg]:[flex-shrink:0]":221,"[.e-service-page_&_li_svg]:[width:16px]":222,"[.e-service-page_&_li_svg]:[height:16px]":223,"[.e-service-page_&_textarea]:[height:calc(105_*_var(--service-unit))]":224,"[.e-service-page_&_textarea]:[padding-top:calc(16_*_var(--service-unit))]":225,"[.e-service-page_&_textarea]:[resize:none]":226,"[.e-service-page_&_textarea]:[overflow-y:auto]":227,"[.e-service-page_&_input:focus]:[outline:none]":228,"[.e-service-page_&_input:focus]:[border-color:#005eff]":229,"[.e-service-page_&_input:focus]:[box-shadow:0_0_0_2px_#005eff12]":230,"[.e-service-page_&_select:focus]:[outline:none]":231,"[.e-service-page_&_select:focus]:[border-color:#005eff]":232,"[.e-service-page_&_select:focus]:[box-shadow:0_0_0_2px_#005eff12]":233,"[.e-service-page_&_textarea:focus]:[outline:none]":234,"[.e-service-page_&_textarea:focus]:[border-color:#005eff]":235,"[.e-service-page_&_textarea:focus]:[box-shadow:0_0_0_2px_#005eff12]":236,"[.e-service-page_&&_input]:[padding-left:calc(42_*_var(--service-unit))]":237,"[.e-service-page_&]:[position:absolute]":407,"[.e-service-page_&]:[top:50%]":308,"[.e-service-page_&]:[transform:translateY(-50%)]":312,"[.e-service-page_&]:[width:calc(16_*_var(--service-unit))]":241,"[.e-service-page_&]:[height:calc(16_*_var(--service-unit))]":242,"[.e-service-page_&]:[color:#94a3b8]!":243,"[.e-service-page_&]:[pointer-events:none]":397,"[&_.service-select-arrow]:[position:absolute]":245,"[&_.service-select-arrow]:[top:50%]":246,"[&_.service-select-arrow]:[transform:translateY(-50%)]":247,"[&_.service-select-arrow]:[width:calc(16_*_var(--service-unit))]":248,"[&_.service-select-arrow]:[height:calc(16_*_var(--service-unit))]":249,"[&_.service-select-arrow]:[color:#94a3b8]!":250,"[&_.service-select-arrow]:[pointer-events:none]":251,"[.e-service-page_&]:[left:calc(16_*_var(--service-unit))]":252,"[&_.service-select-arrow]:[right:calc(16_*_var(--service-unit))]":253,"[.e-service-page_&]:[align-items:center]":277,"[.e-service-page_&]:[justify-content:space-between]":256,"[.e-service-page_&_p]:[display:flex]!":258,"[.e-service-page_&_p]:[align-items:center]":259,"[.e-service-page_&_p]:[gap:calc(10_*_var(--service-unit))]":260,"[.e-service-page_&_p]:[margin-top:0]":261,"[.e-service-page_&_p]:[margin-right:0]":479,"[.e-service-page_&_p]:[margin-bottom:0]":480,"[.e-service-page_&_p]:[margin-left:0]":481,"[.e-service-page_&_p]:[color:#9eb7d0]!":265,"[.e-service-page_&_p]:[font-size:calc(12_*_var(--service-unit))]!":482,"[.e-service-page_&_p]:[line-height:1.12]!":483,"[.e-service-page_&_p_svg]:[flex-shrink:0]":268,"[.e-service-page_&_p_svg]:[width:calc(18_*_var(--service-unit))]":269,"[.e-service-page_&_p_svg]:[height:calc(18_*_var(--service-unit))]":270,"[.e-service-page_&_p_svg]:[color:#005eff]!":271,"[.e-service-page_&_a]:[color:#334155]!":272,"[.e-service-page_&_a]:[white-space:nowrap]":273,"[.e-service-page_&]:[flex-shrink:0]":276,"[.e-service-page_&]:[overflow:hidden]":396,"[.e-service-page_&]:[width:calc(141_*_var(--service-unit))]":279,"[.e-service-page_&]:[height:calc(43_*_var(--service-unit))]":280,"[.e-service-page_&]:[padding-right:0]":282,"[.e-service-page_&]:[padding-bottom:0]":283,"[.e-service-page_&]:[padding-left:0]":284,"[.e-service-page_&]:[border:1px_solid_#c8d7e5]":285,"[.e-service-page_&]:[border-radius:999px]":286,"[.e-service-page_&]:[background:linear-gradient(180deg,_#fff,_#f6f9fc)]":287,"[.e-service-page_&]:[box-shadow:0_4px_12px_#1a507e0f]":288,"[.e-service-page_&]:[color:#27272a]!":289,"[.e-service-page_&]:[font-style:inherit]":290,"[.e-service-page_&]:[font-variant:inherit]":291,"[.e-service-page_&]:[font-weight:inherit]!":292,"[.e-service-page_&]:[font-stretch:inherit]!":293,"[.e-service-page_&]:[font-size:inherit]!":294,"[.e-service-page_&]:[line-height:inherit]!":295,"[.e-service-page_&]:[font-family:inherit]!":296,"[.e-service-page_&]:[font-feature-settings:inherit]":297,"[.e-service-page_&]:[font-variation-settings:inherit]!":298,"[.e-service-page_&]:[font-size:calc(15_*_var(--service-unit))]!":299,"[.e-service-page_&]:[cursor:pointer]":300,"[.e-service-page_&]:[z-index:2]":302,"[.e-service-page_&]:[margin-left:calc(16_*_var(--service-unit))]":303,"[.e-service-page_&]:[white-space:nowrap]":304,"[.e-service-page_&]:[transition:transform_650ms_cubic-bezier(0.22,_1,_0.36,_1)]":305,"[.e-service-page_&]:[left:calc(100%_-_37_*_var(--service-unit))]":307,"[.e-service-page_&]:[z-index:3]":309,"[.e-service-page_&]:[place-items:center]":459,"[.e-service-page_&]:[width:calc(31_*_var(--service-unit))]":313,"[.e-service-page_&]:[height:calc(31_*_var(--service-unit))]":314,"[.e-service-page_&]:[border-radius:50%]":315,"[.e-service-page_&]:[background:linear-gradient(135deg,_#005eff,_#001ea2)]":316,"[.e-service-page_&]:[box-shadow:0_0_12px_#005eff61,_0_5px_14px_#001ea247]":317,"[.e-service-page_&]:[transition:left_650ms_cubic-bezier(0.22,_1,_0.36,_1)]":318,"[.e-service-page_&_svg]:[width:calc(21_*_var(--service-unit))]":319,"[.e-service-page_&_svg]:[height:calc(21_*_var(--service-unit))]":320,"[.e-service-page_&_svg]:[color:#fff]!":321,"[.e-service-page_&_svg]:[opacity:0]":322,"[.e-service-page_&_svg]:[transform:scale(0.78)]":323,"[.e-service-page_&_svg]:[transition:opacity_350ms_ease-out,_transform_350ms_ease-out]":324,"[.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[transform:translateX(calc(37_*_var(--service-unit)))]":325,"[.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&]:[left:calc(6_*_var(--service-unit))]":326,"[.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[opacity:1]":327,"[.e-service-page_.service-send-button:is(:hover,_:focus-visible)_&_svg]:[transform:scale(1)]":328,"motion-reduce:[.e-service-page_&]:[transition:none]":330,"motion-reduce:[.e-service-page_&_svg]:[transition:none]":331,"[.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff]":332,"[.e-service-page_&_button:focus-visible]:[outline-offset:3px]":333,"[.e-service-page_&:focus-visible]:[outline:2px_solid_#005eff]":445,"[.e-service-page_&:focus-visible]:[outline-offset:3px]":335,"[.e-service-page_&_a:focus-visible]:[outline:2px_solid_#005eff]":336,"[.e-service-page_&_a:focus-visible]:[outline-offset:3px]":337,"[.e-service-page_&]:[min-height:calc(16_*_var(--service-unit))]":338,"[.e-service-page_&]:[margin-top:0]":410,"[.e-service-page_&]:[margin-right:0]":411,"[.e-service-page_&]:[margin-bottom:0]":412,"[.e-service-page_&]:[margin-left:0]":413,"[.e-service-page_&]:[font-size:calc(12_*_var(--service-unit))]!":343,"[.e-service-page_&]:[line-height:1.2]!":344,"[.e-service-page_&]:[color:#0d5792]!":345,"max-[768px]:[.e-service-page_&]:[padding-top:0]":550,"max-[768px]:[.e-service-page_&]:[padding-right:20px]":527,"max-[768px]:[.e-service-page_&]:[padding-bottom:64px]":532,"max-[768px]:[.e-service-page_&]:[padding-left:20px]":529,"max-[768px]:[.e-service-page_&]:[flex-direction:column]":363,"max-[768px]:[.e-service-page_&]:[align-items:stretch]":351,"max-[768px]:[.e-service-page_&]:[gap:0]":352,"max-[768px]:[.e-service-page_&_button]:[flex:none]":353,"max-[768px]:[.e-service-page_&_button]:[padding-top:16px]":354,"max-[768px]:[.e-service-page_&_button]:[padding-bottom:16px]":355,"max-[768px]:[.e-service-page_&&]:[grid-template-columns:1fr]":357,"max-[768px]:[.e-service-page_&_input]:[font-size:13px]!":358,"max-[768px]:[.e-service-page_&_select]:[font-size:13px]!":359,"max-[768px]:[.e-service-page_&_textarea]:[font-size:13px]!":360,"max-[768px]:[.e-service-page_&_textarea]:[height:105px]":361,"max-[768px]:[.e-service-page_&]:[align-items:flex-start]":362,"max-[768px]:[.e-service-page_&]:[gap:26px]":364,"max-[768px]:[.e-service-page_&]:[margin-top:4px]":365,"max-[768px]:[.e-service-page_&_p]:[align-items:center]":366,"max-[768px]:[.e-service-page_&_p]:[font-size:12px]!":367,"max-[768px]:[.e-service-page_&_p]:[line-height:1.12]!":368,"max-[768px]:[.e-service-page_&]:[align-self:flex-end]":369,"max-[768px]:[.e-service-page_&]:[min-height:44px]":370,"[--service-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)]":371,"[--service-header-offset:97px]":372,"[width:100%]":373,"[margin-top:calc(-1_*_var(--service-header-offset))]":374,"[background:#e8f4fb]":375,"[.e-service-page_&]:[padding-bottom:calc(115_*_var(--service-unit))]":378,"[.e-service-page_&]:[isolation:isolate]":382,"[.e-service-page_&]:[padding-top:calc(641_*_var(--service-unit))]":383,"[.e-service-page_&]:[top:0]":389,"[.e-service-page_&]:[right:0]":402,"[.e-service-page_&]:[bottom:auto]":391,"[.e-service-page_&]:[left:0]":404,"[.e-service-page_&]:[z-index:-1]":393,"[.e-service-page_&]:[height:calc(966_*_var(--service-unit))]":394,"[.e-service-page_&]:[background:#061521]":395,"[.e-service-page_&]:[object-fit:cover]":398,"[.e-service-page_&]:[object-position:center]":399,"[.e-service-page_&]:[top:auto]":401,"[.e-service-page_&]:[bottom:0]":403,"[.e-service-page_&]:[height:calc(250_*_var(--service-unit))]":405,"[.e-service-page_&]:[background:linear-gradient(transparent,_#d5eaf8)]":406,"[.e-service-page_&]:[top:calc(182_*_var(--service-unit))]":408,"[.e-service-page_&]:[left:calc(120_*_var(--service-unit))]":409,"[.e-service-page_&]:[font-size:calc(36_*_var(--service-unit))]!":414,"[.e-service-page_&]:[font-weight:410]!":415,"[.e-service-page_&]:[line-height:1]!":416,"[.e-service-page_&]:[color:#9eb7d0]!":417,"[.e-service-page_&]:[max-width:calc(1200_*_var(--service-unit))]":419,"[.e-service-page_&_h2]:[margin-top:0]":423,"[.e-service-page_&_h2]:[margin-right:0]":424,"[.e-service-page_&_h2]:[margin-bottom:0]":425,"[.e-service-page_&_h2]:[margin-left:0]":426,"[.e-service-page_&_h2]:[font-size:calc(50_*_var(--service-unit))]!":427,"[.e-service-page_&_h2]:[font-weight:410]!":428,"[.e-service-page_&_h2]:[line-height:1]!":429,"[.e-service-page_&_h2]:[color:#f7f7f7]!":430,"[.e-service-page_&_>_p]:[width:calc(869_*_var(--service-unit))]":431,"[.e-service-page_&_>_p]:[max-width:100%]":432,"[.e-service-page_&_>_p]:[margin-top:calc(47_*_var(--service-unit))]":433,"[.e-service-page_&_>_p]:[margin-right:0]":434,"[.e-service-page_&_>_p]:[margin-bottom:0]":435,"[.e-service-page_&_>_p]:[margin-left:0]":436,"[.e-service-page_&_>_p]:[font-size:calc(20_*_var(--service-unit))]!":437,"[.e-service-page_&_>_p]:[line-height:1.07]!":438,"[.e-service-page_&_>_p]:[color:#9eb7d0]!":439,"[.e-service-page_&]:[grid-template-columns:repeat(4,_minmax(0,_1fr))]":441,"[.e-service-page_&]:[gap:calc(20_*_var(--service-unit))]":442,"[.e-service-page_&]:[margin-top:calc(48_*_var(--service-unit))]":443,"[.e-service-page_&]:[display:none]!":444,"[.e-service-page_&:focus-visible]:[outline-offset:4px]":446,"[.e-service-page_&]:[min-height:calc(233_*_var(--service-unit))]":448,"[.e-service-page_&]:[padding-top:calc(24_*_var(--service-unit))]":449,"[.e-service-page_&]:[padding-right:calc(24_*_var(--service-unit))]":450,"[.e-service-page_&]:[padding-bottom:calc(24_*_var(--service-unit))]":451,"[.e-service-page_&]:[padding-left:calc(24_*_var(--service-unit))]":452,"[.e-service-page_&]:[border:1px_solid_#fff]":453,"[.e-service-page_&]:[border-radius:calc(16_*_var(--service-unit))]":454,"[.e-service-page_&]:[background:#ffffff26]":455,"[.e-service-page_&]:[box-shadow:0_2px_8px_#00000008]":456,"[.e-service-page_&]:[width:calc(48_*_var(--service-unit))]":460,"[.e-service-page_&]:[height:calc(48_*_var(--service-unit))]":461,"[.e-service-page_&]:[border:1px_solid_#cbeedc]":462,"[.e-service-page_&]:[border-radius:calc(12_*_var(--service-unit))]":463,"[.e-service-page_&]:[background:#eefaf4]":464,"[.e-service-page_&]:[color:#005eff]!":465,"[.e-service-page_&_svg]:[width:55%]":466,"[.e-service-page_&_svg]:[height:55%]":467,"[.e-service-page_&_svg]:[stroke-width:1.8]":468,"[.e-service-page_&_h3]:[margin-top:calc(24_*_var(--service-unit))]":469,"[.e-service-page_&_h3]:[margin-right:0]":470,"[.e-service-page_&_h3]:[margin-bottom:0]":471,"[.e-service-page_&_h3]:[margin-left:0]":472,"[.e-service-page_&_h3]:[font-size:calc(15_*_var(--service-unit))]!":473,"[.e-service-page_&_h3]:[font-weight:540]!":474,"[.e-service-page_&_h3]:[font-variation-settings:'wght'_540,_'wdth'_125]!":475,"[.e-service-page_&_h3]:[line-height:1.12]!":476,"[.e-service-page_&_h3]:[color:#0d5792]!":477,"[.e-service-page_&_p]:[margin-top:calc(12_*_var(--service-unit))]":478,"[.e-service-page_&_p]:[color:#27272a]!":484,"max-[1200px]:[--service-unit:1px]":485,"max-[1200px]:[.e-service-page_&]:[padding-top:500px]":486,"max-[1200px]:[.e-service-page_&]:[height:880px]":487,"max-[1200px]:[.e-service-page_&]:[object-position:65%_center]":488,"max-[1200px]:[.e-service-page_&]:[left:32px]":489,"max-[1200px]:[.e-service-page_&]:[top:160px]":490,"max-[1200px]:[.e-service-page_&]:[font-size:32px]!":491,"max-[1200px]:[.e-service-page_&_h2]:[font-size:44px]!":492,"max-[1200px]:[.e-service-page_&_>_p]:[font-size:18px]!":493,"max-[1200px]:[.e-service-page_&_>_p]:[line-height:1.2]!":494,"max-[1200px]:[.e-service-page_&]:[display:flex]!":509,"max-[1200px]:[.e-service-page_&]:[overflow-x:auto]":496,"max-[1200px]:[.e-service-page_&]:[gap:24px]":497,"max-[1200px]:[.e-service-page_&]:[padding-bottom:8px]":498,"max-[1200px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory]":499,"max-[1200px]:[.e-service-page_&]:[scrollbar-width:thin]":500,"max-[1200px]:[.e-service-page_&]:[scrollbar-color:#9eb7d0_transparent]":501,"max-[1200px]:[.e-service-page_&]:[cursor:grab]":502,"max-[1200px]:[.e-service-page_&]:[touch-action:pan-x_pan-y]":503,"max-[1200px]:[.e-service-page_&[data-dragging='true']]:[cursor:grabbing]":504,"max-[1200px]:[.e-service-page_&[data-dragging='true']]:[scroll-snap-type:none]":505,"max-[1200px]:[.e-service-page_&[data-dragging='true']]:[user-select:none]":506,"max-[1200px]:[.e-service-page_&]:[flex:0_0_calc((100%_-_48px)_/_2)]":507,"max-[1200px]:[.e-service-page_&]:[scroll-snap-align:start]":508,"max-[1200px]:[.e-service-page_&]:[justify-content:center]":510,"max-[1200px]:[.e-service-page_&]:[gap:12px]":511,"max-[1200px]:[.e-service-page_&]:[margin-top:16px]":512,"max-[1200px]:[.e-service-page_&_button]:[display:grid]!":513,"max-[1200px]:[.e-service-page_&_button]:[place-items:center]":514,"max-[1200px]:[.e-service-page_&_button]:[width:44px]":515,"max-[1200px]:[.e-service-page_&_button]:[height:44px]":516,"max-[1200px]:[.e-service-page_&_button]:[border:1px_solid_#9eb7d080]":517,"max-[1200px]:[.e-service-page_&_button]:[border-radius:50%]":518,"max-[1200px]:[.e-service-page_&_button]:[background:#ffffff80]":519,"max-[1200px]:[.e-service-page_&_button]:[color:#0d5792]!":520,"max-[1200px]:[.e-service-page_&_button]:[cursor:pointer]":521,"max-[1200px]:[.e-service-page_&_button]:[transition:background_200ms_ease]":522,"max-[1200px]:[.e-service-page_&_button:hover]:[background:#fff]":523,"max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline:2px_solid_#005eff]":524,"max-[1200px]:[.e-service-page_&_button:focus-visible]:[outline-offset:3px]":525,"max-[768px]:[.e-service-page_&]:[padding-bottom:80px]":528,"max-[768px]:[.e-service-page_&]:[padding-top:clamp(380px,_99vw,_650px)]":530,"max-[768px]:[.e-service-page_&]:[padding-right:32px]":551,"max-[768px]:[.e-service-page_&]:[padding-left:32px]":553,"max-[768px]:[.e-service-page_&]:[height:clamp(680px,_174vw,_1100px)]":534,"max-[768px]:[.e-service-page_&]:[object-position:60%_top]":535,"max-[768px]:[.e-service-page_&]:[height:230px]":536,"max-[768px]:[.e-service-page_&]:[top:154px]":537,"max-[768px]:[.e-service-page_&]:[left:20px]":538,"max-[768px]:[.e-service-page_&]:[font-size:28px]!":539,"max-[768px]:[.e-service-page_&_h2]:[font-size:clamp(28px,_7.8vw,_42px)]!":540,"max-[768px]:[.e-service-page_&_>_p]:[margin-top:24px]":541,"max-[768px]:[.e-service-page_&_>_p]:[font-size:16px]!":542,"max-[768px]:[.e-service-page_&_>_p]:[line-height:1.07]!":543,"max-[768px]:[.e-service-page_&]:[display:flex]!":544,"max-[768px]:[.e-service-page_&]:[overflow-x:auto]":545,"max-[768px]:[.e-service-page_&]:[margin-top:40px]":546,"max-[768px]:[.e-service-page_&]:[margin-right:-32px]":547,"max-[768px]:[.e-service-page_&]:[margin-bottom:0]":548,"max-[768px]:[.e-service-page_&]:[margin-left:-32px]":549,"max-[768px]:[.e-service-page_&]:[padding-bottom:4px]":552,"max-[768px]:[.e-service-page_&]:[gap:24px]":554,"max-[768px]:[.e-service-page_&]:[scroll-snap-type:x_mandatory]":555,"max-[768px]:[.e-service-page_&]:[scroll-padding-inline:32px]":556,"max-[768px]:[.e-service-page_&]:[scrollbar-width:none]":557,"max-[768px]:[.e-service-page_&::-webkit-scrollbar]:[display:none]!":558,"max-[768px]:[.e-service-page_&]:[flex:0_0_72vw]":559,"max-[768px]:[.e-service-page_&]:[min-height:233px]":560,"max-[768px]:[.e-service-page_&]:[padding-top:28px]":561,"max-[768px]:[.e-service-page_&]:[padding-right:28px]":562,"max-[768px]:[.e-service-page_&]:[padding-bottom:28px]":563,"max-[768px]:[.e-service-page_&]:[padding-left:28px]":564,"max-[768px]:[.e-service-page_&]:[scroll-snap-align:start]":565,"max-[768px]:[.e-service-page_&_.uncompromising-performance]:[--glass-top:clamp(78px,_22vw,_150px)]":566,"max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-top:64px]":567,"max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-right:0]":568,"max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-bottom:88px]":569,"max-[768px]:[.e-service-page_&_.uncompromising-performance]:[padding-left:0]":570,"max-[768px]:[.e-service-page_&_.uncompromising-stage]:[height:300px]":571,"max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[font-size:clamp(38px,_12.5vw,_80px)]!":572,"max-[768px]:[.e-service-page_&_.uncompromising-stage_h2]:[line-height:1.07]!":573,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[width:60%]":574,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[max-width:300px]":575,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-top:22px]":576,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-right:16px]":577,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-bottom:22px]":578,"max-[768px]:[.e-service-page_&_.uncompromising-glass]:[padding-left:16px]":579,"max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[font-size:16px]!":580,"max-[768px]:[.e-service-page_&_.uncompromising-glass_p]:[line-height:1]!":581,"max-[768px]:[.e-service-page_&_.uncompromising-glow]:[top:var(--glass-top)]":582,"max-[768px]:[.e-service-page_&_.uncompromising-glow]:[height:240px]":583,"max-[768px]:[.e-service-page_&_.uncompromising-glow]:[width:90%]":584};
-function tweservicePage(value: string | undefined): string { const names = (value ?? "").split(/\s+/).filter(Boolean); const selected = new Map<string, string>(); for (const name of names) for (const token of (tweservicePageRules[name] ?? "").split(" ").filter(Boolean)) { const matches = [...token.matchAll(/\[([\w-]+):/g)]; const match = matches[matches.length - 1]; const key = match ? token.slice(0, match.index) + "|" + match[1] : token.replace(/animate-[\w-]+!?$/, "animation"); const old = selected.get(key); if (!old || (tweservicePagePriority[token] ?? 0) >= (tweservicePagePriority[old] ?? 0)) selected.set(key, token); } return [...names, ...selected.values()].join(" "); }
+// ============================================================
+// CLOSING TEXT MOTION
+// ============================================================
+
+function ClosingTextMotion() {
+  const root = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion() ?? false;
+
+  useLayoutEffect(() => {
+    const scope = root.current;
+    if (!scope || reduced) return;
+
+    const headings = Array.from(
+      scope.querySelectorAll<HTMLElement>(".uncompromising-stage h2"),
+    );
+
+    const copy = Array.from(
+      scope.querySelectorAll<HTMLElement>(".uncompromising-glass p"),
+    );
+
+    const targets = [...headings, ...copy];
+    const controls = new Map<HTMLElement, ReturnType<typeof animate>>();
+
+    targets.forEach((element) => {
+      element.style.opacity = "0";
+      element.style.filter = "blur(7px)";
+
+      if (headings.includes(element)) {
+        element.style.translate = "0px 54px";
+      }
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const element = entry.target as HTMLElement;
+          const isHeading = headings.includes(element);
+
+          controls.get(element)?.stop();
+
+          if (entry.isIntersecting) {
+            controls.set(
+              element,
+              animate(
+                element,
+                {
+                  opacity: 1,
+                  filter: "blur(0px)",
+                  ...(isHeading
+                    ? {
+                        translate: "0px 0px",
+                      }
+                    : {}),
+                },
+                {
+                  duration: isHeading ? 1.15 : 0.95,
+                  delay: isHeading ? 0.03 : 0.16,
+                  ease,
+                },
+              ),
+            );
+          } else {
+            element.style.opacity = "0";
+            element.style.filter = "blur(7px)";
+
+            if (isHeading) {
+              element.style.translate = "0px 54px";
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.18,
+        rootMargin: "0px 0px -8% 0px",
+      },
+    );
+
+    targets.forEach((element) => observer.observe(element));
+
+    return () => {
+      observer.disconnect();
+      controls.forEach((control) => control.stop());
+
+      targets.forEach((element) => {
+        element.style.removeProperty("opacity");
+        element.style.removeProperty("filter");
+        element.style.removeProperty("translate");
+      });
+    };
+  }, [reduced]);
+
+  return (
+    <div ref={root}>
+      <UncompromisingPerformance
+        wideDescription
+        titleLines={["if we stop,", "life stops!"]}
+        description={
+          "Water is the lifeblood of the world, and our pumps are its beating heart.\nWe ensure uninterrupted flow for cities, industries, and critical systems 24/7."
+        }
+      />
+    </div>
+  );
+}
+
+function NewsletterReveal({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion() ?? false;
+
+  return (
+    <motion.div {...reveal("up", 0, reduced, true)}>{children}</motion.div>
+  );
+}
+
+// ============================================================
+// MAIN PAGE
+// ============================================================
+
+export default function EServicePage() {
+  const pageRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    const header = document.querySelector<HTMLElement>(".site-header");
+
+    if (!page || !header) return;
+
+    const sync = () => {
+      const inFlow = !["fixed", "absolute"].includes(
+        getComputedStyle(header).position,
+      );
+
+      page.style.setProperty(
+        "--service-header-offset",
+        inFlow ? `${header.getBoundingClientRect().height}px` : "0px",
+      );
+    };
+
+    sync();
+
+    const observer = new ResizeObserver(sync);
+    observer.observe(header);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <main ref={pageRef} className="e-service-page">
+      <style>{serviceStyles}</style>
+
+      <EServiceHero />
+
+      <EServiceRequestSection />
+
+      <div className="service-closing">
+        <ClosingTextMotion />
+
+        <NewsletterReveal>
+          <NewsletterSubscription requireValidInput scaled />
+        </NewsletterReveal>
+      </div>
+    </main>
+  );
+}
+
+// ============================================================
+// PAGE STYLES
+// ============================================================
+
+const serviceStyles = `
+.e-service-page {
+  --unit: clamp(0.833333px, 0.0694444444vw, 1.777778px);
+  --service-header-offset: 97px;
+  position: relative;
+  width: 100%;
+  margin-top: calc(-1 * var(--service-header-offset));
+  background: linear-gradient(
+    180deg,
+    #d5eaf8 0%,
+    #d5eaf8 32%,
+    #dceefa 53%,
+    #e7f4fc 78%,
+    #e8f4fb 100%
+  );
+  font-family: var(--font-sf-pro), sans-serif;
+  font-weight: 410;
+  font-stretch: 125%;
+  font-variation-settings: 'wght' 410, 'wdth' 125;
+  color: #27272a;
+}
+
+.e-service-page * {
+  box-sizing: border-box;
+}
+
+.e-service-page .service-hero {
+  position: relative;
+  isolation: isolate;
+  padding: calc(641 * var(--unit)) 24px calc(80 * var(--unit));
+}
+
+.e-service-page .hero-background {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: calc(966 * var(--unit));
+  background: #061521;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 58%,
+    rgba(0,0,0,.92) 72%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 58%,
+    rgba(0,0,0,.92) 72%,
+    transparent 100%
+  );
+}
+
+.e-service-page .hero-background-image {
+  object-fit: cover;
+  object-position: center;
+}
+
+.e-service-page .service-page-title {
+  position: absolute;
+  top: calc(182 * var(--unit));
+  left: calc(120 * var(--unit));
+  margin: 0;
+  font-size: calc(36 * var(--unit));
+  font-weight: 410;
+  line-height: 1;
+  color: #9eb7d0;
+}
+
+.e-service-page .service-inner {
+  width: 100%;
+  max-width: calc(1200 * var(--unit));
+  margin-inline: auto;
+}
+
+.e-service-page .hero-introduction {
+  position: relative;
+  top: calc(-28 * var(--unit));
+  letter-spacing: -.04em;
+}
+
+.e-service-page .signal-heading {
+  margin: 0;
+  font-size: calc(50 * var(--unit));
+  font-weight: 410;
+  line-height: 1;
+  color: #f7f7f7;
+}
+
+.e-service-page .signal-line {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.e-service-page .signal-letter {
+  display: inline-block;
+}
+
+.e-service-page .signal-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  opacity: 0;
+  background: #80d8ff;
+  box-shadow: 0 0 7px #57bbff;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .e-service-page .signal-letter {
+    opacity: 0;
+  }
+}
+
+.e-service-page .hero-introduction > p {
+  width: calc(869 * var(--unit));
+  max-width: 100%;
+  margin: calc(47 * var(--unit)) 0 0;
+  font-size: calc(20 * var(--unit));
+  line-height: 1.07;
+  color: #9eb7d0;
+}
+
+.e-service-page .feature-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(20 * var(--unit));
+  margin-top: calc(48 * var(--unit));
+}
+
+.e-service-page .feature-track:focus-visible {
+  outline: 2px solid #005eff;
+  outline-offset: 4px;
+}
+
+.e-service-page .feature-card {
+  min-width: 0;
+  min-height: calc(233 * var(--unit));
+  padding: calc(24 * var(--unit));
+  border: 1px solid #fff;
+  border-radius: calc(16 * var(--unit));
+  background: #ffffff26;
+  box-shadow: 0 2px 8px #00000008;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  letter-spacing: -.04em;
+}
+
+.e-service-page .feature-icon {
+  display: grid;
+  place-items: center;
+  width: calc(48 * var(--unit));
+  height: calc(48 * var(--unit));
+  border: 1px solid #cbeedc;
+  border-radius: calc(12 * var(--unit));
+  background: #eefaf4;
+}
+
+.e-service-page .feature-icon img {
+  width: 55%;
+  height: 55%;
+}
+
+.e-service-page .feature-card h3 {
+  margin: calc(24 * var(--unit)) 0 0;
+  font-size: calc(15 * var(--unit));
+  font-weight: 540;
+  line-height: 1.12;
+  color: #0d5792;
+}
+
+.e-service-page .feature-card p {
+  margin: calc(12 * var(--unit)) 0 0;
+  font-size: calc(12 * var(--unit));
+  line-height: 1.12;
+}
+
+.e-service-page .feature-navigation {
+  display: none;
+}
+
+/* FORM */
+
+.e-service-page .request-section {
+  padding: 0 24px calc(80 * var(--unit));
+  letter-spacing: -.04em;
+}
+
+.e-service-page .request-inner {
+  width: 100%;
+  max-width: calc(1201 * var(--unit));
+  margin: auto;
+}
+
+.e-service-page .request-tabs {
+  display: flex;
+  gap: calc(32 * var(--unit));
+  border-bottom: 1px solid #9eb7d066;
+}
+
+.e-service-page .request-tabs button {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--unit));
+  margin-bottom: -1px;
+  padding: calc(16 * var(--unit)) calc(4 * var(--unit));
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 540;
+  font-size: calc(12 * var(--unit));
+  line-height: 1.12;
+}
+
+.e-service-page .request-tabs button img {
+  flex-shrink: 0;
+  object-fit: contain;
+  width: calc(18 * var(--unit));
+  height: calc(18 * var(--unit));
+}
+
+.e-service-page .request-tabs button[aria-selected='true'] {
+  color: #0f172a;
+  border-bottom-color: #005eff;
+}
+
+.e-service-page button:focus-visible {
+  outline: 2px solid #005eff;
+  outline-offset: 3px;
+}
+
+.e-service-page .request-form {
+  display: grid;
+  gap: calc(24 * var(--unit));
+  padding-top: calc(30 * var(--unit));
+}
+
+.e-service-page .form-row {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  gap: calc(24 * var(--unit));
+  overflow: visible;
+}
+
+.e-service-page .form-row.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.e-service-page .form-row.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Dropdown üst üste binme düzeltmesi */
+.e-service-page .form-row:has(.service-select.is-open) {
+  z-index: 100;
+}
+
+.e-service-page .service-field {
+  min-width: 0;
+}
+
+.e-service-page .service-field > label {
+  display: block;
+  margin-bottom: calc(10 * var(--unit));
+  color: #334155;
+  font-size: calc(12 * var(--unit));
+  font-weight: 540;
+  line-height: 1.12;
+}
+
+.e-service-page .required {
+  color: #dc2626;
+}
+
+.e-service-page .service-control {
+  position: relative;
+  min-width: 0;
+}
+
+.e-service-page .service-control > input,
+.e-service-page .service-control > textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: calc(48 * var(--unit));
+  min-height: 44px;
+  padding: calc(14 * var(--unit)) calc(16 * var(--unit));
+  border: 1px solid transparent;
+  border-radius: calc(12 * var(--unit));
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: calc(12 * var(--unit));
+  line-height: 1.12;
+  outline: none;
+}
+
+.e-service-page .service-control > input::placeholder,
+.e-service-page .service-control > textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+.e-service-page .service-control > input:focus,
+.e-service-page .service-control > textarea:focus {
+  border-color: #005eff;
+  box-shadow: 0 0 0 2px #005eff12;
+}
+
+.e-service-page .service-control > textarea {
+  height: calc(105 * var(--unit));
+  resize: none;
+  overflow-y: auto;
+}
+
+.e-service-page .search-icon {
+  position: absolute;
+  left: calc(16 * var(--unit));
+  top: 50%;
+  width: calc(16 * var(--unit));
+  height: calc(16 * var(--unit));
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+/* Serial Number placeholder sağa kaydırıldı */
+.e-service-page .service-control.has-search > input {
+  padding-left: calc(48 * var(--unit));
+}
+
+/* CUSTOM DROPDOWN */
+
+.e-service-page .service-select {
+  position: relative;
+  min-width: 0;
+}
+
+.e-service-page .service-select.is-open {
+  z-index: 110;
+}
+
+.e-service-page .service-select > input[type='hidden'] {
+  display: none;
+}
+
+.e-service-page .service-select > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 13px 16px;
+  border: 1px solid #cbddeb;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff, #f7fbff);
+  box-shadow: 0 3px 10px #0d579208;
+  color: #1e293b;
+  font: inherit;
+  font-size: clamp(13px, calc(12 * var(--unit)), 18px);
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.e-service-page .service-select > button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.e-service-page .service-select > button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #0d5792;
+  transition: transform .2s;
+}
+
+.e-service-page .service-select.is-open > button svg {
+  transform: rotate(180deg);
+}
+
+.e-service-page .service-select > button:hover {
+  border-color: #80afd7;
+}
+
+.e-service-page .service-select.is-open > button,
+.e-service-page .service-select > button:focus-visible {
+  outline: none;
+  border-color: #005eff;
+  box-shadow: 0 0 0 3px #005eff14;
+}
+
+.e-service-page .service-select > ul {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: min(300px, 45svh);
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid #d0dfec;
+  border-radius: 14px;
+  background: #fbfdff;
+  box-shadow: 0 14px 32px rgba(13,87,146,.18);
+  list-style: none;
+}
+
+.e-service-page .service-select li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-size: clamp(13px, calc(12 * var(--unit)), 18px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.e-service-page .service-select li[aria-selected='true'] {
+  background: #e8f2ff;
+  color: #0d5792;
+}
+
+.e-service-page .service-select li[data-highlighted='true'] {
+  background: #dcecff;
+  color: #005eff;
+}
+
+.e-service-page .service-select li svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* SEND BUTTON */
+
+.e-service-page .form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(24 * var(--unit));
+}
+
+.e-service-page .form-footer > p {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--unit));
+  margin: 0;
+  color: #9eb7d0;
+  font-size: calc(12 * var(--unit));
+  line-height: 1.12;
+}
+
+.e-service-page .form-footer > p svg {
+  flex-shrink: 0;
+  width: calc(18 * var(--unit));
+  height: calc(18 * var(--unit));
+  color: #005eff;
+}
+
+.e-service-page .form-footer a {
+  color: #334155;
+  white-space: nowrap;
+}
+
+.e-service-page .send-button {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  overflow: hidden;
+  width: calc(141 * var(--unit));
+  height: calc(43 * var(--unit));
+  padding: 0;
+  border: 1px solid #c8d7e5;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff, #f6f9fc);
+  box-shadow: 0 4px 12px #1a507e0f;
+  color: #27272a;
+  font: inherit;
+  font-size: calc(15 * var(--unit));
+  cursor: pointer;
+}
+
+.e-service-page .send-label {
+  position: relative;
+  z-index: 2;
+  margin-left: calc(16 * var(--unit));
+  white-space: nowrap;
+  transition: transform 650ms cubic-bezier(.22,1,.36,1);
+}
+
+.e-service-page .send-orb {
+  position: absolute;
+  z-index: 3;
+  left: calc(100% - 37 * var(--unit));
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: calc(31 * var(--unit));
+  height: calc(31 * var(--unit));
+  border-radius: 50%;
+  background: linear-gradient(135deg, #005eff, #001ea2);
+  box-shadow:
+    0 0 17px #005eff90,
+    0 0 26px #005eff42,
+    0 5px 14px #001ea247;
+  transition: left 650ms cubic-bezier(.22,1,.36,1);
+}
+
+.e-service-page .send-orb svg {
+  width: calc(21 * var(--unit));
+  height: calc(21 * var(--unit));
+  color: #fff;
+  opacity: 0;
+  transform: scale(.78);
+  transition: opacity .35s, transform .35s;
+}
+
+.e-service-page .send-button:is(:hover,:focus-visible) .send-label {
+  transform: translateX(calc(37 * var(--unit)));
+}
+
+.e-service-page .send-button:is(:hover,:focus-visible) .send-orb {
+  left: calc(6 * var(--unit));
+}
+
+.e-service-page .send-button:is(:hover,:focus-visible) .send-orb svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.e-service-page .form-feedback {
+  min-height: calc(16 * var(--unit));
+  margin: 0;
+  color: #0d5792;
+  font-size: calc(12 * var(--unit));
+  line-height: 1.2;
+}
+
+.e-service-page .service-closing {
+  padding: 0 24px calc(115 * var(--unit));
+}
+
+/* 1920px DESKTOP */
+
+@media (min-width: 1600px) {
+  .e-service-page .request-form {
+    gap: 25px;
+    padding-top: 25px;
+  }
+
+  .e-service-page .form-row {
+    gap: 25px;
+  }
+
+  .e-service-page .service-field > label {
+    margin-bottom: 9px;
+    font-size: 14px;
+  }
+
+  .e-service-page .service-control > input {
+    height: 54px;
+    min-height: 54px;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 11px;
+  }
+
+  .e-service-page .service-control.has-search > input {
+    padding-left: 54px;
+  }
+
+  .e-service-page .service-control > textarea {
+    height: 112px;
+    min-height: 112px;
+    padding: 14px;
+    font-size: 14px;
+    border-radius: 11px;
+  }
+
+  .e-service-page .service-select > button {
+    min-height: 54px;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 11px;
+  }
+
+  .e-service-page .service-select li {
+    min-height: 42px;
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+
+  .e-service-page .form-footer {
+    gap: 20px;
+  }
+
+  .e-service-page .form-footer > p {
+    font-size: 14px;
+  }
+
+  .e-service-page .send-button {
+    width: 160px;
+    height: 49px;
+    font-size: 15px;
+  }
+
+  .e-service-page .send-label {
+    margin-left: 15px;
+  }
+
+  .e-service-page .send-orb {
+    width: 31px;
+    height: 31px;
+    left: calc(100% - 37px);
+  }
+
+  .e-service-page .send-button:is(:hover,:focus-visible) .send-orb {
+    left: 6px;
+  }
+
+  .e-service-page .send-button:is(:hover,:focus-visible) .send-label {
+    transform: translateX(33px);
+  }
+
+  .e-service-page .request-tabs button {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 15px;
+  }
+
+  .e-service-page .request-tabs button img {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+/* TABLET */
+
+@media (max-width: 1200px) {
+  .e-service-page {
+    --unit: 1px;
+  }
+
+  .e-service-page .service-hero {
+    padding-top: 500px;
+  }
+
+  .e-service-page .hero-background {
+    height: 880px;
+  }
+
+  .e-service-page .hero-background-image {
+    object-position: 65% center;
+  }
+
+  .e-service-page .service-page-title {
+    top: 160px;
+    left: 32px;
+    font-size: 32px;
+  }
+
+  .e-service-page .signal-heading {
+    font-size: 44px;
+  }
+
+  .e-service-page .hero-introduction > p {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .e-service-page .feature-track {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: #9eb7d0 transparent;
+    cursor: grab;
+    touch-action: pan-x pan-y;
+  }
+
+  .e-service-page .feature-track[data-dragging='true'] {
+    cursor: grabbing;
+    scroll-snap-type: none;
+    user-select: none;
+  }
+
+  .e-service-page .feature-card {
+    flex: 0 0 calc((100% - 48px) / 2);
+    scroll-snap-align: start;
+  }
+
+  .e-service-page .feature-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .e-service-page .feature-navigation button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid #9eb7d080;
+    border-radius: 50%;
+    background: #ffffff80;
+    color: #0d5792;
+    cursor: pointer;
+  }
+
+  .e-service-page .feature-navigation button:hover {
+    background: #fff;
+  }
+}
+
+/* MOBILE */
+
+@media (max-width: 768px) {
+  .e-service-page .service-hero {
+    padding: clamp(380px,99vw,650px) 32px 64px;
+  }
+
+  .e-service-page .hero-background {
+    height: clamp(680px,174vw,1100px);
+  }
+
+  .e-service-page .hero-background-image {
+    object-position: 60% top;
+  }
+
+  .e-service-page .service-page-title {
+    top: 154px;
+    left: 20px;
+    font-size: 28px;
+  }
+
+  .e-service-page .hero-introduction {
+    top: -16px;
+  }
+
+  .e-service-page .signal-heading {
+    font-size: clamp(28px,7.8vw,42px);
+  }
+
+  .e-service-page .hero-introduction > p {
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.07;
+  }
+
+  .e-service-page .feature-track {
+    margin: 40px -32px 0;
+    padding: 0 32px 4px;
+    gap: 24px;
+    scrollbar-width: none;
+    scroll-padding-inline: 32px;
+  }
+
+  .e-service-page .feature-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .e-service-page .feature-card {
+    flex: 0 0 72vw;
+    min-height: 233px;
+    padding: 28px;
+  }
+
+  .e-service-page .request-section {
+    padding: 0 20px 64px;
+  }
+
+  .e-service-page .request-tabs {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .e-service-page .request-tabs button {
+    padding: 16px 4px;
+  }
+
+  .e-service-page .form-row.two,
+  .e-service-page .form-row.three {
+    grid-template-columns: 1fr;
+  }
+
+  .e-service-page .service-control > input,
+  .e-service-page .service-control > textarea {
+    font-size: 13px;
+  }
+
+  .e-service-page .service-control > textarea {
+    height: 105px;
+  }
+
+  .e-service-page .form-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 26px;
+    margin-top: 4px;
+  }
+
+  .e-service-page .form-footer > p {
+    font-size: 12px;
+  }
+
+  .e-service-page .send-button {
+    align-self: flex-end;
+    min-height: 44px;
+  }
+
+  .e-service-page .service-closing {
+    padding: 0 20px 80px;
+  }
+
+  .e-service-page .uncompromising-performance {
+    --glass-top: clamp(78px,22vw,150px);
+    padding: 64px 0 88px;
+  }
+
+  .e-service-page .uncompromising-stage {
+    height: 300px;
+  }
+
+  .e-service-page .uncompromising-stage h2 {
+    font-size: clamp(38px,12.5vw,80px) !important;
+    line-height: 1.07 !important;
+  }
+
+  .e-service-page .uncompromising-glass {
+    width: 60%;
+    max-width: 300px;
+    padding: 22px 16px;
+  }
+
+  .e-service-page .uncompromising-glass p {
+    font-size: 16px !important;
+    line-height: 1 !important;
+  }
+
+  .e-service-page .uncompromising-glow {
+    top: var(--glass-top);
+    height: 240px;
+    width: 90%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .e-service-page .send-label,
+  .e-service-page .send-orb,
+  .e-service-page .send-orb svg {
+    transition: none;
+  }
+}
+`;

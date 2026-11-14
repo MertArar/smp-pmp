@@ -988,7 +988,6 @@ export default function AboutUsPage() {
         <div className="pointer-events-none relative mx-auto mt-8 -mb-20 h-[230px] w-full overflow-hidden min-[768px]:-mb-[120px] min-[768px]:h-[380px] min-[1200px]:-mb-[calc(275*var(--about-unit))] min-[1200px]:h-[calc(590*var(--about-unit))] min-[1200px]:w-[calc(952*var(--about-unit))]">
           <AboutVideo
             src={cultureVideo}
-            preload="auto"
             style={{
               WebkitMaskImage: cultureVideoMask,
               maskImage: cultureVideoMask,
