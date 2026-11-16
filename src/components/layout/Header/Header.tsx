@@ -39,28 +39,130 @@ export const HEADER_DEFAULT_TEXT_COLORS: HeaderTextColors = {
 export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
   // White / basic
   "/": { variant: "white", textColors: { contactUs: "#F7F7F7" } },
-  "/history": { variant: "white" },
-  "/global": { variant: "white" },
-  "/contact": { variant: "white" },
-  "/im-pump-technology": { variant: "white" },
-  "/e-mission": { variant: "white" },
-  "/e-service": { variant: "white", textColors: { pumpSelection: "#F7F7F7" } },
+  "/history": { variant: "white", textColors: { contactUs: "#F7F7F7" } },
+  "/global": { variant: "white", textColors: { contactUs: "#F7F7F7" } },
+  "/contact": {
+    variant: "white",
+    textColors: {
+      pumpSelection: "#F7F7F7",
+      contactUs: "#F7F7F7",
+    },
+  },
+  "/im-pump-technology": {
+    variant: "white",
+    textColors: { contactUs: "#F7F7F7" },
+  },
+  "/e-mission": {
+    variant: "white",
+    textColors: { pumpSelection: "#27272A" },
+  },
+  "/e-service": {
+    variant: "white",
+    textColors: {
+      pumpSelection: "#9EB7D0",
+      contactUs: "#9EB7D0",
+    },
+  },
   // Blue
-  "/solutions-category": { variant: "blue" },
-  "/solutions-detail": { variant: "blue" },
-  "/quality": { variant: "blue" },
-  "/news-detail": { variant: "blue" },
-  "/news": { variant: "blue" },
-  "/sustainability": { variant: "blue" },
-  "/blog": { variant: "blue" },
-  "/blog-detail": { variant: "blue" },
-  "/faq": { variant: "blue" },
-  "/media": { variant: "blue" },
+  "/solutions-category": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/solutions-detail": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/quality": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/news-detail": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/news": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/sustainability": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/blog": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/blog-detail": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/faq": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/media": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
   "/media-catalog": { variant: "blue" },
-  "/career": { variant: "blue" },
-  "/all-products": { variant: "blue" },
-  "/pump-series": { variant: "blue" },
-  "/product-detail": { variant: "blue" },
+  "/career": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/all-products": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/pump-series": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
+  "/product-detail": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
   // Gray uses the complete static Sempa logo.
   "/about-us": {
     variant: "gray",
@@ -72,7 +174,7 @@ export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
   "/green-pump": {
     variant: "green",
     textColors: {
-      pumpSelection: "#F7F7F7",
+      pumpSelection: "#27272A",
       contactUs: "#27272A",
       menu: "#0D5792",
       language: "#27272A",
@@ -80,7 +182,10 @@ export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
     languageAccent: "green",
   },
   // Red
-  "/foundry": { variant: "red" },
+  "/foundry": {
+    variant: "red",
+    textColors: { contactUs: "#F7F7F7" },
+  },
 };
 export const HEADER_DEFAULT_OPTIONS = {
   variant: "white",
@@ -506,9 +611,59 @@ export default function Header(options: HeaderOptions = {}) {
     };
   }, []);
   const isHomePage = pathname === "/";
+  const isCatalogStylePage =
+    pathname === "/all-products" ||
+    pathname.startsWith("/all-products/") ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
+    pathname === "/blog-detail" ||
+    pathname.startsWith("/blog-detail/") ||
+    pathname === "/career" ||
+    pathname.startsWith("/career/") ||
+    pathname === "/faq" ||
+    pathname.startsWith("/faq/") ||
+    pathname === "/media" ||
+    pathname.startsWith("/media/") ||
+    pathname === "/news" ||
+    pathname.startsWith("/news/") ||
+    pathname === "/news-detail" ||
+    pathname.startsWith("/news-detail/") ||
+    pathname === "/product-detail" ||
+    pathname.startsWith("/product-detail/") ||
+    pathname === "/pump-series" ||
+    pathname.startsWith("/pump-series/") ||
+    pathname === "/quality" ||
+    pathname.startsWith("/quality/") ||
+    pathname === "/solutions-category" ||
+    pathname.startsWith("/solutions-category/") ||
+    pathname === "/solutions-detail" ||
+    pathname.startsWith("/solutions-detail/") ||
+    pathname === "/sustainability" ||
+    pathname.startsWith("/sustainability/");
+
   const isAboutUsPage =
     pathname === "/about-us" || pathname.startsWith("/about-us/");
   const useMatchingButtonStyles = isHomePage || isAboutUsPage;
+  const isContactPage =
+    pathname === "/contact" || pathname.startsWith("/contact/");
+  const isEmissionPage =
+    pathname === "/e-mission" || pathname.startsWith("/e-mission/");
+  const isEServicePage =
+    pathname === "/e-service" || pathname.startsWith("/e-service/");
+  const isFoundryPage =
+    pathname === "/foundry" || pathname.startsWith("/foundry/");
+  const isGreenPumpPage =
+    pathname === "/green-pump" || pathname.startsWith("/green-pump/");
+  const isGlobalPage =
+    pathname === "/global" || pathname.startsWith("/global/");
+  const isHistoryPage =
+    pathname === "/history" || pathname.startsWith("/history/");
+  const isImPumpPage =
+    pathname === "/im-pump-technology" ||
+    pathname.startsWith("/im-pump-technology/");
+  const contactMatchesSelection =
+    isFoundryPage || isGlobalPage || isHistoryPage || isImPumpPage;
+  const useMatchingActionStyles = useMatchingButtonStyles || isContactPage;
   const overlaysHero =
     isHomePage ||
     pathname === "/contact" ||
@@ -587,12 +742,31 @@ export default function Header(options: HeaderOptions = {}) {
     setSelectedLanguage(language);
     setLanguageOpen(false);
   };
+  // Foundry, Global, History and IM Pump Technology share the Pump Selection appearance with Contact Us.
+  const selectionButtonClass = `group relative flex h-[36px] w-[162px] items-center overflow-hidden rounded-[16px] ${isCatalogStylePage ? "border-[0.25px]" : "border"} transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(180*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
+    isEmissionPage
+      ? "border-[var(--header-border)] bg-transparent shadow-none backdrop-blur-none hover:border-white hover:bg-[#F7F7F7]"
+      : isCatalogStylePage
+        ? "border-[#9EB7D0] bg-transparent shadow-none hover:border-[#9EB7D0] hover:bg-[#F7F7F7]"
+        : "border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] hover:border-white hover:bg-white"
+  }`;
+  const selectionHoverTextClass =
+    useMatchingActionStyles ||
+    isCatalogStylePage ||
+    isFoundryPage ||
+    isHistoryPage ||
+    isImPumpPage
+      ? "group-hover:text-[#27272A]"
+      : "group-hover:text-[#0D5792]";
   return (
     <>
       <header
         ref={headerRef}
         data-header-variant={appearance.variant}
         data-header-im-pump={appearance.showImPumpTechnology}
+        data-header-emission={isEmissionPage ? "true" : undefined}
+        data-header-e-service={isEServicePage ? "true" : undefined}
+        data-header-green-pump={isGreenPumpPage ? "true" : undefined}
         style={{
           ...theme.tokens,
           ...(appearance.languageAccent === "green"
@@ -675,14 +849,16 @@ export default function Header(options: HeaderOptions = {}) {
               href="/pump-series"
               data-header-action="selection"
               data-header-blast-control={isHomePage ? "selection" : undefined}
-              className="group relative flex h-[36px] w-[162px] items-center overflow-hidden rounded-[16px] border border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white hover:bg-white shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(180*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))]"
+              className={selectionButtonClass}
             >
               <span
-                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-selection-text)] ${useMatchingButtonStyles ? "group-hover:text-[#27272A]" : "group-hover:text-[#0D5792]"} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
+                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-selection-text)] ${selectionHoverTextClass} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
               >
                 Pump Selection
               </span>
-              <span className="absolute left-[calc(100%-32px)] top-1/2 z-[3] flex h-[26px] w-[26px] -translate-y-1/2 items-center justify-center rounded-full [background:var(--header-orb)] shadow-[var(--header-orb-shadow)] transition-[left] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:left-[5px] min-[1024px]:h-[calc(28*var(--header-unit))] min-[1024px]:w-[calc(28*var(--header-unit))] min-[1024px]:left-[calc(100%-34*var(--header-unit))] min-[1024px]:group-hover:left-[calc(5*var(--header-unit))]">
+              <span
+                className={`absolute left-[calc(100%-32px)] top-1/2 z-[3] flex h-[26px] w-[26px] -translate-y-1/2 items-center justify-center rounded-full [background:var(--header-orb)] transition-[left] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:left-[5px] min-[1024px]:h-[calc(28*var(--header-unit))] min-[1024px]:w-[calc(28*var(--header-unit))] min-[1024px]:left-[calc(100%-34*var(--header-unit))] min-[1024px]:group-hover:left-[calc(5*var(--header-unit))] ${isCatalogStylePage ? "shadow-none" : "shadow-[var(--header-orb-shadow)]"}`}
+              >
                 <FiArrowUpRight
                   size={21}
                   strokeWidth={3.2}
@@ -695,14 +871,20 @@ export default function Header(options: HeaderOptions = {}) {
               href="/contact"
               data-header-action="contact"
               data-header-blast-control={isHomePage ? "contact" : undefined}
-              className={`group relative flex h-[36px] w-[158px] items-center overflow-hidden rounded-[16px] border shadow-[0_4px_12px_rgba(26,80,126,0.06)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(176*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
-                useMatchingButtonStyles
-                  ? "border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white hover:bg-white"
-                  : "border-[#c8d7e5] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)]"
-              }`}
+              className={
+                contactMatchesSelection
+                  ? selectionButtonClass
+                  : `group relative flex h-[36px] w-[158px] items-center overflow-hidden rounded-[16px] ${isCatalogStylePage ? "border-[0.25px]" : "border"} shadow-[0_4px_12px_rgba(26,80,126,0.06)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(176*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
+                      useMatchingActionStyles
+                        ? "border-[var(--header-border)] [background:var(--header-selection-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-white hover:bg-white"
+                        : isCatalogStylePage
+                          ? "border-[#9EB7D0] bg-transparent transition-[background-color,border-color,box-shadow] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-[#9EB7D0] hover:bg-[#F7F7F7]"
+                          : "border-[#c8d7e5] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)]"
+                    }`
+              }
             >
               <span
-                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-contact-text)] ${useMatchingButtonStyles ? "group-hover:text-[#27272A]" : ""} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
+                className={`relative z-[2] ml-[13px] whitespace-nowrap text-[var(--header-contact-text)] ${contactMatchesSelection ? selectionHoverTextClass : useMatchingActionStyles ? "group-hover:text-[#27272A]" : ""} transition-[transform,color] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[31px] [font-family:var(--font-sf-pro)]! [font-weight:410]! [font-size:13px]! [line-height:1.07]! [letter-spacing:-0.04em] [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto] min-[1024px]:ml-[calc(14*var(--header-unit))] min-[1024px]:group-hover:translate-x-[calc(34*var(--header-unit))] min-[1024px]:[font-size:calc(14*var(--header-unit))]!`}
               >
                 Contact Us
               </span>
@@ -721,10 +903,14 @@ export default function Header(options: HeaderOptions = {}) {
               data-header-action="menu"
               onClick={openMenu}
               data-header-blast-control={isHomePage ? "menu" : undefined}
-              className={`group/menu flex h-[36px] w-[115px] cursor-pointer items-center justify-center rounded-[16px] border border-[var(--header-border)] [background:var(--header-menu-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] transform-gpu transition-[scale,transform,filter,box-shadow,border-color,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] hover:scale-[1.025] hover:brightness-[1.06] motion-reduce:transition-none hover:shadow-[0_10px_28px_rgba(10,36,65,0.19),inset_0_1px_0_rgba(255,255,255,0.30)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--header-menu-text)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(128*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
-                useMatchingButtonStyles
-                  ? "hover:border-white hover:bg-white"
-                  : ""
+              className={`group/menu flex h-[36px] w-[115px] cursor-pointer items-center justify-center rounded-[16px] border border-[var(--header-border)] [background:var(--header-menu-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] transform-gpu transition-[scale,transform,filter,box-shadow,border-color,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] hover:scale-[1.025] ${isGlobalPage || isHistoryPage || isImPumpPage ? "" : "hover:brightness-[1.06]"} motion-reduce:transition-none hover:shadow-[0_10px_28px_rgba(10,36,65,0.19),inset_0_1px_0_rgba(255,255,255,0.30)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--header-menu-text)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(128*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
+                isGlobalPage
+                  ? "hover:border-white hover:[background:#F7F7F7]"
+                  : isHistoryPage || isImPumpPage
+                    ? "hover:[background:#F7F7F7]"
+                    : useMatchingButtonStyles
+                      ? "hover:border-white hover:bg-white"
+                      : ""
               }`}
             >
               <span
@@ -816,6 +1002,119 @@ export default function Header(options: HeaderOptions = {}) {
         </div>
       </header>
       <style jsx global>{`
+        /* Green Pump: fully transparent action buttons with light hover. */
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="selection"],
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="contact"] {
+          background: transparent;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          transition:
+            background-color 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 650ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="selection"]:hover,
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="contact"]:hover {
+          background: #f7f7f7;
+        }
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="selection"]:hover
+          > span:first-child,
+        .site-header[data-header-green-pump="true"]
+          [data-header-action="contact"]:hover
+          > span:first-child {
+          color: #27272a;
+        }
+        /* E-Mission: consistent button borders, including hover states. */
+        .site-header[data-header-emission="true"]
+          [data-header-action="selection"],
+        .site-header[data-header-emission="true"]
+          [data-header-action="contact"],
+        .site-header[data-header-emission="true"] [data-header-action="menu"] {
+          border-color: #9eb7d0;
+        }
+        /* E-Mission: transparent action buttons with solid light hover colors. */
+        .site-header[data-header-emission="true"]
+          [data-header-action="selection"],
+        .site-header[data-header-emission="true"]
+          [data-header-action="contact"] {
+          background: transparent;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
+        .site-header[data-header-emission="true"]
+          [data-header-action="selection"]:hover,
+        .site-header[data-header-emission="true"]
+          [data-header-action="contact"]:hover {
+          background: #f7f7f7;
+        }
+        .site-header[data-header-emission="true"]
+          [data-header-action="selection"]:hover
+          > span:first-child,
+        .site-header[data-header-emission="true"]
+          [data-header-action="contact"]:hover
+          > span:first-child {
+          color: #27272a;
+        }
+        .site-header[data-header-emission="true"]
+          [data-header-action="selection"]
+          > span:nth-child(2),
+        .site-header[data-header-emission="true"]
+          [data-header-action="contact"]
+          > span:nth-child(2) {
+          box-shadow: none;
+        }
+        .site-header[data-header-emission="true"]
+          [data-header-action="menu"]:hover {
+          background: #f7f7f7;
+        }
+        /* E-Service: transparent normal state, light hover and muted borders. */
+        .site-header[data-header-e-service="true"]
+          [data-header-action="selection"],
+        .site-header[data-header-e-service="true"]
+          [data-header-action="contact"],
+        .site-header[data-header-e-service="true"] [data-header-action="menu"] {
+          border-color: #9eb7d0;
+        }
+        .site-header[data-header-e-service="true"]
+          [data-header-action="selection"],
+        .site-header[data-header-e-service="true"]
+          [data-header-action="contact"] {
+          background: transparent;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
+        .site-header[data-header-e-service="true"]
+          [data-header-action="selection"]
+          > span:nth-child(2),
+        .site-header[data-header-e-service="true"]
+          [data-header-action="contact"]
+          > span:nth-child(2) {
+          box-shadow: none;
+        }
+        .site-header[data-header-e-service="true"]
+          [data-header-action="selection"]:hover,
+        .site-header[data-header-e-service="true"]
+          [data-header-action="contact"]:hover,
+        .site-header[data-header-e-service="true"]
+          [data-header-action="menu"]:hover {
+          background: #f7f7f7;
+        }
+        .site-header[data-header-e-service="true"]
+          [data-header-action="selection"]:hover
+          > span:first-child,
+        .site-header[data-header-e-service="true"]
+          [data-header-action="contact"]:hover
+          > span:first-child {
+          color: #27272a;
+        }
         @media (768px <= width < 1200px) {
           .site-header-menu .site-header-menu__panel {
             width: calc(100% - 48px);
