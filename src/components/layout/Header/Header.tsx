@@ -586,6 +586,14 @@ function LanguageFlag({
 export default function Header(options: HeaderOptions = {}) {
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const syncScroll = () => setIsScrolled(window.scrollY > 90);
+    syncScroll();
+    window.addEventListener("scroll", syncScroll, { passive: true });
+    return () => window.removeEventListener("scroll", syncScroll);
+  }, [pathname]);
   useLayoutEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -763,6 +771,7 @@ export default function Header(options: HeaderOptions = {}) {
       <header
         ref={headerRef}
         data-header-variant={appearance.variant}
+        data-header-scrolled={isScrolled ? "true" : "false"}
         data-header-im-pump={appearance.showImPumpTechnology}
         data-header-emission={isEmissionPage ? "true" : undefined}
         data-header-e-service={isEServicePage ? "true" : undefined}
@@ -781,8 +790,12 @@ export default function Header(options: HeaderOptions = {}) {
           ...themeTokens({
             "--header-selection-text": appearance.textColors.pumpSelection,
             "--header-contact-text": appearance.textColors.contactUs,
-            "--header-menu-text": appearance.textColors.menu,
-            "--header-language-text": appearance.textColors.language,
+            "--header-menu-text": isScrolled
+              ? "#0D5792"
+              : appearance.textColors.menu,
+            "--header-language-text": isScrolled
+              ? "#27272A"
+              : appearance.textColors.language,
           }),
         }}
         className={`
@@ -790,7 +803,7 @@ export default function Header(options: HeaderOptions = {}) {
           z-50
           w-full
           bg-transparent
-          ${overlaysHero ? "absolute left-0 top-0 overflow-x-clip" : "relative"}
+          ${overlaysHero ? "fixed inset-x-0 top-0" : "sticky top-0"}
         `}
       >
         <div className="site-header__inner mx-auto flex w-full max-w-[1200px] min-[1024px]:w-5/6 min-[1024px]:max-w-none items-center justify-between pt-[53px] min-[1024px]:pt-[calc(53*var(--header-unit))]">
@@ -801,27 +814,51 @@ export default function Header(options: HeaderOptions = {}) {
               aria-label="Sempa Home"
               data-hero-scatter={isHomePage ? "logo" : undefined}
             >
-              <span className="site-header__mobile-logo hidden">
-                {appearance.variant === "gray" ? (
-                  <GrayHeaderLogo className="h-auto w-[155px] object-contain" />
-                ) : (
-                  <Image
-                    src={
-                      appearance.variant === "blue"
-                        ? "/header/sempa-blue.png"
-                        : "/header/sempa-white.png"
-                    }
-                    alt="Sempa"
-                    width={155}
-                    height={40}
-                    priority
-                  />
-                )}
+              {/* Mobile and desktop keep the page-specific logo underneath.
+                  On scroll the actual blue PNG fades in over the top. */}
+              <span className="site-header__mobile-logo relative hidden">
+                <span className="site-header__original-logo block">
+                  {appearance.variant === "gray" ? (
+                    <GrayHeaderLogo className="h-auto w-[155px] object-contain" />
+                  ) : (
+                    <Image
+                      src={
+                        appearance.variant === "blue"
+                          ? "/header/sempa-blue.png"
+                          : "/header/sempa-white.png"
+                      }
+                      alt="Sempa"
+                      width={155}
+                      height={40}
+                      priority
+                    />
+                  )}
+                </span>
+                <Image
+                  src="/header/sempa-blue.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={155}
+                  height={40}
+                  priority
+                  className="site-header__scrolled-logo pointer-events-none absolute inset-0 h-auto w-full object-contain"
+                />
               </span>
-              <span className="site-header__desktop-logo">
-                <HeaderLogo
-                  key={appearance.variant}
-                  variant={appearance.variant}
+              <span className="site-header__desktop-logo relative block">
+                <span className="site-header__original-logo block">
+                  <HeaderLogo
+                    key={appearance.variant}
+                    variant={appearance.variant}
+                  />
+                </span>
+                <Image
+                  src="/header/sempa-blue.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={155}
+                  height={40}
+                  priority
+                  className="site-header__scrolled-logo pointer-events-none absolute inset-0 h-full w-full object-contain"
                 />
               </span>
             </Link>
@@ -1002,6 +1039,138 @@ export default function Header(options: HeaderOptions = {}) {
         </div>
       </header>
       <style jsx global>{`
+        /* Premium matte glass appears only after scrolling. */
+        .site-header::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0;
+          /* Soft lower corners, while the top edge remains flush with viewport. */
+          border-radius: 0 0 18px 18px;
+          background: linear-gradient(
+            115deg,
+            rgba(249, 251, 254, 0.79) 0%,
+            rgba(240, 245, 252, 0.75) 52%,
+            rgba(235, 242, 252, 0.78) 100%
+          );
+          border-bottom: 1px solid rgba(255, 255, 255, 0.42);
+          box-shadow:
+            0 12px 32px rgba(18, 39, 67, 0.065),
+            inset 0 1px 0 rgba(255, 255, 255, 0.48);
+          -webkit-backdrop-filter: blur(32px) saturate(125%);
+          backdrop-filter: blur(32px) saturate(125%);
+          transition: opacity 850ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .site-header[data-header-scrolled="true"]::before {
+          opacity: 1;
+        }
+        .site-header .site-header__inner {
+          position: relative;
+          z-index: 1;
+          transition:
+            padding-top 850ms cubic-bezier(0.22, 1, 0.36, 1),
+            padding-bottom 850ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Page variants are untouched until the glass state is active.
+           Transition the actual PNGs instead of swapping src (which snaps). */
+        .site-header .site-header__original-logo,
+        .site-header .site-header__scrolled-logo {
+          transition: opacity 1050ms cubic-bezier(0.22, 1, 0.36, 1);
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }
+        .site-header .site-header__original-logo {
+          opacity: 1;
+        }
+        .site-header .site-header__scrolled-logo {
+          opacity: 0;
+        }
+        .site-header[data-header-scrolled="true"] .site-header__original-logo {
+          opacity: 0;
+        }
+        .site-header[data-header-scrolled="true"] .site-header__scrolled-logo {
+          opacity: 1;
+        }
+
+        /* MENU and language labels follow the scroll state on every route.
+           Their CSS variables are updated above; transition the computed colors. */
+        .site-header [data-header-action="menu"] > span:first-child,
+        .site-header button[aria-label="Change language"] > span:first-child {
+          transition: color 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .site-header [data-header-action="menu"] > span:last-child > span {
+          transition:
+            transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            background-color 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        /* The compact mobile hamburger has a legacy !important icon color.
+           Override it only in the glass state, keeping other pages untouched. */
+        @media (width < 768px) {
+          .site-header.site-header[data-header-scrolled="true"]
+            [data-header-action="menu"]
+            > span:last-child
+            > span {
+            background-color: #0d5792 !important;
+          }
+          .site-header::before {
+            border-radius: 0 0 14px 14px;
+          }
+        }
+
+        /* Color must animate independently from the existing hover movement.
+           The glass state wins over all route-specific and hover text colors. */
+        .site-header [data-header-action="selection"] > span:first-child,
+        .site-header [data-header-action="contact"] > span:first-child {
+          transition-property: transform, color;
+          transition-duration: 650ms, 1000ms;
+          transition-timing-function:
+            cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .site-header[data-header-scrolled="true"]
+          [data-header-action="selection"]
+          > span:first-child,
+        .site-header[data-header-scrolled="true"]
+          [data-header-action="contact"]
+          > span:first-child {
+          color: #27272a !important;
+        }
+
+        /* Two identical PNGs crossfade: the second is tinted #005EFF.
+           This keeps PNG transparency/edges and does not depend on mask-image. */
+        .site-header-menu__slogan-original,
+        .site-header-menu__slogan-blue {
+          transition: opacity 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .site-header-menu__slogan-blue {
+          opacity: 0;
+        }
+        .site-header-menu[data-header-scrolled="true"]
+          .site-header-menu__slogan-original {
+          opacity: 0;
+        }
+        .site-header-menu[data-header-scrolled="true"]
+          .site-header-menu__slogan-blue {
+          opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .site-header::before,
+          .site-header .site-header__inner,
+          .site-header .site-header__original-logo,
+          .site-header .site-header__scrolled-logo,
+          .site-header [data-header-action="selection"] > span:first-child,
+          .site-header [data-header-action="contact"] > span:first-child,
+          .site-header [data-header-action="menu"] > span:first-child,
+          .site-header [data-header-action="menu"] > span:last-child > span,
+          .site-header button[aria-label="Change language"] > span:first-child,
+          .site-header-menu__slogan-original,
+          .site-header-menu__slogan-blue {
+            transition-duration: 0.01ms !important;
+          }
+        }
+
         /* Green Pump: fully transparent action buttons with light hover. */
         .site-header[data-header-green-pump="true"]
           [data-header-action="selection"],
@@ -1355,6 +1524,19 @@ export default function Header(options: HeaderOptions = {}) {
             border-color: #ffffffcc !important;
           }
         }
+        /* Scroll spacing must override the older mobile/tablet padding rules. */
+        .site-header.site-header[data-header-scrolled="true"]
+          .site-header__inner {
+          padding-top: 14px !important;
+          padding-bottom: 14px !important;
+        }
+        @media (width < 768px) {
+          .site-header.site-header[data-header-scrolled="true"]
+            .site-header__inner {
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+          }
+        }
       `}</style>
       {/* MENU OVERLAY */}
       <div
@@ -1362,6 +1544,7 @@ export default function Header(options: HeaderOptions = {}) {
         aria-label="Main navigation"
         aria-modal={menuOpen || undefined}
         inert={!menuOpen}
+        data-header-scrolled={isScrolled && menuOpen ? "true" : "false"}
         className={`site-header-menu fixed inset-0 z-[100] transition-opacity duration-300 ${
           menuOpen
             ? "visible opacity-100"
@@ -1716,7 +1899,23 @@ export default function Header(options: HeaderOptions = {}) {
                     height={80}
                     quality={100}
                     draggable={false}
-                    className="pointer-events-none h-auto w-full select-none"
+                    className="site-header-menu__slogan-original pointer-events-none h-auto w-full select-none"
+                  />
+                  <Image
+                    src="/header/logo-slogan.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={330}
+                    height={80}
+                    quality={100}
+                    draggable={false}
+                    className="site-header-menu__slogan-blue pointer-events-none absolute inset-0 h-auto w-full select-none"
+                    style={{
+                      // Starts from black; calibrated to RGB(0, 94, 255).
+                      // Works on the real PNG pixels, unlike a CSS mask layer.
+                      filter:
+                        "brightness(0) saturate(100%) invert(58.8%) sepia(97.9%) saturate(5141%) hue-rotate(209.5deg) brightness(90.5%) contrast(166.4%)",
+                    }}
                   />
                 </div>
               </div>
