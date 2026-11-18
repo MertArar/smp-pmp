@@ -1,30 +1,69 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";
+
+// ============================================================
+// FOOTER VARIANT
+// ============================================================
+
+type FooterVariant = "default" | "green-pump" | "foundry";
+
+type FooterProps = {
+  variant?: FooterVariant;
+};
+
+const footerAssets = {
+  default: {
+    video: null,
+    image: "/footer/footer1.png",
+    socialPrefix: "",
+  },
+
+  "green-pump": {
+    video: "/footer/green-footer22.mp4",
+    image: null,
+    socialPrefix: "white-",
+  },
+
+  foundry: {
+    video: "/footer/foundry-footer-vid.mp4",
+    image: null,
+    socialPrefix: "red-",
+  },
+} as const;
+
+// ============================================================
+// SOCIAL LINKS
+// ============================================================
 
 const socialLinks = [
   {
     name: "Facebook",
-    src: "/footer/facebook.webp",
+    file: "facebook",
     href: "#",
   },
   {
     name: "Instagram",
-    src: "/footer/instagram.webp",
+    file: "instagram",
     href: "#",
   },
   {
     name: "LinkedIn",
-    src: "/footer/linkedin.webp",
+    file: "linkedin",
     href: "#",
   },
   {
     name: "YouTube",
-    src: "/footer/youtube.webp",
+    file: "youtube",
     href: "#",
   },
 ];
+
+// ============================================================
+// LEGAL LINKS
+// ============================================================
 
 const legalLinks = [
   {
@@ -40,6 +79,10 @@ const legalLinks = [
     href: "#",
   },
 ];
+
+// ============================================================
+// FOOTER NAVIGATION LINKS
+// ============================================================
 
 const corporateLinks = [
   "About Us",
@@ -101,6 +144,10 @@ const supportLinks = [
   "Agriculture",
 ];
 
+// ============================================================
+// TYPOGRAPHY
+// ============================================================
+
 const sfProRegular: CSSProperties = {
   fontFamily: "var(--font-sf-pro), Arial, sans-serif",
   fontWeight: 410,
@@ -120,6 +167,10 @@ const footerNavLinkStyle: CSSProperties = {
   fontVariationSettings: '"wght" 410, "wdth" 132, "opsz" 12',
   color: "#9EB7D0",
 };
+
+// ============================================================
+// FOOTER NAV COLUMN
+// ============================================================
 
 type FooterNavColumnProps = {
   title: string;
@@ -185,7 +236,29 @@ function FooterNavColumn({ title, links, className }: FooterNavColumnProps) {
   );
 }
 
-export default function Footer() {
+// ============================================================
+// FOOTER COMPONENT
+// ============================================================
+
+export default function Footer({ variant }: FooterProps) {
+  const pathname = usePathname() ?? "";
+
+  // ----------------------------------------------------------
+  // ROUTE DETECTION
+  // ----------------------------------------------------------
+
+  const pathSegments = pathname.split("/");
+
+  const detectedVariant: FooterVariant = pathSegments.includes("green-pump")
+    ? "green-pump"
+    : pathSegments.includes("foundry")
+      ? "foundry"
+      : "default";
+
+  const activeVariant = variant ?? detectedVariant;
+
+  const assets = footerAssets[activeVariant];
+
   return (
     <footer
       className="
@@ -199,28 +272,77 @@ export default function Footer() {
         min-[1600px]:h-[1080px]
       "
     >
-      {/* =====================================
-          BACKGROUND IMAGE
-          footer1.png — 1672x941
-      ===================================== */}
+      {/* =====================================================
+          BACKGROUND VIDEO / IMAGE
+
+          GREEN PUMP:
+          green-footer-pingpong.mp4
+
+          FOUNDRY:
+          foundry-footer-pingpong.mp4
+
+          DEFAULT:
+          footer1.png
+
+          PING-PONG LOOP:
+          Videolar ileri + geri birleştirildiği için
+          native loop ile sürekli tekrar eder.
+      ===================================================== */}
 
       <div
         aria-hidden="true"
         className="
           pointer-events-none
           absolute inset-0 z-0
-          bg-[url('/footer/footer1.png')]
-          bg-cover bg-center bg-no-repeat
+          overflow-hidden
         "
-      />
+      >
+        {assets.video ? (
+          <video
+            key={assets.video}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            className={`
+              absolute inset-0
+              h-full w-full
+              object-cover
+              object-center
 
-      {/* =====================================
+              ${
+                activeVariant === "green-pump"
+                  ? "xl:scale-[1.10] xl:-translate-y-[4%]"
+                  : ""
+              }
+            `}
+          >
+            <source src={assets.video} type="video/mp4" />
+          </video>
+        ) : (
+          <div
+            className="
+              absolute inset-0
+              bg-cover
+              bg-center
+              bg-no-repeat
+            "
+            style={{
+              backgroundImage: `url('${assets.image}')`,
+            }}
+          />
+        )}
+      </div>
+
+      {/* =====================================================
           FIGMA BLUR
-          Kullanıcının belirlediği son değer:
-          top-[62.4%]
+
+          Top: 62.4%
           Blur: 15px
           Background: #000000 / 20%
-      ===================================== */}
+      ===================================================== */}
 
       <div
         aria-hidden="true"
@@ -233,25 +355,28 @@ export default function Footer() {
         "
       />
 
-      {/* GREEN PUMP SVG */}
+      {/* =====================================================
+          GREEN PUMP SVG
+      ===================================================== */}
+
       <div
         className="
-    pointer-events-none
-    absolute z-30
+          pointer-events-none
+          absolute z-30
 
-    right-[24px]
-    top-[-75px]
-    w-[100px]
+          right-[24px]
+          top-[-75px]
+          w-[100px]
 
-    sm:right-[60px]
-    sm:w-[119px]
-    sm:top-[-108px]
+          sm:right-[60px]
+          sm:w-[119px]
+          sm:top-[-108px]
 
-    xl:right-auto
-    xl:left-[83.4028%]
-    xl:top-[-11%]
-    xl:w-[8.2639%]
-  "
+          xl:right-auto
+          xl:left-[83.4028%]
+          xl:top-[-11%]
+          xl:w-[8.2639%]
+        "
         style={{
           aspectRatio: "135 / 189",
         }}
@@ -266,15 +391,9 @@ export default function Footer() {
         />
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           SOL ÜST BAŞLIK
-
-          Figma:
-          Width: 648px
-          Height: 105px
-          Left: 117px
-          Top: 63px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
@@ -323,14 +442,14 @@ export default function Footer() {
         </h2>
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           SEMPA LOGOSU
-          Son büyütülmüş hali korunuyor.
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           left-[24px]
           top-[227px]
           h-[72px]
@@ -352,19 +471,14 @@ export default function Footer() {
         />
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           ADRES VE E-POSTA
-
-          Figma:
-          Width: 289px
-          Height: 52px
-          Left: 120px
-          Top: 457px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           left-[24px]
           top-[390px]
           w-[calc(100%-48px)]
@@ -418,19 +532,14 @@ export default function Footer() {
         </address>
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           TELEFON NUMARASI
-
-          Figma:
-          Width: 146px
-          Height: 42px
-          Left: 120px
-          Top: 526px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           left-[24px]
           top-[455px]
           w-[180px]
@@ -467,19 +576,14 @@ export default function Footer() {
         </a>
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           I'M PUMP TECHNOLOGY
-
-          Figma:
-          Width: 227px
-          Height: 44px
-          Left: 1093px
-          Top: 587px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           right-6
           top-[57%]
           w-[180px]
@@ -505,19 +609,14 @@ export default function Footer() {
         />
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           TURKEY PUMP INDUSTRY
-
-          Figma:
-          Width: 146.46px
-          Height: 74.37px
-          Left: 1172px
-          Top: 690px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           right-[24px]
           top-[70%]
           w-[135px]
@@ -543,13 +642,9 @@ export default function Footer() {
         />
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           FOOTER NAVIGATION
-
-          Ortak üst hizalama:
-          Figma Top: 670px
-          CSS: top-[67.8138%]
-      ===================================== */}
+      ===================================================== */}
 
       <FooterNavColumn
         title="Corporate"
@@ -615,21 +710,29 @@ export default function Footer() {
         "
       />
 
-      {/* =====================================
-          SOSYAL MEDYA
+      {/* =====================================================
+          SOCIAL MEDIA
 
-          Figma:
-          Width: 112px
-          Height: 26px
-          Left: 1027px
-          Top: 884px
-      ===================================== */}
+          GREEN PUMP:
+          white-facebook.webp
+          white-instagram.webp
+          white-linkedin.webp
+          white-youtube.webp
+
+          FOUNDRY:
+          red-facebook.webp
+          red-instagram.webp
+          red-linkedin.webp
+          red-youtube.webp
+      ===================================================== */}
 
       <div
         className="
           absolute z-20
+
           right-[24px]
           bottom-[75px]
+
           flex h-[26px] w-[112px]
           items-center
           justify-between
@@ -642,53 +745,52 @@ export default function Footer() {
           xl:w-[7.7778%]
         "
       >
-        {socialLinks.map((social) => (
-          <a
-            key={social.name}
-            href={social.href}
-            aria-label={social.name}
-            className="
-              group relative block
-              h-full
-              w-[22.2143%]
-              shrink-0
-              cursor-pointer
-              transition-transform
-              duration-300 ease-out
-              hover:-translate-y-[3px]
-            "
-          >
-            <Image
-              src={social.src}
-              alt={social.name}
-              fill
-              unoptimized
-              sizes="(min-width: 1280px) 2vw, 25px"
+        {socialLinks.map((social) => {
+          const iconSrc = `/footer/${assets.socialPrefix}${social.file}.webp`;
+
+          return (
+            <a
+              key={social.name}
+              href={social.href}
+              aria-label={social.name}
               className="
-                object-contain
-                transition-opacity duration-300
-                group-hover:opacity-75
+                group relative block
+                h-full
+                w-[22.2143%]
+                shrink-0
+                cursor-pointer
+
+                transition-transform
+                duration-300 ease-out
+                hover:-translate-y-[3px]
               "
-            />
-          </a>
-        ))}
+            >
+              <Image
+                src={iconSrc}
+                alt={social.name}
+                fill
+                unoptimized
+                sizes="(min-width: 1280px) 2vw, 25px"
+                className="
+                  object-contain
+                  transition-opacity
+                  duration-300
+                  group-hover:opacity-75
+                "
+              />
+            </a>
+          );
+        })}
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           YASAL BAĞLANTILAR
-
-          Figma:
-          Width: 531px
-          Height: 17px
-          Left: 120px
-          Top: 937px
-
-          İnceltilmiş hali korunuyor.
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-20
+
           left-[24px]
           bottom-[65px]
           w-[calc(100%-48px)]
@@ -762,19 +864,14 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* =====================================
+      {/* =====================================================
           COPYRIGHT
-
-          Figma:
-          Width: 293px
-          Height: 13px
-          Left: 1021px
-          Top: 937px
-      ===================================== */}
+      ===================================================== */}
 
       <div
         className="
           absolute z-10
+
           right-[24px]
           bottom-[25px]
           w-auto

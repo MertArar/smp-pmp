@@ -149,6 +149,13 @@ export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
       contactUs: "#27272A",
     },
   },
+  "/production": {
+    variant: "blue",
+    textColors: {
+      pumpSelection: "#27272A",
+      contactUs: "#27272A",
+    },
+  },
   "/pump-series": {
     variant: "blue",
     textColors: {
