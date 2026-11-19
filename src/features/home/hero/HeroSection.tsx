@@ -16,6 +16,7 @@ import { gsap, useGSAP } from "@/lib/gsap";
 import { FiArrowRight } from "react-icons/fi";
 
 import { useHeroScatter } from "./useHeroScatter";
+import HomeMediaVideo from "../HomeMediaVideo";
 
 type MutableRef<T> = {
   current: T;
@@ -31,6 +32,8 @@ type PointerPosition = {
 
 type HeroSectionProps = {
   blastRef: MutableRef<boolean>;
+
+  explosionProgressRef: MutableRef<number>;
 
   pointerRef: MutableRef<PointerPosition>;
 
@@ -348,6 +351,8 @@ function AnimatedHeroLink({ label, href }: AnimatedHeroLinkProps) {
 export function HeroSection({
   blastRef,
 
+  explosionProgressRef,
+
   pointerRef,
 
   canvasShakeRef,
@@ -355,7 +360,11 @@ export function HeroSection({
   const compact = useHomeCompact();
   const sectionRef = useRef<HTMLElement | null>(null);
 
-  const scatterRef = useHeroScatter(sectionRef, blastRef);
+  const scatterRef = useHeroScatter(
+    sectionRef,
+    blastRef,
+    explosionProgressRef,
+  );
 
   const shakeRef = useRef<HTMLDivElement | null>(null);
 
@@ -638,41 +647,9 @@ export function HeroSection({
   );
 
   const handleMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
-    const product = productHoverRef.current;
-
-    if (!product) {
-      return;
-    }
-
-    const productRect = product.getBoundingClientRect();
-
-    const isInsideProduct =
-      event.clientX >= productRect.left &&
-      event.clientX <= productRect.right &&
-      event.clientY >= productRect.top &&
-      event.clientY <= productRect.bottom;
-
-    if (!isInsideProduct) {
-      pointerRef.current.x = 0;
-
-      pointerRef.current.y = 0;
-
-      pointerRef.current.active = false;
-
-      return;
-    }
-
+    pointerRef.current.x = Math.max(-0.5, Math.min(0.5, event.clientX / window.innerWidth - 0.5));
+    pointerRef.current.y = Math.max(-0.5, Math.min(0.5, event.clientY / window.innerHeight - 0.5));
     pointerRef.current.active = true;
-
-    const productX =
-      (event.clientX - productRect.left) / productRect.width - 0.5;
-
-    const productY =
-      (event.clientY - productRect.top) / productRect.height - 0.5;
-
-    pointerRef.current.x = productX;
-
-    pointerRef.current.y = productY;
   };
 
   const handleMouseLeave = () => {
@@ -887,7 +864,7 @@ export function HeroSection({
     >
       {/* Hero'ya özel arka plan videosu */}
 
-      <video
+      <HomeMediaVideo
         autoPlay
         muted
         loop
@@ -900,7 +877,7 @@ export function HeroSection({
         className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-[center_30%]"
       >
         <source src="/home/hero/hero-vid.mp4" type="video/mp4" />
-      </video>
+      </HomeMediaVideo>
 
       {/* The last part of the Hero blends toward the shared seam color. */}
 

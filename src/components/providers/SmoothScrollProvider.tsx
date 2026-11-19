@@ -19,7 +19,11 @@ export default function SmoothScrollProvider({ children }: { children: ReactNode
     const wheelTarget = document.createElement("div");
     const lenis = new Lenis({
       eventsTarget: wheelTarget,
-      lerp: 0.085,
+      // Trionn-style response: preserve the wheel distance, but let a gesture
+      // settle over roughly 1.2 seconds instead of snapping through it with a
+      // high per-frame lerp. This curve was matched against the live site.
+      duration: 2.55,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1,

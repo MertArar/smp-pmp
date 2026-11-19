@@ -893,6 +893,7 @@ export default function Header(options: HeaderOptions = {}) {
               href="/pump-series"
               data-header-action="selection"
               data-header-blast-control={isHomePage ? "selection" : undefined}
+              data-hero-scatter={isHomePage ? "header" : undefined}
               className={selectionButtonClass}
             >
               <span
@@ -915,6 +916,7 @@ export default function Header(options: HeaderOptions = {}) {
               href="/contact"
               data-header-action="contact"
               data-header-blast-control={isHomePage ? "contact" : undefined}
+              data-hero-scatter={isHomePage ? "header" : undefined}
               className={
                 contactMatchesSelection
                   ? selectionButtonClass
@@ -947,6 +949,7 @@ export default function Header(options: HeaderOptions = {}) {
               data-header-action="menu"
               onClick={openMenu}
               data-header-blast-control={isHomePage ? "menu" : undefined}
+              data-hero-scatter={isHomePage ? "header" : undefined}
               className={`group/menu flex h-[36px] w-[115px] cursor-pointer items-center justify-center rounded-[16px] border border-[var(--header-border)] [background:var(--header-menu-bg)] backdrop-blur-[18px] backdrop-saturate-[160%] shadow-[0_8px_28px_rgba(10,36,65,0.12),inset_0_1px_0_rgba(255,255,255,0.25)] transform-gpu transition-[scale,transform,filter,box-shadow,border-color,background-color] ${useMatchingButtonStyles ? "duration-[450ms]" : "duration-[1100ms]"} ease-[cubic-bezier(0.45,0,0.55,1)] hover:scale-[1.025] ${isGlobalPage || isHistoryPage || isImPumpPage ? "" : "hover:brightness-[1.06]"} motion-reduce:transition-none hover:shadow-[0_10px_28px_rgba(10,36,65,0.19),inset_0_1px_0_rgba(255,255,255,0.30)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--header-menu-text)] min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(128*var(--header-unit))] min-[1024px]:rounded-[calc(17*var(--header-unit))] ${
                 isGlobalPage
                   ? "hover:border-white hover:[background:#F7F7F7]"
@@ -981,6 +984,7 @@ export default function Header(options: HeaderOptions = {}) {
             <div
               ref={languageRef}
               data-header-blast-control={isHomePage ? "language" : undefined}
+              data-hero-scatter={isHomePage ? "header" : undefined}
               className="relative h-[36px] w-[94px] shrink-0 min-[1024px]:h-[calc(39*var(--header-unit))] min-[1024px]:w-[calc(104*var(--header-unit))]"
             >
               {!languageOpen ? (
@@ -1047,6 +1051,17 @@ export default function Header(options: HeaderOptions = {}) {
       </header>
       <style jsx global>{`
         /* Premium matte glass appears only after scrolling. */
+        [data-home-hero][data-hero-blasting] [data-hero-scatter],
+        [data-home-hero][data-hero-blasting] [data-hero-scatter] > div {
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
+        .site-header.site-header[data-hero-blasting]::before { opacity: 0; }
+        .site-header[data-hero-blasting] [data-hero-scatter] {
+          transition-property: background-color, border-color, box-shadow;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
         .site-header::before {
           content: "";
           position: absolute;

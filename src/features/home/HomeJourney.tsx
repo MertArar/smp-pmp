@@ -32,6 +32,7 @@ export default function HomeJourney() {
   );
 
   const blastRef = useRef(false);
+  const explosionProgressRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0, active: false });
   const scrollExplosionRef = useRef(0);
   const journeyProgressRef = useRef(0);
@@ -107,19 +108,19 @@ export default function HomeJourney() {
             let explosion = 0;
 
             // Ilk scroll pikselinden itibaren acilma baslar; %10 bekleme yok.
-            if (progress > 0 && progress < 0.17) {
-              explosion = Math.pow(rangeProgress(progress, 0, 0.17), 0.65);
-            } else if (progress >= 0.17 && progress < 0.48) {
+            if (progress > 0 && progress < 0.32) {
+              explosion = Math.pow(rangeProgress(progress, 0, 0.32), 1.1);
+            } else if (progress >= 0.32 && progress < 0.56) {
               explosion = 1;
-            } else if (progress >= 0.48 && progress < 0.72) {
-              explosion = 1 - smoothstep(rangeProgress(progress, 0.48, 0.72));
+            } else if (progress >= 0.56 && progress < 0.8) {
+              explosion = 1 - smoothstep(rangeProgress(progress, 0.56, 0.8));
             }
 
             // Product karti geri cekilirken patlama 0 -> 1 ilerler.
-            // Kart tamamen kayboldugunda (hero progress ~0.72),
-            // Hero animasyonu ayni 1 degerinden devam eder.
+            // Geri donuste Product karti cekildiginde,
+            // Hero animasyonu ayni acik pozdan devam eder.
             // Boylece model toplanip ikinci kez patlamaz.
-            if (self.direction === -1 && progress >= 0.17 && progress <= 0.72) {
+            if (self.direction === -1 && progress >= 0.17 && progress <= 0.8) {
               explosion = 1;
             }
 
@@ -166,6 +167,7 @@ export default function HomeJourney() {
           >
             <Hero3D
               blastRef={blastRef}
+              explosionProgressRef={explosionProgressRef}
               pointerRef={pointerRef}
               scrollExplosionRef={scrollExplosionRef}
               productReturnExplosionRef={productReturnExplosionRef}
@@ -179,6 +181,7 @@ export default function HomeJourney() {
         <div ref={heroWrapperRef} className="relative w-full min-[1024px]:z-20">
           <HeroSection
             blastRef={blastRef}
+            explosionProgressRef={explosionProgressRef}
             pointerRef={pointerRef}
             canvasShakeRef={canvasShakeRef}
           />

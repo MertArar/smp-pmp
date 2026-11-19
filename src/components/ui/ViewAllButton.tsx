@@ -8,8 +8,8 @@ type Appearance = {
   label?: string;
   active?: boolean;
   width?: CSSProperties["width"];
-  height?: number;
-  fontSize?: number;
+  height?: CSSProperties["height"];
+  fontSize?: CSSProperties["fontSize"];
   className?: string;
 };
 type ButtonProps = Appearance & Omit<ComponentProps<"button">, keyof Appearance | "children"> & { href?: never };
@@ -22,13 +22,15 @@ export default function SlidingCircleButton({
 }: SlidingCircleButtonProps) {
   const host = useRef<HTMLSpanElement>(null);
   const [measuredWidth, setMeasuredWidth] = useState(typeof width === "number" ? width : 140);
+  const [measuredHeight, setMeasuredHeight] = useState(typeof height === "number" ? height : 43);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const disabled = "disabled" in props && props.disabled;
   const active = !disabled && (externalActive || hovered || focused);
-  const orbSize = height * .7;
-  const inset = height * .35;
+  const buttonHeight = typeof height === "number" ? height : measuredHeight;
+  const orbSize = buttonHeight * .7;
+  const inset = buttonHeight * .35;
   const travel = Math.max(0, measuredWidth - inset * 2 - orbSize);
   const spring = reduced
     ? { duration: 0 }
@@ -45,7 +47,11 @@ export default function SlidingCircleButton({
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    const measure = () => setMeasuredWidth(element.clientWidth);
+    const measure = () => {
+      setMeasuredWidth(element.clientWidth);
+      const rootHeight = parseFloat(getComputedStyle(element.parentElement!).height);
+      if (Number.isFinite(rootHeight)) setMeasuredHeight(rootHeight);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -53,7 +59,7 @@ export default function SlidingCircleButton({
   }, []);
 
   const content = <span ref={host} data-sliding-circle-button data-active={active} className="relative block h-full w-full">
-    <motion.span aria-hidden="true" initial={false} animate={{ x: active ? inset + orbSize + height * .28 : height * .36 }} transition={spring}
+    <motion.span aria-hidden="true" initial={false} animate={{ x: active ? inset + orbSize + buttonHeight * .28 : buttonHeight * .36 }} transition={spring}
       className="pointer-events-none absolute inset-y-0 left-0 flex items-center whitespace-nowrap">
       {label}
     </motion.span>

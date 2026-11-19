@@ -1,9 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEnvironment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { buildScatterPaths } from "./heroScatterMotion";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -17,9 +25,18 @@ const NEW_SCE_URL = "/home/products/models/sempa-sce.glb";
 const DEFAULT_MODEL_URL = NEW_SCE_URL;
 const STUDIO_EXR_URL = "/home/products/models/studyo.exr";
 const ENABLE_SCE_GTAO = true;
+// Reuse immutable trajectories across Strict Mode, model reselection and resize-back.
+const scatterPlanCache = new WeakMap<
+  THREE.Object3D,
+  Map<string, ReturnType<typeof buildScatterPaths>>
+>();
 
 function resolveModelUrl(url: string) {
-  return url === LEGACY_SCE_URL || url === LEGACY_PUMP_URL || url === HOME_DEFAULT_PUMP_URL ? NEW_SCE_URL : url;
+  return url === LEGACY_SCE_URL ||
+    url === LEGACY_PUMP_URL ||
+    url === HOME_DEFAULT_PUMP_URL
+    ? NEW_SCE_URL
+    : url;
 }
 
 const MODEL_URLS = [
@@ -119,6 +136,7 @@ type PointerPosition = {
 
 type Hero3DProps = {
   blastRef: MutableRef<boolean>;
+  explosionProgressRef: MutableRef<number>;
   pointerRef: MutableRef<PointerPosition>;
   scrollExplosionRef: MutableRef<number>;
   productReturnExplosionRef: MutableRef<number>;
@@ -127,6 +145,7 @@ type Hero3DProps = {
 
 type ExplodableProductProps = Hero3DProps & {
   modelUrl: string;
+  renderProgressRef: MutableRef<number>;
 };
 
 type ExplodablePart = {
@@ -135,11 +154,15 @@ type ExplodablePart = {
   originalQuaternion: THREE.Quaternion;
   explodeOffset: THREE.Vector3;
   arcOffset: THREE.Vector3;
+  releaseOffset: THREE.Vector3;
+  pivotOffset: THREE.Vector3;
+  restPivotOffset: THREE.Vector3;
   rotationAxis: THREE.Vector3;
   rotationAmount: number;
   delay: number;
   launchPower: number;
   rotationLag: number;
+  flightPath: Float32Array | null;
 };
 
 type ExplodablePartSource = {
@@ -148,7 +171,9 @@ type ExplodablePartSource = {
   originalPosition: THREE.Vector3;
   originalQuaternion: THREE.Quaternion;
   worldCenter: THREE.Vector3;
+  pivotCenter: THREE.Vector3;
   partRadius: number;
+  collisionHalfSize: THREE.Vector3;
   parentRestInverse: THREE.Matrix4;
 };
 
@@ -187,7 +212,7 @@ function getFirstMesh(object: THREE.Object3D): THREE.Mesh | null {
 
 // GLB'nin studyo EXR ortam yansimasi.
 function SceStudioEnvironment() {
-  const getRendererState = useThree(state => state.get);
+  const getRendererState = useThree((state) => state.get);
   const studio = useEnvironment({
     files: STUDIO_EXR_URL,
   });
@@ -221,51 +246,100 @@ function SceStudioEnvironment() {
   return null;
 }
 
-// ornek.html'deki GTAO ve OutputPass.
-function SceContactShadows() {
-  const { gl, scene, camera, size } = useThree();
+// Keep the color pass sharp; contact occlusion only needs half-resolution buffers.
+class HalfResolutionGTAOPass extends GTAOPass {
+  setSize(width: number, height: number) {
+    super.setSize(
+      Math.max(1, Math.round(width * 0.5)),
+      Math.max(1, Math.round(height * 0.5)),
+    );
+  }
+}
 
+function HeroRenderBudget({ qualityRef }: { qualityRef: MutableRef<boolean> }) {
+  const { size, setDpr } = useThree();
+  const budget = useRef({ frames: 0, elapsed: 0, cooldown: 0, slowWindows: 0 });
+  const ceiling = Math.max(
+    0.65,
+    Math.min(
+      1.25,
+      Math.sqrt(2_200_000 / Math.max(1, size.width * size.height)),
+    ),
+  );
+  useEffect(() => {
+    setDpr(Math.min(window.devicePixelRatio || 1, ceiling));
+  }, [ceiling, setDpr]);
+  useFrame((state, delta) => {
+    const sample = budget.current;
+    sample.elapsed += Math.min(delta, 0.1);
+    sample.cooldown += delta;
+    sample.frames++;
+    if (sample.elapsed < 1.5) return;
+    const fps = sample.frames / sample.elapsed;
+    if (process.env.NODE_ENV === "development") {
+      state.gl.domElement.dataset.heroFps = fps.toFixed(1);
+      state.gl.domElement.dataset.heroDpr = state.viewport.dpr.toFixed(2);
+    }
+    sample.slowWindows = fps < 42 ? sample.slowWindows + 1 : 0;
+    if (sample.cooldown > 4) {
+      const current = state.viewport.dpr;
+      const floor = Math.max(0.6, ceiling * 0.72);
+      if (fps < 50 && current > floor + 0.02) {
+        setDpr(Math.max(floor, current - 0.15));
+        sample.cooldown = 0;
+      } else if (fps > 58 && current < ceiling - 0.02) {
+        setDpr(Math.min(ceiling, current + 0.1));
+        sample.cooldown = 0;
+      }
+      if (sample.slowWindows >= 2 && current <= floor + 0.02)
+        qualityRef.current = false;
+    }
+    sample.frames = 0;
+    sample.elapsed = 0;
+  });
+  return null;
+}
+
+function SceContactShadows({
+  progressRef,
+  qualityRef,
+}: {
+  progressRef: MutableRef<number>;
+  qualityRef: MutableRef<boolean>;
+}) {
+  const { gl, scene, camera, size, viewport } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
+  const gtaoRef = useRef<GTAOPass | null>(null);
 
   useEffect(() => {
     const renderTarget = new THREE.WebGLRenderTarget(1, 1, {
       samples: 2,
       type: THREE.HalfFloatType,
     });
-
     const composer = new EffectComposer(gl, renderTarget);
-
     composer.setPixelRatio(gl.getPixelRatio());
     composer.setSize(size.width, size.height);
-
     composer.addPass(new RenderPass(scene, camera));
-
-    const gtao = new GTAOPass(scene, camera, size.width, size.height);
-
+    const gtao = new HalfResolutionGTAOPass(scene, camera, 1, 1);
     gtao.updateGtaoMaterial({
       radius: 0.18,
       distanceExponent: 1.5,
       thickness: 1.2,
-      scale: 1.0,
-      samples: 8,
+      scale: 1,
+      samples: 6,
     });
-
     gtao.updatePdMaterial({
       lumaPhi: 10,
       depthPhi: 2,
       normalPhi: 3,
-      radius: 6,
+      radius: 4,
       rings: 2,
-      samples: 8,
+      samples: 4,
     });
-
     gtao.blendIntensity = 0.85;
     composer.addPass(gtao);
-
     const output = new OutputPass();
-
     const source = "gl_FragColor = texture2D( tDiffuse, vUv );";
-
     if (output.material.fragmentShader.includes(source)) {
       output.material.fragmentShader = output.material.fragmentShader
         .replace(
@@ -274,49 +348,53 @@ function SceContactShadows() {
             " float onAlfa = gl_FragColor.a; if ( onAlfa > 0.0 ) gl_FragColor.rgb /= onAlfa;",
         )
         .replace(/}\s*$/, "\tgl_FragColor.rgb *= onAlfa;\n}");
-
       output.material.needsUpdate = true;
     }
-
     composer.addPass(output);
     composerRef.current = composer;
-
+    gtaoRef.current = gtao;
     return () => {
       composerRef.current = null;
+      gtaoRef.current = null;
       composer.dispose();
       gtao.dispose();
       output.dispose();
     };
+    // Dimensions and DPR are synchronized below, without recreating shaders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera]);
 
   useEffect(() => {
     composerRef.current?.setPixelRatio(gl.getPixelRatio());
-
     composerRef.current?.setSize(size.width, size.height);
-  }, [gl, size.width, size.height]);
+  }, [gl, size.width, size.height, viewport.dpr]);
 
   useFrame((_, delta) => {
-    if (composerRef.current) {
-      composerRef.current.render(delta);
-    } else {
-      gl.render(scene, camera);
+    const gtao = gtaoRef.current;
+    if (gtao) {
+      gtao.blendIntensity = 0.85 * (1 - smoothstep(progressRef.current / 0.28));
+      // Separated parts have no contact surfaces. Skip the entire normal/AO/
+      // denoise pipeline during flight, retaining the original studio materials.
+      gtao.enabled = qualityRef.current && gtao.blendIntensity > 0.005;
     }
+    if (composerRef.current) composerRef.current.render(delta);
+    else gl.render(scene, camera);
   }, 1);
-
   return null;
 }
 
 function ExplodableProduct({
   modelUrl,
   blastRef,
+  explosionProgressRef,
   pointerRef,
   scrollExplosionRef,
   productReturnExplosionRef,
   journeyProgressRef,
+  renderProgressRef,
 }: ExplodableProductProps) {
   const { scene } = useGLTF(modelUrl);
-  const { viewport, size, gl } = useThree();
+  const { viewport, size, gl, camera } = useThree();
 
   const isGroupedPump = modelUrl === NEW_SCE_URL;
 
@@ -324,21 +402,40 @@ function ExplodableProduct({
   const shadowRootRef = useRef<THREE.Group | null>(null);
 
   const blastProgress = useRef(0);
-  const lastPartsPose = useRef({ parts: null as ExplodablePart[] | null, progress: -1 });
+  const manualBlastProgress = useRef(0);
+  const lastPartsPose = useRef({
+    parts: null as ExplodablePart[] | null,
+    progress: -1,
+  });
   const modelEntryRef = useRef(0);
 
   const tempQuaternion = useMemo(() => new THREE.Quaternion(), []);
+  const tempPivot = useMemo(() => new THREE.Vector3(), []);
+  const pointerYawRef = useRef(0);
+  const previousJourneyRef = useRef(journeyProgressRef.current);
+  const scrollSpinRef = useRef(0);
+  const hoverProbe = useMemo(
+    () => ({
+      raycaster: new THREE.Raycaster(),
+      pointer: new THREE.Vector2(),
+      inverse: new THREE.Matrix4(),
+      ray: new THREE.Ray(),
+    }),
+    [],
+  );
 
-  const AUTO_ROTATION_SPEED = 0.02;
-  const HOVER_ROTATION_MULTIPLIER = 1.2;
+  const AUTO_ROTATION_SPEED = 0.045;
+  const HOVER_ROTATION_MULTIPLIER = 1.08;
   const ROTATION_ACCELERATION = 4;
-  const MOUSE_TILT_AMOUNT = 0.035;
+  const MOUSE_TILT_AMOUNT = 0.2;
 
-  // PATLAMA HIZLARI
-  // Daha yumusak baslangic ve daha sakin acilma.
-  const BLAST_OPEN_SPEED = 2.0;
-  const BLAST_CLOSE_SPEED = 3.6;
-  const SCROLL_BLAST_SPEED = 8.5;
+  // A short mechanical release leads into a longer, slowing flight.
+  const BLAST_OPEN_SPEED = 1.25;
+  const BLAST_CLOSE_SPEED = 3.8;
+  const SCROLL_BLAST_SPEED = 4.8;
+  // Stop moving the whole assembly as its individual parts separate.
+  const ASSEMBLY_ROTATION_FADE = 0.32;
+  const POINTER_TILT_FADE = 0.25;
 
   const MANUAL_ROTATION_SENSITIVITY = 0.014;
 
@@ -375,7 +472,10 @@ function ExplodableProduct({
 
     clonedModel.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
-
+      if (modelUrl === NEW_SCE_URL) {
+        child.updateMatrix();
+        child.matrixAutoUpdate = false;
+      }
       if (Array.isArray(child.material)) {
         child.material = child.material.map(cloneOriginalMaterial);
       } else {
@@ -384,18 +484,24 @@ function ExplodableProduct({
     });
 
     return clonedModel;
-  }, [scene]);
+  }, [scene, modelUrl]);
 
-  useEffect(() => () => {
-    // Geometry and textures belong to the GLTF cache; only our material clones are owned here.
-    const materials = new Set<THREE.Material>();
-    model.traverse(object => {
-      if (object instanceof THREE.Mesh) {
-        (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => materials.add(material));
-      }
-    });
-    materials.forEach(material => material.dispose());
-  }, [model]);
+  useEffect(
+    () => () => {
+      // Geometry and textures belong to the GLTF cache; only our material clones are owned here.
+      const materials = new Set<THREE.Material>();
+      model.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          (Array.isArray(object.material)
+            ? object.material
+            : [object.material]
+          ).forEach((material) => materials.add(material));
+        }
+      });
+      materials.forEach((material) => material.dispose());
+    },
+    [model],
+  );
 
   // Pompa donerken zemindeki golgenin
   // pompayla birlikte donmesini engelle.
@@ -461,6 +567,21 @@ function ExplodableProduct({
   const modelBaseData = useMemo(() => {
     model.updateMatrixWorld(true);
 
+    // Reuse GLTFLoader's accessor bounds: no repeated walks over 300k vertices.
+    // Conservative boxes also keep the collision envelopes outside the geometry.
+    const meshBounds = new Map<THREE.Object3D, THREE.Box3>();
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh)
+        meshBounds.set(child, new THREE.Box3().setFromObject(child));
+    });
+    const restBounds = (object: THREE.Object3D) => {
+      const box = new THREE.Box3();
+      object.traverse((child) => {
+        const cached = meshBounds.get(child);
+        if (cached) box.union(cached);
+      });
+      return box;
+    };
     const modelBox = new THREE.Box3();
 
     if (modelUrl === NEW_SCE_URL) {
@@ -471,10 +592,10 @@ function ExplodableProduct({
           return;
         }
 
-        modelBox.expandByObject(child, true);
+        modelBox.union(meshBounds.get(child)!);
       });
     } else {
-      modelBox.setFromObject(model, true);
+      modelBox.copy(restBounds(model));
     }
 
     const modelCenter = modelBox.getCenter(new THREE.Vector3());
@@ -536,12 +657,37 @@ function ExplodableProduct({
             ? originalMeshIndex
             : index;
 
-        const objectBox = new THREE.Box3().setFromObject(
-          sourceMesh ?? object,
-          true,
-        );
-
-        const fullPartBox = new THREE.Box3().setFromObject(object, true);
+        const objectBox = restBounds(sourceMesh ?? object);
+        const fullPartBox = restBounds(object);
+        const inversePart = object.matrixWorld.clone().invert();
+        const localBox = new THREE.Box3();
+        object.traverse((child) => {
+          if (!(child instanceof THREE.Mesh) || !child.geometry.boundingBox)
+            return;
+          localBox.union(
+            child.geometry.boundingBox
+              .clone()
+              .applyMatrix4(inversePart.clone().multiply(child.matrixWorld)),
+          );
+        });
+        const pivotCenter = fullPartBox.getCenter(new THREE.Vector3());
+        const localPivot = pivotCenter.clone().applyMatrix4(inversePart);
+        const centerOffset = localBox
+          .getCenter(new THREE.Vector3())
+          .sub(localPivot);
+        const collisionHalfSize = localBox
+          .getSize(new THREE.Vector3())
+          .multiplyScalar(0.5);
+        collisionHalfSize.x =
+          (collisionHalfSize.x + Math.abs(centerOffset.x)) *
+          Math.abs(object.scale.x);
+        collisionHalfSize.y =
+          (collisionHalfSize.y + Math.abs(centerOffset.y)) *
+          Math.abs(object.scale.y);
+        collisionHalfSize.z =
+          (collisionHalfSize.z + Math.abs(centerOffset.z)) *
+          Math.abs(object.scale.z);
+        object.matrixAutoUpdate = true;
 
         return {
           object,
@@ -549,11 +695,14 @@ function ExplodableProduct({
           originalPosition: object.position.clone(),
           originalQuaternion: object.quaternion.clone(),
           worldCenter: objectBox.getCenter(new THREE.Vector3()),
+          pivotCenter,
+          collisionHalfSize,
           partRadius: fullPartBox.getSize(new THREE.Vector3()).length() * 0.5,
           // Cache the unanimated parent transform before the model is attached
           // to its moving/scaling hero root. Responsive recalculation must not
           // derive flight distances from the current frame's world matrix.
-          parentRestInverse: object.parent?.matrixWorld.clone().invert() ?? new THREE.Matrix4(),
+          parentRestInverse:
+            object.parent?.matrixWorld.clone().invert() ?? new THREE.Matrix4(),
         };
       },
     );
@@ -563,6 +712,9 @@ function ExplodableProduct({
       diagonal,
       fitScale,
       originalParts,
+      hoverMeshes: allMeshes.filter(
+        (mesh) => mesh.name !== "zemin_golgesi" && mesh.visible,
+      ),
     };
   }, [model, modelUrl, isGroupedPump, referenceMaxDimension]);
 
@@ -582,7 +734,9 @@ function ExplodableProduct({
     const inverseHeroRotation = initialHeroRotation.clone().invert();
 
     const heroDisplayScale =
-      Math.min(2.02, Math.max(1.14, viewport.width * 0.305)) * fitScale;
+      (size.width < 1024
+        ? viewport.width * 0.78
+        : Math.min(2.02, Math.max(1.14, viewport.width * 0.305))) * fitScale;
 
     const cameraDistance = 6.6;
 
@@ -597,71 +751,73 @@ function ExplodableProduct({
         originalPosition,
         originalQuaternion,
         worldCenter,
+        pivotCenter,
         partRadius,
         parentRestInverse,
       }) => {
+        const isFastener = object.name.startsWith("SOMUN");
+        const isSide =
+          object.name.startsWith("SAG") || object.name.startsWith("SOL");
+        const isCover = object.name === "UST" || object.name === "ALT";
+        const isCore = object.name.startsWith("ORTA");
+        const massRatio = clamp01(partRadius / Math.max(diagonal, 0.0001));
+        const flightOrigin = isGroupedPump ? pivotCenter : worldCenter;
+
         let targetWorld: THREE.Vector3;
 
         if (isGroupedPump) {
-          const preferredSide = object.name.startsWith("SAG")
-            ? 1
-            : object.name.startsWith("SOL")
-              ? -1
-              : pseudoRandom(seedIndex, 3) >= 0.5
-                ? 1
-                : -1;
+          const preferredSide =
+            object.name === "UST" || object.name.startsWith("SAG")
+              ? 1
+              : object.name === "ALT" || object.name.startsWith("SOL")
+                ? -1
+                : pseudoRandom(seedIndex, 3) >= 0.5
+                  ? 1
+                  : -1;
 
-          const side =
-            pseudoRandom(seedIndex, 25) > 0.82 ? -preferredSide : preferredSide;
+          // Keep opposite assemblies on their own side so their separation reads clearly.
+          const side = preferredSide;
+          const verticalSign =
+            object.name === "UST"
+              ? 1
+              : object.name === "ALT"
+                ? -1
+                : pseudoRandom(seedIndex, 19) > 0.5
+                  ? 1
+                  : -1;
 
-          const verticalSign = pseudoRandom(seedIndex, 19) > 0.5 ? 1 : -1;
-
-          const startingScreenPosition = worldCenter
+          const startingScreenPosition = flightOrigin
             .clone()
             .sub(modelCenter)
             .applyQuaternion(initialHeroRotation);
 
-          // Derinlik hareketi korunuyor.
-          const targetScreenZ =
-            startingScreenPosition.z +
-            (pseudoRandom(seedIndex, 21) * 2 - 1) *
-              diagonal *
-              (0.32 + pseudoRandom(seedIndex, 22) * 0.35);
-
+          // A compact exploded view keeps the rotor and shaft near the center,
+          // with the two castings framing them instead of emptying the viewport.
+          const targetScreenZ = THREE.MathUtils.clamp(
+            startingScreenPosition.z * 0.35 +
+              (pseudoRandom(seedIndex, 21) - 0.5) * diagonal * 0.28,
+            -diagonal * 0.25,
+            diagonal * 0.18,
+          );
           const perspectiveFactor = THREE.MathUtils.clamp(
             (cameraDistance - targetScreenZ * heroDisplayScale) /
               cameraDistance,
-            0.35,
-            1.8,
+            0.65,
+            1.25,
           );
-
-          const availableX = Math.max(
-            halfScreenWidth * perspectiveFactor * 0.28,
-            halfScreenWidth * perspectiveFactor * 0.87 - partRadius * 0.5,
-          );
-
-          const availableY = Math.max(
-            halfScreenHeight * perspectiveFactor * 0.2,
-            halfScreenHeight * perspectiveFactor * 0.68 - partRadius * 0.42,
-          );
-
-          const isOutlier = pseudoRandom(seedIndex, 18) > 0.87;
-
-          const horizontalSpread = isOutlier
-            ? 1.03 + pseudoRandom(seedIndex, 17) * 0.38
-            : 0.28 + pseudoRandom(seedIndex, 17) * 0.7;
-
-          const verticalSpread = isOutlier
-            ? 0.42 + pseudoRandom(seedIndex, 20) * 0.82
-            : 0.16 + pseudoRandom(seedIndex, 20) * 0.82;
-
-          const horizontalChaosBoost = isOutlier
-            ? 1.1 + pseudoRandom(seedIndex, 28) * 0.06
-            : 1.14 + pseudoRandom(seedIndex, 28) * 0.18;
-
-          const targetScreenX =
-            side * availableX * horizontalSpread * horizontalChaosBoost;
-
+          const availableX = halfScreenWidth * perspectiveFactor * 0.83;
+          const availableY = halfScreenHeight * perspectiveFactor * 0.68;
+          const horizontalSpread = isCover
+            ? 0.43
+            : isCore
+              ? 0.1 + pseudoRandom(seedIndex, 17) * 0.2
+              : 0.24 + pseudoRandom(seedIndex, 17) * 0.5;
+          const verticalSpread = isCover
+            ? 0.52
+            : isCore
+              ? 0.08 + pseudoRandom(seedIndex, 20) * 0.23
+              : 0.16 + pseudoRandom(seedIndex, 20) * 0.63;
+          const targetScreenX = side * availableX * horizontalSpread;
           const targetScreenY = verticalSign * availableY * verticalSpread;
 
           targetWorld = new THREE.Vector3(
@@ -705,9 +861,19 @@ function ExplodableProduct({
         let explodeOffset = new THREE.Vector3();
 
         let arcOffset = new THREE.Vector3();
+        const releaseOffset = new THREE.Vector3();
+        const restPivotOffset = pivotCenter
+          .clone()
+          .applyMatrix4(parentRestInverse)
+          .sub(originalPosition);
+        const pivotOffset = restPivotOffset
+          .clone()
+          .applyQuaternion(originalQuaternion.clone().invert());
 
         if (object.parent) {
-          const startLocal = worldCenter.clone().applyMatrix4(parentRestInverse);
+          const startLocal = flightOrigin
+            .clone()
+            .applyMatrix4(parentRestInverse);
 
           const endLocal = targetWorld.clone().applyMatrix4(parentRestInverse);
 
@@ -716,8 +882,40 @@ function ExplodableProduct({
           if (isGroupedPump) {
             const flightScreen = targetWorld
               .clone()
-              .sub(worldCenter)
+              .sub(flightOrigin)
               .applyQuaternion(initialHeroRotation);
+
+            // First pull each assembly free, then let it fan out into its flight path.
+            const releaseDirection = flightOrigin
+              .clone()
+              .sub(modelCenter)
+              .applyQuaternion(initialHeroRotation);
+            if (isCover) {
+              releaseDirection.set(0, object.name === "UST" ? 1 : -1, 0.18);
+            } else {
+              releaseDirection.set(
+                object.name.startsWith("SAG")
+                  ? 1
+                  : object.name.startsWith("SOL")
+                    ? -1
+                    : flightScreen.x >= 0
+                      ? 1
+                      : -1,
+                (releaseDirection.y / Math.max(diagonal, 0.0001)) * 0.35,
+                releaseDirection.z >= 0 ? 0.22 : -0.22,
+              );
+            }
+            const releaseWorld = releaseDirection
+              .normalize()
+              .multiplyScalar(
+                diagonal * (isFastener ? 0.13 : isCore ? 0.055 : 0.085),
+              )
+              .applyQuaternion(inverseHeroRotation);
+            releaseOffset
+              .copy(flightOrigin)
+              .add(releaseWorld)
+              .applyMatrix4(parentRestInverse)
+              .sub(startLocal);
 
             const tangent = new THREE.Vector3(
               -flightScreen.y,
@@ -727,19 +925,26 @@ function ExplodableProduct({
 
             if (tangent.lengthSq() > 0.000001) {
               const arcStrength = Math.min(
-                diagonal * 0.11,
+                diagonal * 0.19,
                 flightScreen.length() *
-                  (0.035 + pseudoRandom(seedIndex, 33) * 0.055),
+                  (0.1 + pseudoRandom(seedIndex, 33) * 0.1),
               );
 
               const arcSign = pseudoRandom(seedIndex, 34) > 0.5 ? 1 : -1;
 
               const worldArc = tangent
                 .normalize()
-                .multiplyScalar(arcStrength * arcSign)
-                .applyQuaternion(inverseHeroRotation);
+                .multiplyScalar(arcStrength * arcSign);
+              worldArc.y +=
+                diagonal * (0.025 + pseudoRandom(seedIndex, 36) * 0.035);
+              worldArc.z +=
+                diagonal * (pseudoRandom(seedIndex, 37) - 0.5) * 0.18;
+              worldArc.applyQuaternion(inverseHeroRotation);
 
-              const midLocal = worldCenter.clone().add(worldArc).applyMatrix4(parentRestInverse);
+              const midLocal = flightOrigin
+                .clone()
+                .add(worldArc)
+                .applyMatrix4(parentRestInverse);
 
               arcOffset = midLocal.sub(startLocal);
             }
@@ -758,27 +963,16 @@ function ExplodableProduct({
 
         rotationAxis.normalize();
 
-        const isFastener = object.name.startsWith("SOMUN");
-
-        const isSide =
-          object.name.startsWith("SAG") || object.name.startsWith("SOL");
-
-        const isCover = object.name === "UST" || object.name === "ALT";
-
-        const isCore = object.name.startsWith("ORTA");
-
-        const massRatio = clamp01(partRadius / Math.max(diagonal, 0.0001));
-
-        // Parcalarin donus miktarlari ayni.
+        // Light hardware tumbles; the heavier castings retain a sense of weight.
         const rotationDegrees = !isGroupedPump
           ? 14 + pseudoRandom(seedIndex, 11) * 52
           : isFastener
-            ? 48 + pseudoRandom(seedIndex, 11) * 72
+            ? 120 + pseudoRandom(seedIndex, 11) * 105
             : isSide
-              ? 18 + pseudoRandom(seedIndex, 11) * 45
+              ? 38 + pseudoRandom(seedIndex, 11) * 62
               : isCover
-                ? 8 + pseudoRandom(seedIndex, 11) * 18
-                : 12 + pseudoRandom(seedIndex, 11) * 27;
+                ? 20 + pseudoRandom(seedIndex, 11) * 26
+                : 18 + pseudoRandom(seedIndex, 11) * 28;
 
         const rotationAmount =
           THREE.MathUtils.degToRad(rotationDegrees) *
@@ -789,27 +983,28 @@ function ExplodableProduct({
         // yan parcalar ardindan,
         // agir govde biraz daha gec.
         const releaseBase = isFastener
-          ? 0.015
+          ? 0.008
           : isSide
-            ? 0.067
+            ? 0.075
             : isCover
-              ? 0.115
+              ? 0.16
               : isCore
-                ? 0.145
-                : 0.085;
+                ? 0.23
+                : 0.11;
 
         const delay = isGroupedPump
           ? releaseBase +
-            pseudoRandom(seedIndex, 13) * 0.085 +
-            massRatio * 0.025
+            pseudoRandom(seedIndex, 13) * 0.045 +
+            massRatio * 0.035
           : pseudoRandom(seedIndex, 13) * 0.075;
 
-        // Agirlik ve parca farkina gore yumusak
-        // ivmelenme varyasyonu.
+        // Keep every assembly in a decelerating flight. Values above one made
+        // the heavier castings accelerate late and look as if they changed
+        // their mind after the initial blast.
         const launchPower =
-          1.08 + massRatio * 0.28 + pseudoRandom(seedIndex, 35) * 0.18;
+          0.62 + massRatio * 0.22 + pseudoRandom(seedIndex, 35) * 0.08;
 
-        const rotationLag = isFastener ? 0.07 : isSide ? 0.13 : 0.19;
+        const rotationLag = isFastener ? 0.025 : isSide ? 0.055 : 0.09;
 
         parts.push({
           object,
@@ -817,27 +1012,101 @@ function ExplodableProduct({
           originalQuaternion,
           explodeOffset,
           arcOffset,
+          releaseOffset,
+          pivotOffset,
+          restPivotOffset,
           rotationAxis,
           rotationAmount,
           delay,
           launchPower,
           rotationLag,
+          flightPath: null,
         });
       },
     );
 
-    return {
-      parts,
-      center: modelCenter,
-      fitScale,
-    };
+    if (isGroupedPump) {
+      const screenToModel = new THREE.Matrix4().makeRotationFromQuaternion(
+        inverseHeroRotation,
+      );
+      screenToModel.setPosition(modelCenter);
+      const flights = parts.map((part, index) => {
+        const source = originalParts[index];
+        const parentToWorld = new THREE.Matrix3().setFromMatrix4(
+          source.parentRestInverse.clone().invert(),
+        );
+        const toScreen = (offset: THREE.Vector3) =>
+          offset
+            .clone()
+            .applyMatrix3(parentToWorld)
+            .applyQuaternion(initialHeroRotation);
+        const origin = source.pivotCenter
+          .clone()
+          .sub(modelCenter)
+          .applyQuaternion(initialHeroRotation);
+        return {
+          origin,
+          destination: origin.clone().add(toScreen(part.explodeOffset)),
+          release: toScreen(part.releaseOffset),
+          arc: toScreen(part.arcOffset),
+          radius: source.partRadius,
+          halfSize: source.collisionHalfSize,
+          basis: new THREE.Matrix3().setFromMatrix4(
+            new THREE.Matrix4()
+              .makeRotationFromQuaternion(initialHeroRotation)
+              .multiply(source.parentRestInverse.clone().invert())
+              .multiply(
+                new THREE.Matrix4().makeRotationFromQuaternion(
+                  part.originalQuaternion,
+                ),
+              ),
+          ),
+          rotationAxis: part.rotationAxis,
+          rotationAmount: part.rotationAmount,
+          rotationLag: part.rotationLag,
+          frameWidth:
+            halfScreenWidth *
+            (part.object.name === "UST" || part.object.name === "ALT"
+              ? 1.12
+              : 0.91),
+          frameHeight:
+            halfScreenHeight *
+            (part.object.name === "UST" || part.object.name === "ALT"
+              ? 0.92
+              : 0.82),
+          frameDepth: Math.min(diagonal * 0.35, halfScreenWidth * 0.85),
+          delay: part.delay,
+          launchPower: part.launchPower,
+          toParent: source.parentRestInverse.clone().multiply(screenToModel),
+          restPivot: part.restPivotOffset,
+        };
+      });
+      let cache = scatterPlanCache.get(scene);
+      if (!cache) {
+        cache = new Map();
+        scatterPlanCache.set(scene, cache);
+      }
+      const cacheKey = `${viewport.width.toFixed(4)}:${viewport.height.toFixed(4)}:${size.width < 1024}`;
+      let planned = cache.get(cacheKey);
+      if (!planned) {
+        planned = buildScatterPaths(flights, diagonal);
+        if (cache.size >= 4) cache.delete(cache.keys().next().value ?? "");
+        cache.set(cacheKey, planned);
+      }
+      parts.forEach((part, index) => {
+        part.flightPath = planned.paths[index];
+      });
+      // Compact paths preserve full-size geometry without a camera pullback.
+    }
+    return { parts, center: modelCenter, fitScale };
   }, [
     modelBaseData,
+    scene,
     isGroupedPump,
     viewport.width,
     viewport.height,
+    size.width,
   ]);
-
 
   // Product.tsx rotation event'leri.
   useEffect(() => {
@@ -921,9 +1190,13 @@ function ExplodableProduct({
 
   const heroPositionX = size.width < 1024 ? 0 : heroModelX + HERO_OFFSET_X;
 
-  const heroPositionY = size.width < 1024 ? -viewport.height * .055 : heroModelY + HERO_OFFSET_Y;
+  const heroPositionY =
+    size.width < 1024 ? -viewport.height * 0.055 : heroModelY + HERO_OFFSET_Y;
 
-  const heroModelScale = size.width < 1024 ? viewport.width * .78 : Math.min(2.02, Math.max(1.14, viewport.width * 0.305));
+  const heroModelScale =
+    size.width < 1024
+      ? viewport.width * 0.78
+      : Math.min(2.02, Math.max(1.14, viewport.width * 0.305));
 
   const productModelX = -viewport.width * 0.008;
 
@@ -935,11 +1208,12 @@ function ExplodableProduct({
         : size.width >= 1024
           ? viewport.height * 0.08
           : size.width >= 768
-            ? viewport.height * 0.10
-            : viewport.height * 0.10;
+            ? viewport.height * 0.1
+            : viewport.height * 0.1;
 
   const isTablet = size.width >= 768 && size.width < 1024;
-  const productModelScale = heroModelScale * (isTablet ? 0.43 : size.width < 768 ? 0.86 : 0.88);
+  const productModelScale =
+    heroModelScale * (isTablet ? 0.43 : size.width < 768 ? 0.86 : 0.88);
   const introModelScale = isTablet ? productModelScale : heroModelScale;
 
   const JOURNEY_DROP = viewport.height * 0.12;
@@ -952,6 +1226,21 @@ function ExplodableProduct({
   useFrame((_, delta) => {
     delta = Math.min(delta, 0.05);
     const manualBlast = blastRef.current;
+
+    manualBlastProgress.current = THREE.MathUtils.damp(
+      manualBlastProgress.current,
+      manualBlast ? 1 : 0,
+      manualBlast ? BLAST_OPEN_SPEED : BLAST_CLOSE_SPEED,
+      delta,
+    );
+    if (
+      Math.abs(manualBlastProgress.current - (manualBlast ? 1 : 0)) < 0.0001
+    ) {
+      manualBlastProgress.current = manualBlast ? 1 : 0;
+    }
+    // Keep a manual-only clock for the DOM pieces. Scroll can keep the pump
+    // open, but can never keep Header or Hero scattered after the hold ends.
+    explosionProgressRef.current = smoothstep(manualBlastProgress.current);
 
     const scrollBlast =
       journeyProgressRef.current < 0.999
@@ -975,60 +1264,96 @@ function ExplodableProduct({
       delta,
     );
 
-    if (Math.abs(blastProgress.current - blastTarget) < 0.0001) blastProgress.current = blastTarget;
+    if (Math.abs(blastProgress.current - blastTarget) < 0.0001)
+      blastProgress.current = blastTarget;
     const globalProgress = smoothstep(blastProgress.current);
+    renderProgressRef.current = globalProgress;
 
     // Assembled pumps only rotate as a group; do not rewrite every part each frame.
-    if (lastPartsPose.current.parts !== modelData.parts || lastPartsPose.current.progress !== globalProgress) {
-      lastPartsPose.current = { parts: modelData.parts, progress: globalProgress };
+    if (
+      lastPartsPose.current.parts !== modelData.parts ||
+      lastPartsPose.current.progress !== globalProgress
+    ) {
+      lastPartsPose.current.parts = modelData.parts;
+      lastPartsPose.current.progress = globalProgress;
 
-    modelData.parts.forEach((part) => {
-      const t = clamp01((globalProgress - part.delay) / (1 - part.delay));
+      modelData.parts.forEach((part) => {
+        const t = clamp01((globalProgress - part.delay) / (1 - part.delay));
 
-      if (isGroupedPump) {
-        // Dogal acilma:
-        // 1. Yavas basla.
-        // 2. Kontrollu hizlan.
-        // 3. Son hedefe yumusak otur.
-        const launch = Math.pow(t, part.launchPower);
+        if (isGroupedPump) {
+          const path = part.flightPath;
+          const pointCount = path ? Math.floor(path.length / 3) : 0;
 
-        const flight = smootherstep(launch);
+          if (globalProgress === 0) {
+            part.object.position.copy(part.originalPosition);
+          } else if (path && pointCount >= 2) {
+            // The planner may return a different number of samples than the
+            // nominal step count. Always use the actual buffer length and
+            // clamp the last segment, including at progress === 1.
+            const pathProgress = clamp01(globalProgress) * (pointCount - 1);
+            const frame = Math.min(pointCount - 2, Math.floor(pathProgress));
+            const mix = pathProgress - frame;
+            const currentIndex = frame * 3;
+            const nextIndex = (frame + 1) * 3;
 
-        // Hafif kavis korunuyor.
-        // Bitiste ekstra sekme yok.
-        const arc = 16 * t * t * (1 - t) * (1 - t);
+            const finiteSample =
+              Number.isFinite(path[currentIndex]) &&
+              Number.isFinite(path[currentIndex + 1]) &&
+              Number.isFinite(path[currentIndex + 2]) &&
+              Number.isFinite(path[nextIndex]) &&
+              Number.isFinite(path[nextIndex + 1]) &&
+              Number.isFinite(path[nextIndex + 2]);
 
-        part.object.position
-          .copy(part.originalPosition)
-          .addScaledVector(part.explodeOffset, flight)
-          .addScaledVector(part.arcOffset, arc);
+            if (finiteSample) {
+              part.object.position.fromArray(path, currentIndex);
+              tempPivot.fromArray(path, nextIndex);
+              part.object.position.lerp(tempPivot, mix);
+            } else {
+              // Never feed NaN/undefined into a Three.js transform.
+              part.object.position
+                .copy(part.originalPosition)
+                .addScaledVector(part.explodeOffset, smootherstep(t));
+            }
+          } else {
+            part.object.position
+              .copy(part.originalPosition)
+              .addScaledVector(part.explodeOffset, smootherstep(t));
+          }
 
-        const spinT = clamp01((t - part.rotationLag) / (1 - part.rotationLag));
+          // Rotation follows the breakaway and keeps a little momentum in the slow tail.
+          const spinT = clamp01(
+            (t - part.rotationLag) / (1 - part.rotationLag),
+          );
+          const spin =
+            0.72 * smootherstep(Math.pow(spinT, 0.7)) +
+            0.28 * smootherstep(spinT);
+          tempQuaternion.setFromAxisAngle(
+            part.rotationAxis,
+            part.rotationAmount * spin,
+          );
 
-        const spin = smootherstep(spinT);
+          // GLB group origins can sit far from their geometry. Rotate each piece
+          // about its own center so it tumbles without orbiting the assembled pump.
+          tempPivot
+            .copy(part.pivotOffset)
+            .applyQuaternion(tempQuaternion)
+            .applyQuaternion(part.originalQuaternion);
+          part.object.position.add(part.restPivotOffset).sub(tempPivot);
+        } else {
+          const eased = smoothstep(t);
+          part.object.position
+            .copy(part.originalPosition)
+            .addScaledVector(part.explodeOffset, eased);
+          tempQuaternion.setFromAxisAngle(
+            part.rotationAxis,
+            part.rotationAmount * eased,
+          );
+        }
 
-        tempQuaternion.setFromAxisAngle(
-          part.rotationAxis,
-          part.rotationAmount * spin,
-        );
-      } else {
-        const eased = smoothstep(t);
-
-        part.object.position
-          .copy(part.originalPosition)
-          .addScaledVector(part.explodeOffset, eased);
-
-        tempQuaternion.setFromAxisAngle(
-          part.rotationAxis,
-          part.rotationAmount * eased,
-        );
-      }
-
-      part.object.quaternion
-        .copy(part.originalQuaternion)
-        .multiply(tempQuaternion);
-    });
-
+        part.object.quaternion
+          .copy(part.originalQuaternion)
+          .multiply(tempQuaternion);
+      });
     }
 
     const root = rootRef.current;
@@ -1055,13 +1380,10 @@ function ExplodableProduct({
     const entry = isInProducts ? modelEase(modelEntryRef.current) : 1;
 
     const entryScale = THREE.MathUtils.lerp(0.94, 1, entry);
-    const explosionScale = isTablet ? THREE.MathUtils.lerp(1, 0.78, globalProgress) : 1;
-
     const targetScale =
       THREE.MathUtils.lerp(introModelScale, productModelScale, journey) *
       modelData.fitScale *
-      entryScale *
-      explosionScale;
+      entryScale;
 
     root.position.x = THREE.MathUtils.damp(root.position.x, targetX, 8, delta);
 
@@ -1073,11 +1395,53 @@ function ExplodableProduct({
 
     root.scale.setScalar(nextScale);
 
+    // Check the actual pump meshes' cached local bounds instead of treating
+    // the whole hero as a hover target. This never raycasts 300k triangles.
+    let hoveringPump = false;
+    if (pointerRef.current.active && globalProgress < 0.08) {
+      hoverProbe.pointer.set(
+        pointerRef.current.x * 2,
+        -pointerRef.current.y * 2,
+      );
+      hoverProbe.raycaster.setFromCamera(hoverProbe.pointer, camera);
+      for (const mesh of modelBaseData.hoverMeshes) {
+        const bounds = mesh.geometry.boundingBox;
+        if (!bounds) continue;
+        hoverProbe.inverse.copy(mesh.matrixWorld).invert();
+        hoverProbe.ray
+          .copy(hoverProbe.raycaster.ray)
+          .applyMatrix4(hoverProbe.inverse);
+        if (hoverProbe.ray.intersectsBox(bounds)) {
+          hoveringPump = true;
+          break;
+        }
+      }
+    }
+    const pointerX = hoveringPump ? pointerRef.current.x : 0;
+    const pointerY = hoveringPump ? pointerRef.current.y : 0;
+
+    // Lenis already drives journey progress. Add rotation while it advances,
+    // then let that extra momentum decay smoothly when scrolling stops.
+    const journeyDelta = Math.max(
+      0,
+      journeyProgressRef.current - previousJourneyRef.current,
+    );
+    previousJourneyRef.current = journeyProgressRef.current;
+    const scrollActivity = clamp01((journeyDelta / Math.max(delta, 0.001)) * 6);
+    scrollSpinRef.current = THREE.MathUtils.damp(
+      scrollSpinRef.current,
+      scrollActivity,
+      scrollActivity > scrollSpinRef.current ? 8 : 2.5,
+      delta,
+    );
+    const assemblyRotationGate =
+      1 - smootherstep(globalProgress / ASSEMBLY_ROTATION_FADE);
     const targetRotationSpeed = manualDraggingRef.current
       ? 0
-      : pointerRef.current.active
-        ? AUTO_ROTATION_SPEED * HOVER_ROTATION_MULTIPLIER
-        : AUTO_ROTATION_SPEED;
+      : AUTO_ROTATION_SPEED *
+        assemblyRotationGate *
+        (1 + scrollSpinRef.current * 0.85) *
+        (hoveringPump ? HOVER_ROTATION_MULTIPLIER : 1);
 
     currentRotationSpeedRef.current = THREE.MathUtils.damp(
       currentRotationSpeedRef.current,
@@ -1090,7 +1454,15 @@ function ExplodableProduct({
       autoRotationRef.current += currentRotationSpeedRef.current * delta;
     }
 
-    root.rotation.y = autoRotationRef.current;
+    const pointerStrength =
+      1 - smootherstep(globalProgress / POINTER_TILT_FADE);
+    pointerYawRef.current = THREE.MathUtils.damp(
+      pointerYawRef.current,
+      pointerX * 0.32 * pointerStrength,
+      5,
+      delta,
+    );
+    root.rotation.y = autoRotationRef.current + pointerYawRef.current;
 
     const baseRotationX = THREE.MathUtils.degToRad(8);
 
@@ -1099,7 +1471,7 @@ function ExplodableProduct({
     const desiredRotationX =
       baseRotationX +
       manualPitchRef.current +
-      pointerRef.current.y * -MOUSE_TILT_AMOUNT;
+      pointerY * -MOUSE_TILT_AMOUNT * pointerStrength;
 
     root.rotation.x = THREE.MathUtils.damp(
       root.rotation.x,
@@ -1110,7 +1482,7 @@ function ExplodableProduct({
 
     root.rotation.z = THREE.MathUtils.damp(
       root.rotation.z,
-      baseRotationZ,
+      baseRotationZ + pointerX * -0.035 * pointerStrength,
       4,
       delta,
     );
@@ -1168,6 +1540,7 @@ function ExplodableProduct({
 
 export function Hero3D({
   blastRef,
+  explosionProgressRef,
   pointerRef,
   scrollExplosionRef,
   productReturnExplosionRef,
@@ -1179,6 +1552,8 @@ export function Hero3D({
   const [, startModelTransition] = useTransition();
 
   const selectedUrlRef = useRef(DEFAULT_MODEL_URL);
+  const renderProgressRef = useRef(0);
+  const contactQualityRef = useRef(true);
 
   const activeModelUrl = resolveModelUrl(selectedModelUrl);
 
@@ -1189,10 +1564,13 @@ export function Hero3D({
     if (!host) return;
     let visible = true;
     const sync = () => setRenderActive(visible && !document.hidden);
-    const observer = new IntersectionObserver(entries => {
-      visible = entries.some(entry => entry.isIntersecting);
-      sync();
-    }, { rootMargin: "120px 0px" });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        visible = entries.some((entry) => entry.isIntersecting);
+        sync();
+      },
+      { rootMargin: "120px 0px" },
+    );
     observer.observe(host);
     document.addEventListener("visibilitychange", sync);
     return () => {
@@ -1236,63 +1614,79 @@ export function Hero3D({
   }, [startModelTransition]);
 
   return (
-    <div ref={hostRef} className="absolute inset-0" data-home-model={activeModelUrl}>
-    <Canvas
-      frameloop={renderActive ? "always" : "never"}
-      camera={{
-        position: [0, 0, 6.6],
-        fov: 32,
-        near: 0.1,
-        far: 100,
-      }}
-      dpr={[1, 1.35]}
-      gl={{
-        antialias: true,
-        alpha: true,
-        powerPreference: "high-performance",
-      }}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        background: "transparent",
-        pointerEvents: "none",
-        zIndex: 15,
-      }}
+    <div
+      ref={hostRef}
+      className="absolute inset-0"
+      data-home-model={activeModelUrl}
     >
-      {isSceSelected ? (
-        <directionalLight position={[2.5, 4, 2]} intensity={1.4} />
-      ) : (
-        <>
-          <ambientLight intensity={1.05} />
+      <Canvas
+        frameloop={renderActive ? "always" : "never"}
+        camera={{
+          position: [0, 0, 6.6],
+          fov: 32,
+          near: 0.1,
+          far: 100,
+        }}
+        dpr={[0.75, 1.25]}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: "high-performance",
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          background: "transparent",
+          pointerEvents: "none",
+          zIndex: 15,
+        }}
+      >
+        {isSceSelected ? (
+          <directionalLight position={[2.5, 4, 2]} intensity={1.4} />
+        ) : (
+          <>
+            <ambientLight intensity={1.05} />
 
-          <directionalLight position={[4, 5, 6]} intensity={2.15} />
+            <directionalLight position={[4, 5, 6]} intensity={2.15} />
 
-          <directionalLight position={[-5, 1, 4]} intensity={0.82} />
+            <directionalLight position={[-5, 1, 4]} intensity={0.82} />
 
-          <directionalLight position={[0, -4, 1]} intensity={0.42} />
+            <directionalLight position={[0, -4, 1]} intensity={0.42} />
 
-          <pointLight position={[1.5, 1, 2.5]} intensity={6.25} distance={8} />
-        </>
-      )}
+            <pointLight
+              position={[1.5, 1, 2.5]}
+              intensity={6.25}
+              distance={8}
+            />
+          </>
+        )}
 
-      <Suspense fallback={null}>
-        {isSceSelected && <SceStudioEnvironment />}
+        <HeroRenderBudget qualityRef={contactQualityRef} />
+        <Suspense fallback={null}>
+          {isSceSelected && <SceStudioEnvironment />}
 
-        <ExplodableProduct
-          key={activeModelUrl}
-          modelUrl={activeModelUrl}
-          blastRef={blastRef}
-          pointerRef={pointerRef}
-          scrollExplosionRef={scrollExplosionRef}
-          productReturnExplosionRef={productReturnExplosionRef}
-          journeyProgressRef={journeyProgressRef}
-        />
+          <ExplodableProduct
+            key={activeModelUrl}
+            modelUrl={activeModelUrl}
+            blastRef={blastRef}
+            explosionProgressRef={explosionProgressRef}
+            pointerRef={pointerRef}
+            scrollExplosionRef={scrollExplosionRef}
+            productReturnExplosionRef={productReturnExplosionRef}
+            journeyProgressRef={journeyProgressRef}
+            renderProgressRef={renderProgressRef}
+          />
 
-        {isSceSelected && ENABLE_SCE_GTAO && <SceContactShadows />}
-      </Suspense>
-    </Canvas>
+          {isSceSelected && ENABLE_SCE_GTAO && (
+            <SceContactShadows
+              progressRef={renderProgressRef}
+              qualityRef={contactQualityRef}
+            />
+          )}
+        </Suspense>
+      </Canvas>
     </div>
   );
 }

@@ -3,282 +3,192 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { gsap } from "@/lib/gsap";
 
-type ScatterController = {
-  scatter: () => void;
-  restore: () => void;
-};
+type ScatterController = { scatter: () => void; restore: () => void };
+type Pose = { x: number; y: number; z: number; rotationX: number; rotationY: number; rotation: number };
+type Actor = { element: HTMLElement; base: Pose; from: Pose; current: Pose; amplitude: Pose; sin: number; cos: number };
+const keys = ["x", "y", "z", "rotationX", "rotationY", "rotation"] as const;
+const zeroPose = (): Pose => ({ x: 0, y: 0, z: 0, rotationX: 0, rotationY: 0, rotation: 0 });
 
-type Pose = {
-  x: number;
-  y: number;
-  z: number;
-  rotationX: number;
-  rotationY: number;
-  rotation: number;
-};
-
-// The reference keeps each UI block intact, floating on its own plane.
-// Only the outer blocks move; their letter and hover timelines keep running.
 export function useHeroScatter(
   sectionRef: RefObject<HTMLElement | null>,
   blastRef: { current: boolean },
+  explosionProgressRef: { current: number },
 ) {
   const controllerRef = useRef<ScatterController | null>(null);
-
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
-
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const header = document.querySelector<HTMLElement>(".site-header");
-    const setHeaderBlast = (active: boolean) =>
-      header?.toggleAttribute("data-hero-blasting", active);
+    const preference = matchMedia("(prefers-reduced-motion: reduce)");
     let context: gsap.Context | null = null;
-    let timelines: gsap.core.Timeline[] = [];
-    let restoreTween: gsap.core.Tween | null = null;
+    let timeline: gsap.core.Timeline | null = null;
+    let orbit: gsap.core.Tween | null = null;
+    let actors: Actor[] = [];
+    const motion = { blend: 0, phase: 0 };
     let scattered = false;
+    let returning = false;
+    let visible = true;
+    let painting = false;
     let resizeFrame = 0;
-
-    const getPieces = () =>
-      Array.from(
-        document.querySelectorAll<HTMLElement>(
-          "[data-hero-scatter]",
-        ),
-      ).filter(
-        (element) =>
-          (section.contains(element) || element.closest(".site-header")) &&
-          element.getClientRects().length > 0 &&
-          element.offsetWidth > 0 &&
-          element.offsetHeight > 0,
-      );
-
-    const stopTimelines = () => {
-      timelines.forEach((timeline) => timeline.kill());
-      timelines = [];
-      restoreTween?.kill();
-      restoreTween = null;
+    let clearFlagsFrame = 0;
+    let returnStartProgress = 1;
+    let returnStartedAt = 0;
+    const setBlast = (active: boolean) => {
+      header?.toggleAttribute("data-hero-blasting", active);
+      section.toggleAttribute("data-hero-blasting", active);
     };
-
+    // A single transform write per piece; no layout reads or per-piece clocks.
+    const paint = () => {
+      const sin = Math.sin(motion.phase), cos = Math.cos(motion.phase) - 1;
+      const returnRatio = returning
+        ? Math.max(0, Math.min(1, explosionProgressRef.current / returnStartProgress))
+        : motion.blend;
+      for (const actor of actors) {
+        const wave = returning ? 0 : sin * actor.cos + cos * actor.sin;
+        const sway = returning ? 0 : cos * actor.cos - sin * actor.sin;
+        for (const key of keys) {
+          if (returning) {
+            actor.current[key] = actor.base[key] * returnRatio;
+          } else {
+            const offset = key === "y" || key === "rotationX" ? sway : wave;
+            const target = actor.base[key] + offset * actor.amplitude[key];
+            actor.current[key] = actor.from[key] + (target - actor.from[key]) * motion.blend;
+          }
+        }
+        const p = actor.current;
+        actor.element.style.transform = `perspective(1100px) translate3d(${p.x}px,${p.y}px,${p.z}px) rotate(${p.rotation}deg) rotateY(${p.rotationY}deg) rotateX(${p.rotationX}deg)`;
+      }
+      if (returning && (returnRatio <= 0.001 || performance.now() - returnStartedAt > 1800)) {
+        finishReturn();
+      }
+    };
+    const sync = () => {
+      const active = !document.hidden && visible && actors.length > 0;
+      orbit?.paused(!active);
+      if (active && !painting) { gsap.ticker.add(paint); painting = true; }
+      else if (!active && painting) { gsap.ticker.remove(paint); painting = false; }
+    };
+    const stop = () => {
+      orbit?.kill(); orbit = null;
+      timeline?.kill(); timeline = null;
+      gsap.ticker.remove(paint); painting = false;
+    };
     const reset = () => {
-      stopTimelines();
-      context?.revert();
-      context = null;
+      cancelAnimationFrame(clearFlagsFrame); clearFlagsFrame = 0;
+      stop(); context?.revert(); context = null;
+      actors = []; scattered = false; returning = false;
+      motion.blend = 0; motion.phase = 0; setBlast(false);
     };
+    const finishReturn = () => {
+      if (!returning) return;
+      stop();
+      // Revert while transform transitions are still disabled. Keep the flag
+      // for one painted frame so Menu's normal 1100ms hover transition cannot
+      // create a late tail after the pump has already reassembled.
+      context?.revert(); context = null;
+      actors = []; scattered = false; returning = false;
+      motion.blend = 0; motion.phase = 0;
+      clearFlagsFrame = requestAnimationFrame(() => {
+        clearFlagsFrame = 0;
+        setBlast(false);
+      });
+    };
+    const snapshot = () => new Map(actors.map(actor => [actor.element, { ...actor.current }]));
+    const pieces = () => Array.from(document.querySelectorAll<HTMLElement>("[data-hero-scatter]"))
+      .filter(element => (section.contains(element) || header?.contains(element)) && element.offsetWidth > 0 && element.offsetHeight > 0);
 
     const scatter = (currentPoses?: Map<HTMLElement, Pose>) => {
-      if (scattered) return;
-      scattered = true;
-      // The named header controls have a dedicated CSS exit, independent of
-      // the decorative GSAP orbit and the user's motion preference.
-      setHeaderBlast(true);
-      if (motionQuery.matches) return;
-      // Keep the current transforms when a returning animation is interrupted.
-      stopTimelines();
-      const pieces = getPieces();
-      const width = section.clientWidth;
-      const height = Math.min(section.clientHeight, window.innerHeight);
-      const compact = width < 768;
-      const motionScale = compact ? 0.55 : 1;
-
-      if (!context) context = gsap.context(() => {}, section);
-      context.add(() => {
-        pieces.forEach((element, index) => {
-          const role = element.dataset.heroScatter;
-          const rect = element.getBoundingClientRect();
-          const side = rect.left + rect.width / 2 < width / 2 ? 1 : -1;
-          const alternate = index % 2 ? -1 : 1;
-          const isHeader = role === "header";
-          const isLogo = role === "logo";
-          const isCue = role === "cue";
-          const pieceMotionScale = isHeader ? 1 : motionScale;
-
-          let base: Pose;
-          if (isLogo) {
-            // Give the Sempa logo its own orbit, inset from the hero edges.
-            base = {
-              x: 36 + width * 0.07,
-              y: 36 + height * 0.07,
-              z: 0,
-              rotationX: -6,
-              rotationY: 8,
-              rotation: 0,
-            };
-          } else if (role === "heading") {
-            base = {
-              x: width * 0.025,
-              y: -height * 0.045,
-              z: 95,
-              rotationX: -12,
-              rotationY: -17,
-              rotation: -8,
-            };
-          } else if (role === "links") {
-            base = {
-              x: -width * 0.012,
-              y: height * 0.035,
-              z: 55,
-              rotationX: 14,
-              rotationY: -12,
-              rotation: -11,
-            };
-          } else if (isHeader) {
-            // Center this orbit beyond the top edge so controls spend the
-            // held state offscreen, rather than repeatedly floating back in.
-            const headerBottom = Math.max(
-              0,
-              element.closest(".site-header")?.getBoundingClientRect().bottom ?? 0,
-            );
-            const exitDistance = Math.max(
-              height * 0.38,
-              headerBottom +
-                Math.hypot(element.offsetWidth, element.offsetHeight) +
-                height * 0.08,
-            );
-            base = {
-              x: -side * width * (0.28 + (index % 3) * 0.055),
-              y: -exitDistance,
-              z: -70 + (index % 3) * 55,
-              rotationX: alternate * 17,
-              rotationY: side * 24,
-              rotation: alternate * 13,
-            };
-          } else if (isCue) {
-            base = {
-              x: width * 0.008,
-              y: -height * 0.01,
-              z: 12,
-              rotationX: 6,
-              rotationY: -8,
-              rotation: -4,
-            };
-          } else {
-            base = {
-              x: side * width * 0.018,
-              y: -height * (role === "info-label" ? 0.065 : 0.015),
-              z: role === "info-label" ? -45 : 65,
-              rotationX: alternate * 13,
-              rotationY: side * 22,
-              rotation: role === "info-label" ? -14 : 10,
-            };
-          }
-
-          const pose = (phase: number): Pose => {
-            const wave = Math.sin(phase + index * 0.72);
-            const sway = Math.cos(phase + index * 0.53);
-            const strength = isCue ? 0.22 : isLogo ? 0.45 : 1;
-            const horizontalDrift = isHeader ? 0.1 : 0.045;
-            const verticalDrift = isHeader ? 0.1 : 0.065;
-            return {
-              x:
-                (base.x + wave * width * horizontalDrift * strength) *
-                pieceMotionScale,
-              y:
-                (base.y + sway * height * verticalDrift * strength) *
-                pieceMotionScale,
-              z: (base.z + wave * 130 * strength) * pieceMotionScale,
-              rotationX:
-                (base.rotationX + sway * 17 * strength) * pieceMotionScale,
-              rotationY:
-                (base.rotationY + wave * 23 * strength) * pieceMotionScale,
-              rotation:
-                (base.rotation + wave * (isHeader ? 38 : 15) * strength) *
-                pieceMotionScale,
-            };
+      if (scattered || preference.matches) return;
+      const starts = currentPoses ?? snapshot();
+      reset(); scattered = true;
+      const width = innerWidth, height = innerHeight, compact = width < 768;
+      let headerIndex = 0;
+      // Read all rectangles at rest before applying the first style write.
+      actors = pieces().map((element, index) => {
+        const rect = element.getBoundingClientRect();
+        const inHeader = Boolean(header?.contains(element));
+        const role = element.dataset.heroScatter;
+        const alternate = index % 2 ? -1 : 1;
+        const strength = compact ? 0.6 : 1;
+        let base: Pose;
+        if (inHeader) {
+          const order = headerIndex++;
+          const shift = (order % 2 ? -1 : 1) * Math.min(width * 0.048, 65);
+          base = {
+            x: Math.max(12 - rect.left, Math.min(width - rect.right - 12, shift)),
+            y: Math.min(height * (0.085 + order % 3 * 0.032), compact ? 85 : 130),
+            z: 12 + order % 3 * 9,
+            rotationX: alternate * 5, rotationY: alternate * 7,
+            rotation: alternate * (4 + order % 3 * 2),
           };
-
-          gsap.set(element, {
-            transformPerspective: compact ? 850 : 1100,
-            transformOrigin: "50% 50%",
-            willChange: "transform",
-            force3D: true,
-            ...currentPoses?.get(element),
-          });
-
-          const timeline = gsap.timeline({ delay: 0.12 + (index % 4) * 0.035 });
-          timeline.to(element, {
-            ...pose(0),
-            duration: isHeader ? 0.85 : 1.35,
-            ease: "power3.out",
-          });
-          const drift = gsap.timeline({ repeat: -1 });
-          // A closed orbit avoids a jump when the long, weightless drift repeats.
-          [Math.PI / 2, Math.PI, Math.PI * 1.5, Math.PI * 2].forEach((phase) => {
-            drift.to(element, {
-              ...pose(phase),
-              duration: 2.6 + (index % 3) * 0.22,
-              ease: "sine.inOut",
-            });
-          });
-          timeline.add(drift);
-          timelines.push(timeline);
-        });
+        } else {
+          const scale = compact ? 0.5 : 1;
+          base = {
+            x: width * (role === "heading" ? -0.025 : alternate * 0.025) * scale,
+            y: height * (role === "links" ? 0.03 : -0.035) * scale,
+            z: (role === "cue" ? 6 : 35) * scale,
+            rotationX: alternate * 7 * scale, rotationY: alternate * 9 * scale,
+            rotation: (role === "heading" ? -5 : alternate * 5) * scale,
+          };
+        }
+        const from = starts.get(element) ?? zeroPose();
+        return {
+          element, base, from, current: { ...from },
+          amplitude: {
+            x: Math.min(width * (inHeader ? 0.007 : 0.014), inHeader ? 9 : 22) * strength,
+            y: Math.min(height * (inHeader ? 0.012 : 0.022), inHeader ? 12 : 25) * strength,
+            z: (inHeader ? 14 : 35) * strength,
+            rotationX: (inHeader ? 7 : 11) * strength,
+            rotationY: (inHeader ? 9 : 13) * strength,
+            rotation: (inHeader ? 6 : 8) * strength,
+          },
+          sin: Math.sin(index * 0.73), cos: Math.cos(index * 0.73),
+        };
       });
+      setBlast(true);
+      context = gsap.context(() => {
+        gsap.set(actors.map(actor => actor.element), { willChange: "transform", transformOrigin: "50% 50%", force3D: true });
+        timeline = gsap.timeline().to(motion, { blend: 1, duration: 1, ease: "power2.out" });
+        // The orbit runs from the first frame, underneath the entry envelope.
+        orbit = gsap.to(motion, { phase: Math.PI * 2, duration: 12, repeat: -1, ease: "none" });
+      }, section);
+      paint(); sync();
     };
-
     const restore = () => {
-      setHeaderBlast(false);
-      if (!scattered) return;
-      scattered = false;
-      stopTimelines();
-      const activeContext = context;
-      if (!activeContext) return;
-      activeContext.add(() => {
-        restoreTween = gsap.to(getPieces(), {
-          x: 0,
-          y: 0,
-          z: 0,
-          rotationX: 0,
-          rotationY: 0,
-          rotation: 0,
-          duration: motionQuery.matches ? 0 : 1.05,
-          ease: "power3.inOut",
-          onComplete: reset,
-        });
-      });
+      if (blastRef.current) return;
+      if (!scattered) { if (!returning) setBlast(false); return; }
+      scattered = false; stop(); returning = true;
+      for (const actor of actors) { actor.base = { ...actor.current }; actor.from = zeroPose(); }
+      returnStartProgress = Math.max(0.001, explosionProgressRef.current);
+      returnStartedAt = performance.now();
+      motion.blend = 1;
+      // The UI now reads the pump's actual close progress on every frame.
+      // Menu, logos and hero content therefore finish on the exact same frame.
+      paint(); sync();
     };
-
-    const resize = () => {
+    const onResize = () => {
       cancelAnimationFrame(resizeFrame);
       resizeFrame = requestAnimationFrame(() => {
-        if (!scattered) return;
-        const currentPoses = new Map<HTMLElement, Pose>();
-        getPieces().forEach((element) => {
-          currentPoses.set(element, {
-            x: Number(gsap.getProperty(element, "x")),
-            y: Number(gsap.getProperty(element, "y")),
-            z: Number(gsap.getProperty(element, "z")),
-            rotationX: Number(gsap.getProperty(element, "rotationX")),
-            rotationY: Number(gsap.getProperty(element, "rotationY")),
-            rotation: Number(gsap.getProperty(element, "rotation")),
-          });
-        });
-        reset();
-        scattered = false;
-        scatter(currentPoses);
+        if (scattered) scatterAfterResize();
       });
     };
-    const motionChange = () => {
-      reset();
-      scattered = false;
-      if (blastRef.current) scatter();
-      else setHeaderBlast(false);
-    };
-
+    const scatterAfterResize = () => { const current = snapshot(); scattered = false; scatter(current); };
+    const onPreference = () => { reset(); if (blastRef.current) scatter(); };
+    const observer = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); sync(); });
+    observer.observe(section);
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("resize", onResize);
+    preference.addEventListener("change", onPreference);
     controllerRef.current = { scatter, restore };
-    // Fast Refresh preserves the held pump state while re-running effects.
     if (blastRef.current) scatter();
-    window.addEventListener("resize", resize);
-    motionQuery.addEventListener("change", motionChange);
-
     return () => {
       controllerRef.current = null;
-      cancelAnimationFrame(resizeFrame);
-      window.removeEventListener("resize", resize);
-      motionQuery.removeEventListener("change", motionChange);
-      setHeaderBlast(false);
+      observer.disconnect(); cancelAnimationFrame(resizeFrame);
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("resize", onResize);
+      preference.removeEventListener("change", onPreference);
       reset();
     };
-  }, [sectionRef, blastRef]);
-
+  }, [sectionRef, blastRef, explosionProgressRef]);
   return controllerRef;
 }

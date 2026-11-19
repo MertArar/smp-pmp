@@ -1,11 +1,18 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
 import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
+import WaveButton from "@/components/ui/WaveButton";
 
 // ============================================================
 // HISTORY TIMELINE DATA
@@ -103,6 +110,71 @@ const HISTORY_EVENTS = [
     description:
       "Achieved landmark first international export to the United States of America (USA), introducing SEMPA engineering to global markets.",
   },
+  // Preview records requested for layout review; replace with verified milestones later.
+  {
+    id: "preview-2020",
+    year: 2020,
+    category: "PREVIEW",
+    title: "Digital Pump Monitoring Pilot",
+    description:
+      "A sample project exploring remote diagnostics, operating data, and connected pump monitoring.",
+  },
+  {
+    id: "preview-2021",
+    year: 2021,
+    category: "PREVIEW",
+    title: "High-Efficiency Hydraulic Design",
+    description:
+      "A concept milestone for hydraulic simulation and more efficient industrial pumping systems.",
+  },
+  {
+    id: "preview-2022",
+    year: 2022,
+    category: "PREVIEW",
+    title: "Advanced Manufacturing Workshop",
+    description:
+      "An illustrative manufacturing initiative focused on precision machining and repeatable production quality.",
+  },
+  {
+    id: "preview-2023",
+    year: 2023,
+    category: "PREVIEW",
+    title: "International Engineering Partnerships",
+    description:
+      "An example collaboration milestone connecting engineering teams and regional service partners.",
+  },
+  {
+    id: "preview-2024",
+    year: 2024,
+    category: "PREVIEW",
+    title: "Circular Production Programme",
+    description:
+      "A sample programme exploring material recovery and resource efficiency across production.",
+  },
+  {
+    id: "preview-2025",
+    year: 2025,
+    category: "PREVIEW",
+    title: "Smart Service Demonstration",
+    description:
+      "A demonstration of digital service planning, maintenance insights, and connected technical support.",
+  },
+  {
+    id: "preview-2026-lab",
+    year: 2026,
+    category: "PREVIEW",
+    title: "Next-Generation Pump Test Lab",
+    description:
+      "A concept test environment for performance measurement and future pump technology development.",
+  },
+  {
+    id: "preview-2026-network",
+    year: 2026,
+    category: "PREVIEW",
+    title: "Global Service Network Concept",
+    description:
+      "An illustrative service network linking technical expertise, training, and customer support.",
+  },
 ].sort((a, b) => a.year - b.year);
 
 gsap.registerPlugin(ScrollTrigger);
@@ -130,14 +202,15 @@ for (let index = 1; index < HISTORY_EVENTS.length; index++) {
       ),
   );
 }
-const largestWindowRise = Math.max(
-  ...historyRises
-    .slice(0, HISTORY_EVENTS.length - timelineWindowSize + 1)
-    .flatMap((rise, index) =>
-      index % 2 === 0
-        ? [historyRises[index + timelineWindowSize - 1] - rise]
-        : [],
+const largestWindowRise = historyRises.reduce(
+  (largest, rise, index) =>
+    Math.max(
+      largest,
+      historyRises[
+        Math.min(historyRises.length - 1, index + timelineWindowSize - 1)
+      ] - rise,
     ),
+  1,
 );
 
 function overviewTargetYear(spot: HistoryPoint) {
@@ -151,43 +224,92 @@ function overviewTargetYear(spot: HistoryPoint) {
 }
 
 function historyStartIndex(year: number) {
-  const next = HISTORY_EVENTS.findIndex((event) => event.year >= year);
-  return next < 0 ? HISTORY_EVENTS.length - 1 : next;
+  return HISTORY_EVENTS.findIndex((event) => event.year >= year);
+}
+
+function timelineStops(total: number, first: number, windowSize: number) {
+  const step = windowSize > 1 ? 2 : 1;
+  const stops = [first];
+  for (let index = first - step; index > 0; index -= step) stops.unshift(index);
+  if (stops[0] !== 0) stops.unshift(0);
+  // Keep the same two-card rhythm through the final pair or single card.
+  for (let index = first + step; index < total; index += step)
+    stops.push(index);
+  return stops;
 }
 
 function HistoryTimeline({ targetYear }: { targetYear: number }) {
-  const nearest = historyStartIndex(targetYear);
+  if (historyStartIndex(targetYear) < 0) {
+    return (
+      <section
+        className="relative z-30 mx-auto min-h-svh w-11/12 pt-[440px] pb-20 text-center text-white md:pt-[520px] lg:pt-[calc(var(--history-header-offset,97px)+300px)]"
+        aria-label="Historical milestones timeline"
+      >
+        <p>No milestones are available from {targetYear} onward.</p>
+        <Link
+          href="/history"
+          className="mt-5 inline-block text-[#9eb7d0] underline"
+        >
+          All milestones
+        </Link>
+      </section>
+    );
+  }
+  return <HistoryTimelineScene targetYear={targetYear} />;
+}
+
+function HistoryTimelineScene({ targetYear }: { targetYear: number }) {
+  const targetIndex = historyStartIndex(targetYear);
   const [windowSize, setWindowSize] = useState(timelineWindowSize);
-  const maximumStart = Math.max(0, HISTORY_EVENTS.length - windowSize);
-  // Enter at the left edge; later navigation moves along the mountain route.
-  const [start, setStart] = useState(0);
+  const stops = useMemo(
+    () => timelineStops(HISTORY_EVENTS.length, targetIndex, windowSize),
+    [targetIndex, windowSize],
+  );
+  const maximumStart = stops[stops.length - 1];
+  // The selected period starts at its first record, never at a preceding year.
+  const [start, setStart] = useState(targetIndex);
+  const [position, setPosition] = useState(targetIndex);
+  const [riseScale, setRiseScale] = useState(0);
+  const [mountedWindow, setMountedWindow] = useState(timelineWindowSize);
+  const [requestedStart, setRequestedStart] = useState(targetIndex);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const currentStartRef = useRef(start);
+  const requestedStartRef = useRef(targetIndex);
   const seekRef = useRef<((index: number) => void) | null>(null);
   const visible = HISTORY_EVENTS.slice(start, start + windowSize);
   const atEnd = start === maximumStart;
   // Keep every card mounted at a stable point on the same mountain route.
   // Each three-card climb is bounded, even when two dates are far apart.
   const rises = historyRises;
+  const cameraIndex = Math.min(
+    HISTORY_EVENTS.length - 1,
+    Math.floor(position) + windowSize - 1,
+  );
   const cameraRise =
-    rises[Math.min(HISTORY_EVENTS.length - 1, start + windowSize - 1)];
+    rises[cameraIndex] +
+    ((rises[cameraIndex + 1] ?? rises[cameraIndex]) - rises[cameraIndex]) *
+      (position - Math.floor(position));
+  const firstMounted = Math.max(0, Math.floor(position) - 1);
+  const mountedEvents = HISTORY_EVENTS.slice(
+    firstMounted,
+    Math.ceil(position) + Math.max(windowSize, mountedWindow) + 1,
+  );
   const mountainProgress = maximumStart ? start / maximumStart : 0;
   const move = (direction: number) => {
-    const next = Math.max(
-      0,
-      Math.min(
-        maximumStart,
-        currentStartRef.current + direction * (windowSize > 1 ? 2 : 1),
-      ),
-    );
+    const current = stops.indexOf(requestedStartRef.current);
+    const next =
+      stops[Math.max(0, Math.min(stops.length - 1, current + direction))];
+    if (next === requestedStartRef.current) return;
     if (seekRef.current) seekRef.current(next);
-    else setStart(next);
+    else {
+      requestedStartRef.current = next;
+      currentStartRef.current = next;
+      setPosition(next);
+      setRequestedStart(next);
+      setStart(next);
+    }
   };
-
-  useLayoutEffect(() => {
-    currentStartRef.current = start;
-  }, [start]);
 
   // Query navigation can retain the overview scroll position. Reset only on entry,
   // so moving between pairs never moves the document.
@@ -200,12 +322,20 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
       const count =
         window.innerWidth >= 1024 ? 4 : window.innerWidth >= 768 ? 2 : 1;
       setWindowSize(count);
-      setStart((value) => Math.min(HISTORY_EVENTS.length - count, value));
+      const resizedStops = timelineStops(
+        HISTORY_EVENTS.length,
+        targetIndex,
+        count,
+      );
+      setStart(
+        (value) =>
+          [...resizedStops].reverse().find((stop) => stop <= value) ?? 0,
+      );
     };
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, []);
+  }, [targetIndex]);
 
   // Keep the shared title size, then fit the taller card scene below the detail heading.
   useLayoutEffect(() => {
@@ -216,6 +346,8 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
     if (!row || !section || !page || !heading) return;
     const fit = () => {
       if (window.innerWidth < 1024) {
+        setRiseScale(0);
+        setMountedWindow(window.innerWidth >= 768 ? 2 : 1);
         const top =
           heading.getBoundingClientRect().bottom -
           page.getBoundingClientRect().top +
@@ -237,9 +369,19 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
       );
       section.style.setProperty("padding-top", `${top}px`, "important");
       const width = window.innerWidth * 0.86;
+      setMountedWindow(Math.ceil(width / (354 * unit)));
       section.style.width = `${width}px`;
       section.style.setProperty("--history-unit", `${unit}px`);
       section.style.setProperty("--history-stage-height", `${available}px`);
+      // Derive the camera scale from the fixed stage geometry, never from a
+      // card whose size/composited bounds may change during an interrupted pan.
+      const stageUnit = available / (largestWindowRise + 352 + 20);
+      setRiseScale(
+        Math.min(
+          stageUnit,
+          Math.max(0, available - 372 * unit) / largestWindowRise,
+        ),
+      );
     };
     fit();
     const observer = new ResizeObserver(fit);
@@ -278,73 +420,53 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
     if (!row || !page || !track) return;
     const media = gsap.matchMedia();
     media.add("(min-width: 0px)", () => {
-      let origin = currentStartRef.current;
+      const openingIndex =
+        [...stops].reverse().find((stop) => stop <= currentStartRef.current) ??
+        0;
+      let origin = openingIndex;
       const model = { progress: 0 };
-      const articles = [
-        ...row.querySelectorAll<HTMLElement>("[data-history-card]"),
-      ];
       let disposed = false;
-      let requestedIndex = origin;
+      let requestedIndex = openingIndex;
+      let navigating = false;
+      let navigationTween: gsap.core.Tween | null = null;
       let wheelReadyAt = 0;
       page.dataset.historyScrollScene = "true";
       const paint = () => {
-        const p = model.progress;
+        const p = Math.max(0, Math.min(1, model.progress));
         const routeProgress = Math.min(1, p / 0.75);
-        const index = origin + (maximumStart - origin) * routeProgress;
-        const left = Math.floor(index);
-        const fraction = index - left;
-        const last = Math.min(historyRises.length - 1, left + windowSize - 1);
-        const camera =
-          historyRises[last] +
-          ((historyRises[last + 1] ?? historyRises[last]) -
-            historyRises[last]) *
-            fraction;
+        const index = Math.max(
+          0,
+          Math.min(
+            maximumStart,
+            origin + (maximumStart - origin) * routeProgress,
+          ),
+        );
         const unit =
           windowSize === 4
             ? row.getBoundingClientRect().height /
               (largestWindowRise + 352 + 20)
             : 1;
-        const riseUnit =
-          windowSize === 4
-            ? Math.min(
-                unit,
-                Math.max(
-                  0,
-                  row.getBoundingClientRect().height -
-                    articles[0].getBoundingClientRect().height -
-                    20 * unit,
-                ) / largestWindowRise,
-              )
-            : unit;
-        // Keep every card inside the stage throughout the pan. Moving the track
-        // upward clipped the cards against its own overflow viewport.
-        track.style.setProperty(
-          "--history-scroll-transform",
-          windowSize === 4
-            ? `translate3d(calc(${-index} * (318 * var(--history-unit) + var(--history-card-gap))),0,0)`
-            : `translate3d(calc(${(-index * 100) / windowSize}% - ${index / windowSize} * var(--history-card-gap)),0,0)`,
-        );
-        articles.forEach((card, i) =>
-          card.style.setProperty(
-            "--history-scroll-rise",
-            `${Math.max(0, Math.min(largestWindowRise, camera - historyRises[i])) * riseUnit}px`,
-          ),
-        );
+        // Horizontal travel and stair heights commit together from one position.
+        setPosition(index);
         page.style.setProperty(
           "--history-pan-x",
           `${maximumStart ? (index / maximumStart) * 4 : 0}%`,
         );
         page.style.setProperty("--history-pan-y", `${p * 32 * unit}px`);
         page.dataset.historyScrollProgress = p.toFixed(3);
-        const step = windowSize > 1 ? 2 : 1;
-        const selected = Math.min(
-          maximumStart,
-          origin + Math.floor((index - origin + 0.001) / step) * step,
-        );
+        // Browser scroll positions round to pixels; include the intended stop
+        // when the interpolated card index lands just below its boundary.
+        const selected =
+          [...stops].reverse().find((stop) => stop <= index + 0.01) ?? origin;
         const next = routeProgress === 1 ? maximumStart : selected;
         if (currentStartRef.current !== next) {
           currentStartRef.current = next;
           setStart(next);
+        }
+        if (!navigating && requestedStartRef.current !== next) {
+          requestedIndex = next;
+          requestedStartRef.current = next;
+          setRequestedStart(next);
         }
       };
       const tween = gsap.to(model, {
@@ -358,13 +480,12 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
         id: "history-detail-journey",
         trigger: page,
         pin: page,
-        start: "top top",
+        start: () =>
+          Math.max(0, page.getBoundingClientRect().top + window.scrollY),
         end: () =>
-          `+=${maximumStart === origin ? 1 : window.innerHeight * (1 + (maximumStart - origin) / (windowSize > 1 ? 2 : 1))}`,
+          `+=${window.innerHeight * (1 + maximumStart / (windowSize > 1 ? 2 : 1))}`,
         animation: tween,
-        scrub: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? true
-          : 0.35,
+        scrub: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         snap:
@@ -373,25 +494,23 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
             : {
                 // Rest only at complete groups of two (one card on narrow phones).
                 snapTo: (value, self) => {
+                  if (navigating) return value;
                   if (maximumStart === origin) return 1;
-                  const step = windowSize > 1 ? 2 : 1;
-                  const stops = [0];
-                  for (
-                    let next = origin + step;
-                    next < maximumStart;
-                    next += step
-                  )
-                    stops.push(
-                      ((next - origin) / (maximumStart - origin)) * 0.75,
+                  const snapStops = stops
+                    .filter((stop) => stop >= origin)
+                    .map(
+                      (stop) =>
+                        ((stop - origin) / (maximumStart - origin)) * 0.75,
                     );
-                  stops.push(0.75, 1);
-                  const exact = stops.find(
+                  snapStops.push(1);
+                  const exact = snapStops.find(
                     (stop) => Math.abs(stop - value) < 0.003,
                   );
                   if (exact !== undefined) return exact;
                   return (self?.direction ?? 1) > 0
-                    ? (stops.find((stop) => stop > value) ?? 1)
-                    : ([...stops].reverse().find((stop) => stop < value) ?? 0);
+                    ? (snapStops.find((stop) => stop > value) ?? 1)
+                    : ([...snapStops].reverse().find((stop) => stop < value) ??
+                        0);
                 },
                 duration: { min: 0.45, max: 0.9 },
                 delay: 0.12,
@@ -400,27 +519,60 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
               },
       });
       seekRef.current = (index) => {
-        requestedIndex = index;
+        const destination =
+          [...stops]
+            .reverse()
+            .find(
+              (stop) => stop <= Math.max(0, Math.min(maximumStart, index)),
+            ) ?? 0;
+        requestedIndex = destination;
+        requestedStartRef.current = destination;
+        setRequestedStart(destination);
+        navigating = true;
+        navigationTween?.kill();
+        trigger.getTween(true)?.kill();
         wheelReadyAt = performance.now() + 1000;
-        if (index < origin) {
-          origin = index;
-          currentStartRef.current = index;
-          setStart(index);
-          trigger.refresh();
+        if (destination < origin) {
+          // Expand the route backwards once without rebuilding the pin or
+          // changing the camera position during an interrupted transition.
+          const currentIndex =
+            origin +
+            (maximumStart - origin) *
+              Math.min(1, Math.max(0, model.progress) / 0.75);
+          origin = 0;
+          const progress = maximumStart
+            ? (currentIndex / maximumStart) * 0.75
+            : 0;
           window.scrollTo({
-            top: Math.max(0, trigger.start),
+            top: Math.max(
+              0,
+              trigger.start + progress * (trigger.end - trigger.start),
+            ),
             behavior: "instant",
           });
-          tween.progress(0);
-          return;
+          tween.progress(progress);
         }
         const p =
           maximumStart === origin
             ? 0
-            : ((index - origin) / (maximumStart - origin)) * 0.75;
-        window.scrollTo({
-          top: Math.max(0, trigger.start + p * (trigger.end - trigger.start)),
-          behavior: "smooth",
+            : ((destination - origin) / (maximumStart - origin)) * 0.75;
+        const scroll = { y: window.scrollY };
+        navigationTween = gsap.to(scroll, {
+          y: Math.max(0, trigger.start + p * (trigger.end - trigger.start)),
+          duration: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? 0
+            : 0.65,
+          ease: "power2.out",
+          onUpdate: () => {
+            window.scrollTo({ top: scroll.y, behavior: "instant" });
+            trigger.update();
+          },
+          onComplete: () => {
+            tween.progress(p);
+            navigating = false;
+            paint();
+          },
         });
       };
       const onPairWheel = (event: WheelEvent) => {
@@ -454,28 +606,51 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
           });
           return;
         }
+        const current = stops.indexOf(requestedIndex);
         seekRef.current?.(
-          Math.max(0, Math.min(maximumStart, requestedIndex + direction * 2)),
+          stops[Math.max(0, Math.min(stops.length - 1, current + direction))],
         );
       };
       window.addEventListener("wheel", onPairWheel, {
         passive: false,
         capture: true,
       });
+      const openingProgress = 0;
+      window.scrollTo({
+        top: Math.max(
+          0,
+          trigger.start + openingProgress * (trigger.end - trigger.start),
+        ),
+        behavior: "instant",
+      });
+      tween.progress(openingProgress);
       paint();
       document.fonts.ready.then(() => {
-        if (!disposed) trigger.refresh();
+        if (disposed) return;
+        const opening =
+          Math.abs(model.progress - openingProgress) < 0.001 &&
+          requestedIndex === openingIndex &&
+          !navigating;
+        trigger.refresh();
+        if (opening) {
+          window.scrollTo({
+            top: Math.max(
+              0,
+              trigger.start + openingProgress * (trigger.end - trigger.start),
+            ),
+            behavior: "instant",
+          });
+          tween.progress(openingProgress);
+          paint();
+        }
       });
       return () => {
         disposed = true;
+        navigationTween?.kill();
         window.removeEventListener("wheel", onPairWheel, true);
         seekRef.current = null;
         trigger.kill(true);
         tween.kill();
-        track.style.removeProperty("--history-scroll-transform");
-        articles.forEach((card) =>
-          card.style.removeProperty("--history-scroll-rise"),
-        );
         delete page.dataset.historyScrollScene;
         delete page.dataset.historyScrollProgress;
         page.style.removeProperty("--history-heading-rise");
@@ -483,15 +658,17 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
       };
     });
     return () => media.revert();
-  }, [maximumStart, windowSize]);
+  }, [maximumStart, stops, windowSize]);
 
   return (
     <section
       aria-label="Historical milestones timeline"
       data-history-detail
       data-target-year={targetYear}
-      data-nearest-year={HISTORY_EVENTS[nearest].year}
+      data-nearest-year={HISTORY_EVENTS[targetIndex].year}
       data-timeline-start={start}
+      data-timeline-target={requestedStart}
+      data-timeline-position={position}
       data-timeline-end={atEnd}
       data-mountain-progress={mountainProgress}
       tabIndex={0}
@@ -517,7 +694,11 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
               aria-label={
                 direction < 0 ? "Previous milestones" : "Next milestones"
               }
-              disabled={direction < 0 ? start === 0 : atEnd}
+              disabled={
+                direction < 0
+                  ? requestedStart === 0
+                  : requestedStart === maximumStart
+              }
               onClick={() => move(direction)}
               className="grid size-10 cursor-pointer place-items-center rounded-full transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-30 lg:size-[clamp(44px,3.3vw,64px)] motion-reduce:transition-none"
             >
@@ -542,13 +723,15 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
           aria-atomic="true"
           className="text-xs md:text-base lg:text-[clamp(18px,1.4vw,28px)]"
         >
-          {visible[0].year}–{visible[visible.length - 1].year}
+          {visible[0].year === visible[visible.length - 1].year
+            ? visible[0].year
+            : `${visible[0].year}–${visible[visible.length - 1].year}`}
         </span>
       </div>
 
       <div
         ref={cardsRef}
-        className="mt-8 h-[740px] touch-pan-y overflow-x-auto px-3 pb-5 [scroll-snap-type:x_mandatory] lg:mt-[calc(20*var(--history-unit))] lg:overflow-hidden lg:p-0 lg:h-[var(--history-stage-height)] lg:[mask-image:linear-gradient(90deg,#000_0%,#000_88%,transparent_100%)]"
+        className="mt-8 h-[740px] touch-pan-y overflow-clip px-3 pb-5 [scroll-snap-type:none] lg:mt-[calc(20*var(--history-unit))] lg:p-0 lg:h-[var(--history-stage-height)] lg:[mask-image:linear-gradient(90deg,#000_0%,#000_88%,transparent_100%)]"
         style={
           {
             "--history-card-gap": "calc(36 * var(--history-unit, 1px))",
@@ -577,17 +760,18 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
       >
         <div
           data-history-track
-          className="grid grid-flow-col auto-cols-[min(290px,78vw)] gap-5 lg:auto-cols-[calc(318*var(--history-unit))] lg:gap-[var(--history-card-gap)] [transform:var(--history-scroll-transform,var(--history-track-transform))] transition-transform duration-[1250ms] ease-[cubic-bezier(.25,.8,.25,1)] will-change-transform motion-reduce:transition-none"
+          className="grid grid-flow-col auto-cols-[min(290px,78vw)] gap-5 lg:auto-cols-[calc(318*var(--history-unit))] lg:gap-[var(--history-card-gap)] [transform:var(--history-track-transform)] transition-none will-change-transform"
           style={
             {
               "--history-track-transform":
                 windowSize === 4
-                  ? `translate3d(calc(${-start} * (318 * var(--history-unit) + var(--history-card-gap))),0,0)`
-                  : `translate3d(calc(${(-start * 100) / windowSize}% - ${start / windowSize} * var(--history-card-gap)),0,0)`,
+                  ? `translate3d(calc(${firstMounted - position} * (318 * var(--history-unit) + var(--history-card-gap))),0,0)`
+                  : `translate3d(calc(${((firstMounted - position) * 100) / windowSize}% + ${(firstMounted - position) / windowSize} * var(--history-card-gap)),0,0)`,
             } as CSSProperties
           }
         >
-          {HISTORY_EVENTS.map((event, index) => {
+          {mountedEvents.map((event, mountedIndex) => {
+            const index = firstMounted + mountedIndex;
             const inView = index >= start && index < start + windowSize;
             const blurred = windowSize === 4 && index >= start + 2 && !atEnd;
             const offset = cameraRise - rises[index];
@@ -604,14 +788,14 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
                 data-blurred={blurred}
                 data-rise={offset}
                 aria-current={
-                  event.id === HISTORY_EVENTS[nearest].id ? "date" : undefined
+                  event.id === HISTORY_EVENTS[targetIndex].id
+                    ? "date"
+                    : undefined
                 }
-                className="relative h-[390px] w-[min(290px,78vw)] shrink-0 snap-center rounded-[30px] border border-white/40 bg-white/15 text-[#F7F7F7] shadow-[0_12px_35px_#082f4c10] backdrop-blur-[10px] transition-[filter,opacity,transform] duration-[1250ms] ease-[cubic-bezier(.25,.8,.25,1)] [font-variation-settings:'wdth'_125,'wght'_410,'opsz'_20] lg:h-auto lg:aspect-[318/352] lg:w-auto lg:[container-type:inline-size] lg:[--history-card-unit:calc((100cqw_+_2px)/318)] lg:[border-radius:9.433962%/8.522727%] motion-reduce:transition-none"
+                className="relative h-[390px] w-[min(290px,78vw)] shrink-0 rounded-[30px] border border-white/40 bg-white/15 text-[#F7F7F7] shadow-[0_12px_35px_#082f4c10] backdrop-blur-[10px] transition-[filter,opacity] duration-[1250ms] ease-[cubic-bezier(.25,.8,.25,1)] [font-variation-settings:'wdth'_125,'wght'_410,'opsz'_20] lg:h-auto lg:aspect-[318/352] lg:w-auto lg:[container-type:inline-size] lg:[--history-card-unit:calc((100cqw_+_2px)/318)] lg:[border-radius:9.433962%/8.522727%] motion-reduce:transition-none"
                 style={
                   {
-                    "--history-card-rise": `calc(${offset} * var(--history-unit, 1px))`,
-                    transform:
-                      "translateY(var(--history-scroll-rise,var(--history-card-rise)))",
+                    transform: `translate3d(0,${Math.max(0, Math.min(largestWindowRise, offset)) * riseScale}px,0)`,
                     filter: blurred
                       ? "blur(calc(8 * var(--history-unit, 1px)))"
                       : "none",
@@ -661,12 +845,6 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
 // HOTSPOT ANIMATION SETTINGS
 // ============================================================
 
-const historyHotspotSettings = {
-  duration: "3.1s",
-  gradientStart: "#005EFF",
-  gradientEnd: "#001EA2",
-};
-
 // ============================================================
 // TIMELINE SETTINGS
 // ============================================================
@@ -705,54 +883,9 @@ function HistoryHotspot({ spot }: { spot: HistoryPoint }) {
   return (
     <span
       aria-hidden="true"
-      className="
-        pointer-events-none
-        absolute
-        z-20
-        block
-        h-[clamp(56px,4.7vw,76px)] lg:h-[calc(60*var(--history-unit))]
-        w-[clamp(56px,4.7vw,76px)] lg:w-[calc(60*var(--history-unit))]
-        -translate-x-1/2
-        -translate-y-1/2
-        select-none
-      "
-      style={
-        {
-          left: 0,
-          top: 0,
-          "--history-delay": spot.phase,
-          "--history-duration": historyHotspotSettings.duration,
-          "--history-gradient-start": historyHotspotSettings.gradientStart,
-          "--history-gradient-end": historyHotspotSettings.gradientEnd,
-        } as CSSProperties
-      }
+      className="pointer-events-none absolute left-0 top-0 z-20 block size-[clamp(56px,4.7vw,76px)] -translate-x-1/2 -translate-y-1/2 select-none lg:size-[calc(60*var(--history-unit))]"
     >
-      {/* SOFT BLUE GLOW */}
-      <span className="history-hotspot-glow absolute inset-[2%] rounded-full bg-[#71B8FF]/25 blur-[9px]" />
-
-      {/* WHITE CIRCULAR BACKGROUND */}
-      <span className="history-hotspot-white-disc absolute inset-[13%] rounded-full bg-white/85 shadow-[0_0_0_3px_rgba(255,255,255,0.35),0_0_18px_7px_rgba(255,255,255,0.65),0_3px_12px_rgba(0,94,255,0.20)]" />
-
-      {/* OUTER GRADIENT RING */}
-      <span className="history-hotspot-ring history-hotspot-ring-outer absolute inset-[3%] rounded-full">
-        <span className="history-hotspot-gradient-stroke absolute inset-0 rounded-full" />
-      </span>
-
-      {/* MIDDLE GRADIENT RING */}
-      <span className="history-hotspot-ring history-hotspot-ring-middle absolute inset-[10%] rounded-full">
-        <span className="history-hotspot-gradient-stroke absolute inset-0 rounded-full" />
-      </span>
-
-      {/* INNER GRADIENT RING */}
-      <span className="history-hotspot-ring history-hotspot-ring-inner absolute inset-[17%] rounded-full">
-        <span className="history-hotspot-gradient-stroke absolute inset-0 rounded-full" />
-      </span>
-
-      {/* FIXED WHITE CENTER BORDER */}
-      <span className="absolute inset-[23%] rounded-full border-[2px] border-white bg-[#257BF5] shadow-[0_0_0_1px_rgba(25,103,238,0.62),0_1px_6px_rgba(0,61,213,0.32)]" />
-
-      {/* FIXED BLUE CENTER */}
-      <span className="absolute inset-[28%] rounded-full bg-[linear-gradient(145deg,#005EFF_0%,#0348E4_40%,#00199E_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.16)]" />
+      <WaveButton decorative size="100%" delay={parseFloat(spot.phase)} />
     </span>
   );
 }
@@ -1185,7 +1318,7 @@ export default function HistoryPage({
             ? undefined
             : ({ minHeight: "100svh" } as CSSProperties)
         }
-        className="max-lg:[&[data-history-view='detail']_[data-history-heading]]:[top:calc(2*var(--history-header-offset,80px)+16px)]! md:max-lg:[&[data-history-view='detail']_[data-history-detail]_>_div:first-child_>_a]:block! md:max-lg:[&[data-history-view='detail']_[data-history-detail]_>_div:first-child_>_span]:block! lg:[&[data-history-view='detail']]:[--history-title-top:calc(var(--history-header-offset,97px)+20px)] md:max-xl:[&[data-history-view='detail']_[data-history-heading]]:translate-y-0! max-md:[.pin-spacer:has(>_&)]:[background-color:#24547a]! max-lg:[body:has(&)_.site-header__inner]:[padding:24px_12px_0]! max-lg:[body:has(&)_.site-header__inner]:[max-width:none]! max-lg:[body:has(&)_.site-header__logos_img]:[width:94px]! max-lg:[body:has(&)_.site-header__logos_>_a:nth-child(2)]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)]:[display:flex]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)]:[gap:10px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_a]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_button:last-child]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[border-radius:15px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button_>_span:first-child]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button_>_span:last-child_>_span]:[background:#9eb7d0]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_div]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_div]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[padding:0]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[justify-content:center]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[background:#ffffff15]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[border-color:#ffffff60]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[border-radius:15px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']_>_span:first-child]:[display:none]! max-lg:[&]:[margin-top:calc(-1_*_var(--history-header-offset,_80px))]! max-lg:[&]:[--history-unit:1px]! max-lg:[&]:[--history-mobile-unit:min(1px,_calc(100vw_/_428))]! max-lg:[&]:[--history-card-gap:20px]! max-lg:[&_[data-history-art]_>_img]:[position:absolute]! max-lg:[&_[data-history-art]_>_img]:[inset:0]! max-lg:[&_[data-history-art]_>_img]:[width:100%]! max-lg:[&_[data-history-art]_>_img]:[height:100%]! max-lg:[&_[data-history-art]_>_img]:[object-fit:cover]! max-lg:[&_[data-history-art]_>_img]:[object-position:50%_bottom]! max-lg:[&_[data-history-art]_>_img]:[transform:none]! max-lg:[&[data-history-view='overview']]:[min-height:max(100svh,_calc(960_*_var(--history-mobile-unit)))]! max-lg:[&[data-history-view='detail']]:[min-height:max(100svh,_calc(1040_*_var(--history-mobile-unit)))]! max-lg:[&[data-history-view='overview']_[data-history-art]_>_img]:[top:-35%]! max-lg:[&[data-history-view='overview']_[data-history-art]_>_img]:[height:135%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[top:-100%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[height:200%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[object-position:45%_bottom]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[transform:translateX(var(--history-pan-x,_0%))_scale(1.12)]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[transform-origin:center_bottom]! max-lg:[&_[data-history-heading]]:[top:calc(114_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]]:[align-items:flex-start]! max-lg:[&_[data-history-heading]]:[padding:0_calc(36_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]]:[text-align:left]! max-lg:[&_[data-history-heading]_h1]:[font-size:calc(52_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]_h1]:[width:100%]! max-lg:[&_[data-history-heading]_h1]:[max-width:520px]! max-lg:[&_[data-history-heading]_h1]:[text-align:left]! max-lg:[&_[data-history-heading]_h1]:[line-height:1.04]! max-lg:[&_[data-history-heading]_h1]:[text-wrap:initial]! max-lg:[&_[data-history-heading]_h1]:[max-width:calc(360_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]_>_p]:[display:none]! max-lg:[&_[data-history-heritage]]:[margin-top:calc(36_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[width:calc(298_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[min-height:calc(45_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[transform:none]! max-lg:[&_[data-history-heritage]]:[padding:6px_12px]! max-lg:[&_[data-history-heritage]]:[gap:12px]! max-lg:[&_[data-history-heritage]_>_img]:[width:38px]! max-lg:[&_[data-history-heritage]_>_img]:[height:26px]! max-lg:[&_[data-history-heritage]_>_img]:[transform:scale(1.5)]! max-lg:[&_[data-history-heritage]_>_p]:[font-size:calc(13_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-mobile]]:[padding-top:calc(440_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]_a]:[color:#f7f7f7]! max-lg:[&_[data-history-overview-slide]]:[height:calc(500_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]]:[padding-left:calc(104_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]]:[padding-right:24px]! max-lg:[&_[data-history-overview-slide]_a_>_div]:[margin-left:24px]! max-lg:[&_[data-history-overview-slide]_a_>_p]:[margin-left:24px]! max-lg:[&_[data-history-overview-stem]]:[height:calc(270_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-hotspot]]:[top:calc(285_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]]:[width:81%]! max-lg:[&_[data-history-detail]]:[padding-top:calc(380_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]]:[padding-bottom:100px]! max-lg:[&_[data-history-detail]_>_div:first-child]:[justify-content:center]! max-lg:[&_[data-history-detail]_>_div:first-child]:[height:48px]! max-lg:[&_[data-history-detail]_>_div:first-child_>_a]:[display:none]! max-lg:[&_[data-history-detail]_>_div:first-child_>_span]:[display:none]! max-lg:[&_[data-history-detail]_button]:[width:48px]! max-lg:[&_[data-history-detail]_button]:[height:48px]! max-lg:[&_[data-history-detail]_button_svg]:[width:44px]! max-lg:[&_[data-history-detail]_button_svg]:[height:44px]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[margin-top:calc(28_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[padding:0]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[height:420px]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[min-height:0]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[overflow:hidden]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[--history-card-gap:20px]! max-lg:[&_[data-history-track]]:[grid-auto-columns:100%]! max-lg:[&_[data-history-track]]:[gap:20px]! max-lg:[&_[data-history-card]]:[width:auto]! max-lg:[&_[data-history-card]]:[height:clamp(320px,_46svh,_390px)]! max-lg:[&_[data-history-card]]:[transform:none]! max-lg:[&_[data-history-card]]:[filter:none]! max-lg:[&_[data-history-card]]:[opacity:1]! max-lg:[&_[data-history-card]_>_div:last-child]:[left:32px]! max-lg:[&_[data-history-card]_>_div:last-child]:[bottom:55px]! max-lg:[&_[data-history-card]_>_span:nth-child(1)]:[left:32px]! max-lg:[&_[data-history-card]_>_span:nth-child(1)]:[bottom:55px]! max-lg:[&_[data-history-card]_>_span:nth-child(2)]:[left:32px]! max-lg:[&_[data-history-card]_>_div:nth-child(3)]:[padding-left:56px]! max-lg:[&_[data-history-card]_>_div:nth-child(3)]:[padding-right:24px]! max-lg:[&_[data-history-card]_h2]:[font-weight:410]! max-md:[@media(max-height:740px)]:[&_[data-history-heading]]:[top:90px]! max-md:[@media(max-height:740px)]:[&_[data-history-heading]_h1]:[font-size:calc(46_*_var(--history-mobile-unit))]! max-md:[@media(max-height:740px)]:[&_[data-history-heritage]]:[margin-top:22px]! max-md:[@media(max-height:740px)]:[&_[data-history-detail]]:[padding-top:calc(320_*_var(--history-mobile-unit))]! max-md:[@media(max-height:740px)]:[&_[data-history-card]]:[height:310px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2]:[margin-top:18px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2]:[font-size:18px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2_+_p]:[margin-top:14px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2_+_p]:[font-size:11px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_>_div:last-child]:[bottom:38px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_>_span:first-child]:[bottom:38px]! md:max-lg:[&]:[--history-mobile-unit:1px]! md:max-lg:[&_[data-history-heading]]:[left:5%]! md:max-lg:[&_[data-history-heading]]:[padding-left:0]! md:max-lg:[&_[data-history-heading]_h1]:[max-width:600px]! md:max-lg:[&_[data-history-heading]_h1]:[font-size:64px]! md:max-lg:[&[data-history-view='overview']]:[min-height:1180px]! md:max-lg:[&_[data-history-overview-mobile]]:[padding-top:520px]! md:max-lg:[&_[data-history-overview-slide]]:[width:50%]! md:max-lg:[&_[data-history-overview-slide]]:[padding-left:70px]! md:max-lg:[&_[data-history-detail]]:[width:88%]! md:max-lg:[&_[data-history-detail]]:[padding-top:480px]! md:max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[height:490px]! md:max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[margin-top:70px]! md:max-lg:[&_[data-history-track]]:[grid-auto-columns:calc((100%_-_20px)_/_2)]! md:max-lg:[&_[data-history-card]]:[height:430px]! md:max-lg:[&[data-history-view='detail']]:[min-height:1250px]! lg:max-xl:[&[data-history-view='overview']]:[min-height:1180px]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[position:absolute]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[inset:auto_0_0]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[top:-35%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[height:135%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[width:100%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[object-fit:cover]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[object-position:center_bottom]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[transform:none]! lg:max-xl:[&_[data-history-overview-mobile]]:[padding-top:520px]! lg:max-xl:[&_[data-history-overview-slide]]:[width:50%]! lg:max-xl:[&_[data-history-overview-slide]]:[height:500px]! lg:max-xl:[&_[data-history-overview-slide]]:[padding-left:70px]! lg:max-xl:[&_[data-history-overview-slide]]:[padding-right:24px]! lg:max-xl:[&_[data-history-overview-slide]_a]:[color:#f7f7f7]! lg:max-xl:[&_[data-history-overview-slide]_a_>_div]:[margin-left:24px]! lg:max-xl:[&_[data-history-overview-slide]_a_>_p]:[margin-left:24px]! lg:max-xl:[&_[data-history-overview-stem]]:[height:270px]! lg:max-xl:[&_[data-history-overview-hotspot]]:[top:285px]! relative min-h-[100svh] w-full overflow-hidden bg-[#24547A] lg:min-h-0 lg:mt-[calc(-1*var(--history-header-offset,97px))] lg:[--history-unit:var(--history-detail-unit,calc(100vw/1440))] lg:[--history-line-height:calc(250*var(--history-unit))] lg:[--history-year-size:calc(21*var(--history-unit))] lg:[--history-badge-size:calc(15*var(--history-unit))] lg:[--history-body-size:calc(13*var(--history-unit))] lg:[--history-description-gap:calc(28*var(--history-unit))] lg:[--history-title-top:calc(280*var(--history-unit))] lg:[--history-title-size:calc(50*var(--history-unit))] lg:[--history-image-offset:0px] lg:[--history-heritage-scale:1] lg:[--history-heritage-gap:calc(22*var(--history-unit))] lg:[--history-heritage-width:calc(273*var(--history-unit))] lg:[--history-heritage-height:calc(40*var(--history-unit))] lg:[--history-heritage-radius:calc(8*var(--history-unit))] lg:[--history-heritage-padding-x:calc(12*var(--history-unit))] lg:[--history-heritage-padding-y:calc(6*var(--history-unit))] lg:[--history-heritage-gap-x:calc(10*var(--history-unit))] lg:[--history-heritage-icon-width:calc(42*var(--history-unit))] lg:[--history-heritage-icon-height:calc(27*var(--history-unit))] lg:[--history-heritage-font-size:calc(11.5*var(--history-unit))] lg:[--history-heritage-icon-x:calc(25*var(--history-unit))] lg:[--history-heritage-icon-y:calc(2.5*var(--history-unit))]"
+        className="max-lg:[&[data-history-view='detail']_[data-history-heading]]:[top:calc(2*var(--history-header-offset,80px)+16px)]! md:max-lg:[&[data-history-view='detail']_[data-history-detail]_>_div:first-child_>_a]:block! md:max-lg:[&[data-history-view='detail']_[data-history-detail]_>_div:first-child_>_span]:block! lg:[&[data-history-view='detail']]:[--history-title-top:calc(var(--history-header-offset,97px)+20px)] md:max-xl:[&[data-history-view='detail']_[data-history-heading]]:translate-y-0! max-md:[.pin-spacer:has(>_&)]:[background-color:#24547a]! max-lg:[body:has(&)_.site-header__inner]:[padding:24px_12px_0]! max-lg:[body:has(&)_.site-header__inner]:[max-width:none]! max-lg:[body:has(&)_.site-header__logos_img]:[width:94px]! max-lg:[body:has(&)_.site-header__logos_>_a:nth-child(2)]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)]:[display:flex]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)]:[gap:10px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_a]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_button:last-child]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button]:[border-radius:15px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button_>_span:first-child]:[display:none]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_button_>_span:last-child_>_span]:[background:#9eb7d0]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_div]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_>_div:nth-child(2)_>_div]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[width:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[height:44px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[padding:0]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[justify-content:center]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[background:#ffffff15]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[border-color:#ffffff60]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']]:[border-radius:15px]! max-lg:[body:has(&)_.site-header__inner_button[aria-label='Change_language']_>_span:first-child]:[display:none]! max-lg:[&]:[margin-top:calc(-1_*_var(--history-header-offset,_80px))]! max-lg:[&]:[--history-unit:1px]! max-lg:[&]:[--history-mobile-unit:min(1px,_calc(100vw_/_428))]! max-lg:[&]:[--history-card-gap:20px]! max-lg:[&_[data-history-art]_>_img]:[position:absolute]! max-lg:[&_[data-history-art]_>_img]:[inset:0]! max-lg:[&_[data-history-art]_>_img]:[width:100%]! max-lg:[&_[data-history-art]_>_img]:[height:100%]! max-lg:[&_[data-history-art]_>_img]:[object-fit:cover]! max-lg:[&_[data-history-art]_>_img]:[object-position:50%_bottom]! max-lg:[&_[data-history-art]_>_img]:[transform:none]! max-lg:[&[data-history-view='overview']]:[min-height:max(100svh,_calc(960_*_var(--history-mobile-unit)))]! max-lg:[&[data-history-view='detail']]:[min-height:max(100svh,_calc(1040_*_var(--history-mobile-unit)))]! max-lg:[&[data-history-view='overview']_[data-history-art]_>_img]:[top:-35%]! max-lg:[&[data-history-view='overview']_[data-history-art]_>_img]:[height:135%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[top:-100%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[height:200%]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[object-position:45%_bottom]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[transform:translateX(var(--history-pan-x,_0%))_scale(1.12)]! max-lg:[&[data-history-view='detail']_[data-history-art]_>_img]:[transform-origin:center_bottom]! max-lg:[&_[data-history-heading]]:[top:calc(114_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]]:[align-items:flex-start]! max-lg:[&_[data-history-heading]]:[padding:0_calc(36_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]]:[text-align:left]! max-lg:[&_[data-history-heading]_h1]:[font-size:calc(52_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]_h1]:[width:100%]! max-lg:[&_[data-history-heading]_h1]:[max-width:520px]! max-lg:[&_[data-history-heading]_h1]:[text-align:left]! max-lg:[&_[data-history-heading]_h1]:[line-height:1.04]! max-lg:[&_[data-history-heading]_h1]:[text-wrap:initial]! max-lg:[&_[data-history-heading]_h1]:[max-width:calc(360_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heading]_>_p]:[display:none]! max-lg:[&_[data-history-heritage]]:[margin-top:calc(36_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[width:calc(298_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[min-height:calc(45_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-heritage]]:[transform:none]! max-lg:[&_[data-history-heritage]]:[padding:6px_12px]! max-lg:[&_[data-history-heritage]]:[gap:12px]! max-lg:[&_[data-history-heritage]_>_img]:[width:38px]! max-lg:[&_[data-history-heritage]_>_img]:[height:26px]! max-lg:[&_[data-history-heritage]_>_img]:[transform:scale(1.5)]! max-lg:[&_[data-history-heritage]_>_p]:[font-size:calc(13_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-mobile]]:[padding-top:calc(440_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]_a]:[color:#f7f7f7]! max-lg:[&_[data-history-overview-slide]]:[height:calc(500_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]]:[padding-left:calc(104_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-slide]]:[padding-right:24px]! max-lg:[&_[data-history-overview-slide]_a_>_div]:[margin-left:24px]! max-lg:[&_[data-history-overview-slide]_a_>_p]:[margin-left:24px]! max-lg:[&_[data-history-overview-stem]]:[height:calc(270_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-overview-hotspot]]:[top:calc(285_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]]:[width:81%]! max-lg:[&_[data-history-detail]]:[padding-top:calc(380_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]]:[padding-bottom:100px]! max-lg:[&_[data-history-detail]_>_div:first-child]:[justify-content:center]! max-lg:[&_[data-history-detail]_>_div:first-child]:[height:48px]! max-lg:[&_[data-history-detail]_>_div:first-child_>_a]:[display:none]! max-lg:[&_[data-history-detail]_>_div:first-child_>_span]:[display:none]! max-lg:[&_[data-history-detail]_button]:[width:48px]! max-lg:[&_[data-history-detail]_button]:[height:48px]! max-lg:[&_[data-history-detail]_button_svg]:[width:44px]! max-lg:[&_[data-history-detail]_button_svg]:[height:44px]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[margin-top:calc(28_*_var(--history-mobile-unit))]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[padding:0]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[height:420px]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[min-height:0]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[overflow:clip]! max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[--history-card-gap:20px]! max-lg:[&_[data-history-track]]:[grid-auto-columns:100%]! max-lg:[&_[data-history-track]]:[gap:20px]! max-lg:[&_[data-history-card]]:[width:auto]! max-lg:[&_[data-history-card]]:[height:clamp(320px,_46svh,_390px)]! max-lg:[&_[data-history-card]]:[transform:none]! max-lg:[&_[data-history-card]]:[filter:none]! max-lg:[&_[data-history-card]]:[opacity:1]! max-lg:[&_[data-history-card]_>_div:last-child]:[left:32px]! max-lg:[&_[data-history-card]_>_div:last-child]:[bottom:55px]! max-lg:[&_[data-history-card]_>_span:nth-child(1)]:[left:32px]! max-lg:[&_[data-history-card]_>_span:nth-child(1)]:[bottom:55px]! max-lg:[&_[data-history-card]_>_span:nth-child(2)]:[left:32px]! max-lg:[&_[data-history-card]_>_div:nth-child(3)]:[padding-left:56px]! max-lg:[&_[data-history-card]_>_div:nth-child(3)]:[padding-right:24px]! max-lg:[&_[data-history-card]_h2]:[font-weight:410]! max-md:[@media(max-height:740px)]:[&_[data-history-heading]]:[top:90px]! max-md:[@media(max-height:740px)]:[&_[data-history-heading]_h1]:[font-size:calc(46_*_var(--history-mobile-unit))]! max-md:[@media(max-height:740px)]:[&_[data-history-heritage]]:[margin-top:22px]! max-md:[@media(max-height:740px)]:[&_[data-history-detail]]:[padding-top:calc(320_*_var(--history-mobile-unit))]! max-md:[@media(max-height:740px)]:[&_[data-history-card]]:[height:310px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2]:[margin-top:18px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2]:[font-size:18px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2_+_p]:[margin-top:14px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_h2_+_p]:[font-size:11px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_>_div:last-child]:[bottom:38px]! max-md:[@media(max-height:740px)]:[&_[data-history-card]_>_span:first-child]:[bottom:38px]! md:max-lg:[&]:[--history-mobile-unit:1px]! md:max-lg:[&_[data-history-heading]]:[left:5%]! md:max-lg:[&_[data-history-heading]]:[padding-left:0]! md:max-lg:[&_[data-history-heading]_h1]:[max-width:600px]! md:max-lg:[&_[data-history-heading]_h1]:[font-size:64px]! md:max-lg:[&[data-history-view='overview']]:[min-height:1180px]! md:max-lg:[&_[data-history-overview-mobile]]:[padding-top:520px]! md:max-lg:[&_[data-history-overview-slide]]:[width:50%]! md:max-lg:[&_[data-history-overview-slide]]:[padding-left:70px]! md:max-lg:[&_[data-history-detail]]:[width:88%]! md:max-lg:[&_[data-history-detail]]:[padding-top:480px]! md:max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[height:490px]! md:max-lg:[&_[data-history-detail]_>_div:nth-child(2)]:[margin-top:70px]! md:max-lg:[&_[data-history-track]]:[grid-auto-columns:calc((100%_-_20px)_/_2)]! md:max-lg:[&_[data-history-card]]:[height:430px]! md:max-lg:[&[data-history-view='detail']]:[min-height:1250px]! lg:max-xl:[&[data-history-view='overview']]:[min-height:1180px]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[position:absolute]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[inset:auto_0_0]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[top:-35%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[height:135%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[width:100%]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[object-fit:cover]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[object-position:center_bottom]! lg:max-xl:[&[data-history-view='overview']_[data-history-art]_>_img]:[transform:none]! lg:max-xl:[&_[data-history-overview-mobile]]:[padding-top:520px]! lg:max-xl:[&_[data-history-overview-slide]]:[width:50%]! lg:max-xl:[&_[data-history-overview-slide]]:[height:500px]! lg:max-xl:[&_[data-history-overview-slide]]:[padding-left:70px]! lg:max-xl:[&_[data-history-overview-slide]]:[padding-right:24px]! lg:max-xl:[&_[data-history-overview-slide]_a]:[color:#f7f7f7]! lg:max-xl:[&_[data-history-overview-slide]_a_>_div]:[margin-left:24px]! lg:max-xl:[&_[data-history-overview-slide]_a_>_p]:[margin-left:24px]! lg:max-xl:[&_[data-history-overview-stem]]:[height:270px]! lg:max-xl:[&_[data-history-overview-hotspot]]:[top:285px]! relative min-h-[100svh] w-full overflow-hidden bg-[#24547A] lg:min-h-0 lg:mt-[calc(-1*var(--history-header-offset,97px))] lg:[--history-unit:var(--history-detail-unit,calc(100vw/1440))] lg:[--history-line-height:calc(250*var(--history-unit))] lg:[--history-year-size:calc(21*var(--history-unit))] lg:[--history-badge-size:calc(15*var(--history-unit))] lg:[--history-body-size:calc(13*var(--history-unit))] lg:[--history-description-gap:calc(28*var(--history-unit))] lg:[--history-title-top:calc(280*var(--history-unit))] lg:[--history-title-size:calc(50*var(--history-unit))] lg:[--history-image-offset:0px] lg:[--history-heritage-scale:1] lg:[--history-heritage-gap:calc(22*var(--history-unit))] lg:[--history-heritage-width:calc(273*var(--history-unit))] lg:[--history-heritage-height:calc(40*var(--history-unit))] lg:[--history-heritage-radius:calc(8*var(--history-unit))] lg:[--history-heritage-padding-x:calc(12*var(--history-unit))] lg:[--history-heritage-padding-y:calc(6*var(--history-unit))] lg:[--history-heritage-gap-x:calc(10*var(--history-unit))] lg:[--history-heritage-icon-width:calc(42*var(--history-unit))] lg:[--history-heritage-icon-height:calc(27*var(--history-unit))] lg:[--history-heritage-font-size:calc(11.5*var(--history-unit))] lg:[--history-heritage-icon-x:calc(25*var(--history-unit))] lg:[--history-heritage-icon-y:calc(2.5*var(--history-unit))]"
       >
         {/* ======================================
           HISTORY BACKGROUND
@@ -1241,16 +1374,6 @@ export default function HistoryPage({
             </div>
           )}
         </div>
-
-        <div
-          data-history-newsletter-blend
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 -bottom-px z-0 h-[clamp(140px,18vw,260px)]"
-          style={{
-            backgroundImage:
-              "linear-gradient(180deg, rgba(36,84,122,0) 0%, rgba(36,84,122,.08) 20%, rgba(36,84,122,.45) 50%, rgba(36,84,122,.86) 78%, #24547a 100%)",
-          }}
-        />
 
         {/* ======================================
           HISTORY CONTENT
@@ -1473,150 +1596,18 @@ export default function HistoryPage({
         <style>{`
         #history-page[data-history-scroll-scene="true"] [data-history-track] { transition: none; }
         #history-page[data-history-scroll-scene="true"] [data-history-card] { transition-property: filter, opacity; }
-        
-        
-        
-        
-        
-
-        #history-page .history-hotspot-gradient-stroke {
-          display: block;
-          position: absolute;
-          inset: 0;
-          box-sizing: border-box;
-          border-radius: 50%;
-          padding: 2px;
-
-          background: linear-gradient(
-            135deg,
-            var(--history-gradient-start, #005EFF) 0%,
-            var(--history-gradient-end, #001EA2) 100%
-          );
-
-          -webkit-mask:
-            linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-        }
-
-        @keyframes historyRingCycle {
-          0%, 8%, 88%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-
-          23% {
-            transform: scale(0.88);
-            opacity: 0.45;
-          }
-
-          32%, 61% {
-            transform: scale(0.72);
-            opacity: 0;
-          }
-
-          73% {
-            transform: scale(0.86);
-            opacity: 0.35;
-          }
-        }
-
-        @keyframes historyWhiteDiscCycle {
-          0%, 12%, 88%, 100% {
-            opacity: 0.95;
-            transform: scale(1);
-          }
-
-          35%, 58% {
-            opacity: 0.60;
-            transform: scale(0.94);
-          }
-        }
-
-        @keyframes historyGlowCycle {
-          0%, 12%, 88%, 100% {
-            opacity: 0.95;
-            transform: scale(1);
-          }
-
-          35%, 58% {
-            opacity: 0.12;
-            transform: scale(0.75);
-          }
-        }
-
-        #history-page .history-hotspot-ring {
-          transform-origin: center center;
-
-          animation-name: historyRingCycle;
-          animation-duration:
-            var(--history-duration, 3.1s);
-          animation-timing-function: ease-in-out;
-          animation-iteration-count: infinite;
-          animation-fill-mode: both;
-          animation-delay:
-            var(--history-delay, 0s);
-
-          will-change: transform, opacity;
-        }
-
-        #history-page .history-hotspot-ring-middle {
-          animation-delay:
-            calc(var(--history-delay, 0s) + 0.10s);
-        }
-
-        #history-page .history-hotspot-ring-inner {
-          animation-delay:
-            calc(var(--history-delay, 0s) + 0.18s);
-        }
-
-        #history-page .history-hotspot-white-disc {
-          transform-origin: center center;
-
-          animation:
-            historyWhiteDiscCycle
-            var(--history-duration, 3.1s)
-            ease-in-out infinite;
-
-          animation-delay:
-            var(--history-delay, 0s);
-        }
-
-        #history-page .history-hotspot-glow {
-          transform-origin: center center;
-
-          animation:
-            historyGlowCycle
-            var(--history-duration, 3.1s)
-            ease-in-out infinite;
-
-          animation-delay:
-            var(--history-delay, 0s);
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          #history-page .history-hotspot-ring,
-          #history-page .history-hotspot-white-disc,
-          #history-page .history-hotspot-glow {
-            animation: none;
-            opacity: 1;
-            transform: none;
-            will-change: auto;
-          }
-        }
       `}</style>
       </main>
       <div
         data-history-newsletter
-        className="max-md:-mt-0.5 max-md:pt-1.5 relative z-20 bg-[#123b53] px-5 pt-1 pb-28 md:px-10 md:pb-36"
-        style={{
-          backgroundImage:
-            "linear-gradient(180deg, #24547a 0%, #224e6d 25%, #153b52 60%, #092c40 100%)",
-        }}
+        className="relative z-20 px-5 pt-48 pb-40 [--history-blend-height:288px] md:px-10 md:pt-56 md:pb-48 md:[--history-blend-height:352px] lg:pt-64 lg:pb-56 lg:[--history-blend-height:416px] xl:pt-80 xl:pb-64 xl:[--history-blend-height:480px]"
       >
-        <NewsletterSubscription />
+        <div
+          data-history-newsletter-blend
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -top-[var(--history-blend-height)] bg-[linear-gradient(180deg_in_oklab,#24547a,#e8f4ff)] [mask-image:linear-gradient(180deg,transparent_0%,#0000000d_calc(var(--history-blend-height)*.15),#00000080_calc(var(--history-blend-height)*.5),#000000f2_calc(var(--history-blend-height)*.85),#000_var(--history-blend-height))]"
+        />
+        <NewsletterSubscription className="relative z-10 mt-0! mb-0!" />
       </div>
     </>
   );

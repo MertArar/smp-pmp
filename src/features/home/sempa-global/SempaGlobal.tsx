@@ -572,5 +572,5 @@ function DesktopSempaGlobal({ assetBase = "/home/sempa-global" }: { assetBase?: 
 
 export default function SempaGlobal({assetBase="/home/sempa-global"}:{assetBase?:string}) {
  const compact = useHomeCompact();
- return compact ? <MobileGlobal assetBase={assetBase}/> : <DesktopSempaGlobal assetBase={assetBase}/>;
+ return <div data-home-global-slot>{compact ? <MobileGlobal assetBase={assetBase}/> : <DesktopSempaGlobal assetBase={assetBase}/>}</div>;
 }

@@ -4,6 +4,7 @@ import {
   useRef as useMobileSnapRailtsx_Ref,
   useState as useMobileSnapRailtsx_State,
   type ReactNode as MobileSnapRailtsx_ReactNode,
+  useId,
 } from "react";
 
 import GreenPumpHerotsx_Image from "next/image";
@@ -40,6 +41,7 @@ import {
   FiArrowLeft as ManufacturingBenefitsCarouseltsx_FiArrowLeft,
   FiArrowRight as ManufacturingBenefitsCarouseltsx_FiArrowRight,
   FiArrowUpRight as ManufacturingBenefitsCarouseltsx_FiArrowUpRight,
+  FiArrowDownRight as ManufacturingBenefitsCarouseltsx_FiArrowDownRight,
 } from "react-icons/fi";
 
 import { useRef as useApproachAndProductstsx_Ref } from "react";
@@ -251,7 +253,7 @@ function MobileSnapRailtsx_MobileSnapRail({
 const GreenPumpHerotsx_approaches = [
   {
     label: "Human-Centric Green Approach",
-    icon: "/green-pump/heart.webp",
+    icon: "/green-pump/user.webp",
     position:
       "md:top-[42%] md:left-8 min-[90rem]:left-[max(32px,calc((100%-1080px)/2))]",
     delay: "[animation-delay:80ms]",
@@ -259,7 +261,7 @@ const GreenPumpHerotsx_approaches = [
 
   {
     label: "Environment-Centric Green Approach",
-    icon: "/green-pump/leaf.webp",
+    icon: "/green-pump/tree.webp",
     position:
       "md:top-[47%] md:right-8 min-[90rem]:right-[max(32px,calc((100%-1040px)/2))]",
     delay: "[animation-delay:180ms]",
@@ -267,7 +269,7 @@ const GreenPumpHerotsx_approaches = [
 
   {
     label: "Production-Centric Green Approach",
-    icon: "/green-pump/tree.webp",
+    icon: "/green-pump/leaf.webp",
     position: "md:right-1/2 md:translate-x-1/2 md:bottom-[19%]",
     delay: "[animation-delay:280ms]",
   },
@@ -328,17 +330,10 @@ function GreenPumpHerotsx_GreenPumpHero() {
         className="absolute inset-x-0 top-0 h-[calc(clamp(580px,155vw,760px)+var(--site-header-height,97px))] md:inset-0 md:h-full"
         aria-hidden="true"
       >
-        <GreenPumpHerotsx_Image
-          src="/green-pump/green-pump-hero-poster.webp"
-          alt=""
-          fill
-          preload
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-
         <video
           ref={video}
+          data-green-pump-hero-video
+          autoPlay
           muted
           loop
           playsInline
@@ -479,7 +474,10 @@ function GreenPumpHerotsx_GreenPumpHero() {
             <div
               className={`animate-news-card-reveal [animation-duration:500ms] [animation-fill-mode:backwards] motion-reduce:animate-none ${delay}`}
             >
-              <div className="flex min-h-[76px] items-center justify-between gap-4 rounded-[25px] border-[0.5px] md:rounded-[30px] border-[#f7f7f7]/65 bg-[#a5c843]/25 px-5 py-4 text-[15px] leading-[1.12] text-[#27272a] md:bg-white/15 md:text-[#f7f7f7] shadow-[0_7px_25px_#2c7e4e0c] backdrop-blur-[18px] transition-[translate,background-color,box-shadow] duration-[350ms] hover:-translate-y-1 hover:bg-white/25 hover:shadow-[0_10px_30px_#2c7e4e18] motion-reduce:translate-none! motion-reduce:transform-none motion-reduce:transition-none md:min-h-[95px] md:px-[25px] md:text-[15px]">
+              <div
+                data-green-approach-card
+                className="flex min-h-[76px] items-center justify-between gap-4 rounded-[25px] border-[0.5px] md:rounded-[30px] border-[#f7f7f7]/65 bg-[#a5c843]/10 px-5 py-4 text-[15px] leading-[1.12] text-[#27272a] md:bg-white/8 md:text-[#f7f7f7] shadow-[0_7px_25px_#2c7e4e0c] backdrop-blur-[8px] md:backdrop-blur-[10px] transition-[translate,background-color,box-shadow] duration-[350ms] hover:-translate-y-1 hover:bg-white/14 hover:shadow-[0_10px_30px_#2c7e4e18] motion-reduce:translate-none! motion-reduce:transform-none motion-reduce:transition-none md:min-h-[95px] md:px-[25px] md:text-[15px]"
+              >
                 <span className="max-w-[225px]">{label}</span>
 
                 <span
@@ -835,29 +833,18 @@ function CarbonFootprintSectiontsx_CertificateBadge({
     <span
       className={`inline-flex max-w-full items-center gap-2 rounded-[7px] bg-[#f7f7f7] px-[7px] py-[3px] text-[11px] leading-[1.12] text-[#9eb7d0] ${audited ? "min-h-[29px] w-[253px]" : "min-h-[29px] w-[242px]"}`}
     >
-      {/* The document graphic has generous transparent margins.
-                Keep a fixed badge slot but render the artwork at optical size. */}
-      <span className="relative h-[24px] w-[24px] shrink-0">
-        {audited ? (
-          <Image
-            src="/green-pump/document.webp"
-            alt=""
-            aria-hidden="true"
-            width={345}
-            height={364}
-            className="absolute left-1/2 top-1/2 h-auto w-[42px] max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
-          />
-        ) : (
-          <Image
-            src="/green-pump/standard.webp"
-            alt=""
-            aria-hidden="true"
-            width={108}
-            height={108}
-            className="absolute left-1/2 top-1/2 h-auto w-[26px] max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
-          />
-        )}
-      </span>
+      <Image
+        src={
+          audited
+            ? "/green-pump/green-secure.png"
+            : "/green-pump/verify-green.png"
+        }
+        alt=""
+        aria-hidden="true"
+        width={24}
+        height={24}
+        className="size-6 shrink-0 object-contain"
+      />
       {audited
         ? "Audited GHG Protocol standard"
         : "Verified Governance Standard"}
@@ -935,12 +922,12 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
         >
           <div className="flex min-h-[45px] w-[301px] max-w-full items-center gap-3 rounded-[15px] bg-[#f7f7f7]/90 px-4 py-[8px] text-[13px] leading-[1.12] text-[#2c7e4e]">
             <Image
-              src="/green-pump/standard.webp"
+              src="/green-pump/green-ball.png"
               alt=""
               aria-hidden="true"
               width={108}
               height={108}
-              className="h-auto w-[25px] shrink-0 object-contain"
+              className="h-auto w-8 shrink-0 object-contain"
             />
             <span className="min-w-0 flex-1">ISO 14064-1:2018 Certified</span>
             <Image
@@ -989,9 +976,13 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
                   >
                     <div className="flex items-center justify-between gap-2 text-[11px] leading-none text-[#2c7e4e]">
                       <span>{String(index + 1).padStart(2, "0")}</span>
-                      <span
+                      <Image
+                        src="/green-pump/green-ball.png"
+                        alt=""
                         aria-hidden="true"
-                        className="h-[8px] w-[8px] rounded-full bg-[#2c7e4e]"
+                        width={12}
+                        height={12}
+                        className="size-3 shrink-0 object-contain"
                       />
                     </div>
                     <p className="text-[14px] leading-[1.12]">{mantra}</p>
@@ -1151,10 +1142,10 @@ const SustainableManufacturingtsx_metrics = [
   {
     label: "Efficiency Standard",
     value: "IE4 / IE5",
-    icon: "/green-pump/efficient.webp",
-    iconWidth: 120,
-    iconHeight: 120,
-    displayWidth: 32,
+    icon: "/green-pump/standard.webp",
+    iconWidth: 108,
+    iconHeight: 108,
+    displayWidth: 36,
     position:
       "top-[25%] left-1/2 -translate-x-1/2 md:translate-x-0 md:top-[32%] md:left-0",
     duration: 4600,
@@ -1167,7 +1158,7 @@ const SustainableManufacturingtsx_metrics = [
     icon: "/green-pump/recycle.webp",
     iconWidth: 120,
     iconHeight: 113,
-    displayWidth: 31,
+    displayWidth: 36,
     position:
       "top-0 left-1/2 -translate-x-1/2 md:top-[37%] md:left-auto md:right-0 md:translate-x-0",
     duration: 5400,
@@ -1177,10 +1168,10 @@ const SustainableManufacturingtsx_metrics = [
   {
     label: "Service Life",
     value: "25 Year",
-    icon: "/green-pump/lifespan.webp",
-    iconWidth: 188,
-    iconHeight: 188,
-    displayWidth: 34,
+    icon: "/green-pump/heart.webp",
+    iconWidth: 235,
+    iconHeight: 235,
+    displayWidth: 60,
     position: "bottom-0 left-1/2 -translate-x-1/2 md:bottom-10",
     duration: 6100,
     delay: -2100,
@@ -1310,17 +1301,7 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
             playsInline
             preload="metadata"
             onLoadedData={() => setFailed(false)}
-            onError={(event) => {
-              const element = event.currentTarget;
-              if (element.dataset.pingpongFallback === "true") {
-                setFailed(true);
-                return;
-              }
-              element.dataset.pingpongFallback = "true";
-              element.src = "/green-pump/97percent.webm";
-              element.load();
-              if (!document.hidden) void element.play().catch(() => {});
-            }}
+            onError={() => setFailed(true)}
             aria-label="Leaf-formed 97 percent figure representing recyclable manufacturing materials"
             className={`absolute inset-0 h-full w-full object-contain [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent),linear-gradient(to_bottom,transparent,#000_7%,#000_93%,transparent)] [mask-composite:intersect] transition-opacity duration-300 motion-reduce:transition-none ${failed ? "opacity-0" : "opacity-100"}`}
           >
@@ -1354,7 +1335,7 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
                   <div className="relative flex min-h-[72px] md:min-h-[93px] flex-col justify-center rounded-[15px] border-[0.5px] border-white/75 bg-white/15 p-3 md:p-4 text-[#2c7e4e] shadow-[0_12px_35px_#2d6e411f,inset_0_1px_0_#ffffff73] backdrop-blur-[30px] transition-[translate,box-shadow,backdrop-filter] duration-[350ms] hover:-translate-y-0.5 hover:shadow-[0_14px_40px_#2d6e4129] hover:backdrop-blur-[24px] motion-reduce:translate-none! motion-reduce:transition-none">
                     <span
                       aria-hidden="true"
-                      className="absolute right-3 top-3 flex h-[34px] w-[36px] items-center justify-center"
+                      className="absolute right-2 top-2 flex size-12 items-center justify-center"
                     >
                       <Image
                         src={icon}
@@ -1650,9 +1631,12 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
                   <>
                     <span
                       aria-hidden="true"
-                      className="mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#a5c843] text-[#2c7e4e] shadow-[0_0_18px_#a5c84366] mt-14"
+                      className="mt-14 flex size-8 shrink-0 self-start items-center justify-center rounded-full bg-[#2c7e4e] text-[#a5c843]! shadow-[0_0_24px_6px_#2c7e4e55]"
                     >
-                      <ManufacturingBenefitsCarouseltsx_FiArrowUpRight className="h-5 w-5" />
+                      <ManufacturingBenefitsCarouseltsx_FiArrowDownRight
+                        className="size-6"
+                        strokeWidth={3}
+                      />
                     </span>
 
                     <div className="flex shrink-0 items-center justify-center gap-5 mt-10">
@@ -1663,7 +1647,10 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
                         onClick={() => moveTo(position - 1)}
                         className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-[#9eb7d0]! transition-colors duration-200 hover:bg-[#e4efda] hover:text-[#2c7e4e]! focus-visible:outline-2 focus-visible:outline-[#2c7e4e]"
                       >
-                        <ManufacturingBenefitsCarouseltsx_FiArrowLeft className="h-5 w-5" />
+                        <ManufacturingBenefitsCarouseltsx_FiArrowLeft
+                          className="size-7 md:size-8"
+                          strokeWidth={3}
+                        />
                       </button>
 
                       <button
@@ -1673,7 +1660,10 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
                         onClick={() => moveTo(position + 1)}
                         className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-[#9eb7d0]! transition-colors duration-200 hover:bg-[#e4efda] hover:text-[#2c7e4e]! focus-visible:outline-2 focus-visible:outline-[#2c7e4e]"
                       >
-                        <ManufacturingBenefitsCarouseltsx_FiArrowRight className="h-5 w-5" />
+                        <ManufacturingBenefitsCarouseltsx_FiArrowRight
+                          className="size-7 md:size-8"
+                          strokeWidth={3}
+                        />
                       </button>
                     </div>
                   </>
@@ -1686,7 +1676,10 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
                     onClick={() => moveTo(slide.position)}
                     className="mt-4 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#27272a] text-white! transition-[background-color,transform] duration-200 hover:rotate-6 hover:bg-[#2c7e4e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c7e4e]"
                   >
-                    <ManufacturingBenefitsCarouseltsx_FiArrowUpRight className="h-4 w-4" />
+                    <ManufacturingBenefitsCarouseltsx_FiArrowUpRight
+                      className="size-5"
+                      strokeWidth={3}
+                    />
                   </button>
                 )}
 
@@ -1801,6 +1794,39 @@ const ApproachAndProductstsx_productCards = [
   },
 ];
 
+function CarbonReportingRing() {
+  const filterId = `${useId()}-circle-key`;
+  const video = useApproachAndProductstsx_Ref<HTMLVideoElement>(null);
+  useApproachAndProductstsx_ViewportVideo(video);
+  return (
+    <>
+      <svg aria-hidden="true" className="pointer-events-none absolute size-0">
+        <defs>
+          <filter id={filterId} colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  1 1 1 0 -0.5"
+            />
+          </filter>
+        </defs>
+      </svg>
+      <video
+        ref={video}
+        data-carbon-reporting-ring
+        aria-hidden="true"
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        style={{ filter: `url(#${filterId}) hue-rotate(25deg)` }}
+        className="pointer-events-none absolute top-1/2 -left-4 size-24 -translate-y-1/2 rounded-full object-cover md:size-[104px]"
+      >
+        <source src="/green-pump/circle-animation.mp4" type="video/mp4" />
+      </video>
+    </>
+  );
+}
+
 function ApproachAndProductstsx_ApproachAndProducts() {
   const pump = useApproachAndProductstsx_Ref<HTMLVideoElement>(null);
 
@@ -1902,10 +1928,10 @@ function ApproachAndProductstsx_ApproachAndProducts() {
             </h2>
 
             <p className="mt-8 max-w-[640px] text-[14px] leading-[1.12] md:mt-[44px] md:text-[15px]">
-              SEMPA Pump's “Green Pump” approach represents a philosophy that
-              considers not merely the manufacturing phase, but the complete
-              product lifecycle extending from initial design through to
-              end-of-life.
+              SEMPA Pump&apos;s “Green Pump” approach represents a philosophy
+              that considers not merely the manufacturing phase, but the
+              complete product lifecycle extending from initial design through
+              to end-of-life.
             </p>
 
             <ul className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-2 md:mt-[46px] md:gap-4">
@@ -1956,39 +1982,12 @@ function ApproachAndProductstsx_ApproachAndProducts() {
 
           {/* The pump area is intentionally wider and taller on desktop, matching the reference. */}
           <div className="relative order-1 mx-auto w-full min-w-0 max-w-[650px] md:order-2 lg:mx-0 lg:max-w-none lg:self-start">
-            <div className="relative aspect-[0.85] w-full bg-transparent md:aspect-square lg:aspect-auto lg:h-[620px]">
-              {/* No solid backdrop: every unmasked pixel shows the exact section
-                  gradient underneath, so no rectangular video-color seam appears. */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-x-[8%] -inset-y-[6%]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse closest-side at 58% 53%, rgba(224,244,204,.26) 0%, rgba(244,251,233,.10) 58%, transparent 100%)",
-                }}
-              />
-
-              {/* The *entire viewport* of the oversize video fades into the
-                  section's own background at the left, right and bottom.
-                  No opaque overlay or rectangular color layer is used. */}
-              <div
-                className="absolute inset-0 overflow-hidden"
-                style={{
-                  WebkitMaskImage:
-                    "linear-gradient(to right, transparent 0%, rgba(0,0,0,.18) 7%, rgba(0,0,0,.68) 17%, #000 32%, #000 94%, transparent 100%)",
-                  maskImage:
-                    "linear-gradient(to right, transparent 0%, rgba(0,0,0,.18) 7%, rgba(0,0,0,.68) 17%, #000 32%, #000 94%, transparent 100%)",
-                }}
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    WebkitMaskImage:
-                      "linear-gradient(to bottom, #000 0%, #000 68%, rgba(0,0,0,.90) 77%, rgba(0,0,0,.55) 87%, rgba(0,0,0,.18) 96%, transparent 100%)",
-                    maskImage:
-                      "linear-gradient(to bottom, #000 0%, #000 68%, rgba(0,0,0,.90) 77%, rgba(0,0,0,.55) 87%, rgba(0,0,0,.18) 96%, transparent 100%)",
-                  }}
-                >
+            <div
+              data-green-pump-visual
+              className="relative aspect-[0.85] w-full bg-transparent md:aspect-square lg:aspect-auto lg:h-[620px]"
+            >
+              <div className="absolute inset-0 overflow-hidden mix-blend-multiply [mask-image:linear-gradient(to_bottom,#000_94%,transparent)]">
+                <div className="absolute inset-0">
                   <video
                     ref={pump}
                     muted
@@ -2014,28 +2013,17 @@ function ApproachAndProductstsx_ApproachAndProducts() {
                 </div>
               </div>
 
-              {/* Mat cam görünümü: parlama yerine güçlü arka plan bulanıklığı
-                  ve çok hafif nötr cam tonu. Kenarlar yumuşakça erir;
-                  Carbon Footprint yazısı ve ikon üstte net kalır. */}
               <div
+                data-carbon-reporting-fog
                 aria-hidden="true"
-                className="pointer-events-none absolute right-[4%] bottom-[8%] h-[56%] w-[78%] rounded-full"
-                style={{
-                  background: "rgba(190, 199, 190, 0.18)",
-                  WebkitBackdropFilter:
-                    "blur(48px) saturate(0.55) contrast(0.87)",
-                  backdropFilter: "blur(48px) saturate(0.55) contrast(0.87)",
-                  WebkitMaskImage:
-                    "radial-gradient(ellipse closest-side at 56% 55%, #000 0%, #000 40%, rgba(0,0,0,.76) 62%, rgba(0,0,0,.24) 83%, transparent 100%)",
-                  maskImage:
-                    "radial-gradient(ellipse closest-side at 56% 55%, #000 0%, #000 40%, rgba(0,0,0,.76) 62%, rgba(0,0,0,.24) 83%, transparent 100%)",
-                }}
+                className="pointer-events-none absolute right-0 bottom-0 h-[55%] w-[68%] backdrop-blur-[28px] [mask-image:radial-gradient(ellipse_closest-side_at_50%_50%,#000_0%,#000c_45%,transparent_100%)] md:backdrop-blur-[42px]"
               />
             </div>
 
             {/* The reporting label floats above the video blur. */}
-            <div className="relative z-10 mx-auto -mt-5 max-w-[360px] text-center lg:absolute lg:right-0 lg:bottom-[90px] lg:mt-0 lg:w-[360px]">
-              <div className="relative ml-auto flex min-h-[60px] max-w-[205px] items-center justify-end gap-1 px-0 py-2 before:pointer-events-none before:absolute before:top-1/2 before:left-[14px] before:h-[70px] before:w-[70px] before:-translate-y-1/2 before:rounded-full before:border-2 before:border-[#8df1e0]/75 before:shadow-[0_0_23px_#73d5deaa,inset_0_0_17px_#73d5de80] md:min-h-[66px]">
+            <div className="relative z-10 mx-auto -mt-24 max-w-[360px] text-center md:-mt-28 lg:absolute lg:right-0 lg:bottom-[90px] lg:mt-0 lg:w-[360px]">
+              <div className="relative ml-auto flex min-h-[60px] max-w-[205px] items-center justify-end gap-1 px-0 py-2 md:min-h-[66px]">
+                <CarbonReportingRing />
                 <h3 className="relative max-w-[126px] text-right text-[12px] leading-[1.02] text-[#27272a] md:text-[13px]">
                   We Are Reporting Our Carbon Footprint
                 </h3>

@@ -76,7 +76,7 @@ export default function HomeMediaVideo({
           near.disconnect();
         }
       },
-      { rootMargin: "2500px 0px" },
+      { rootMargin: "800px 0px" },
     );
     const visibility = new IntersectionObserver(
       (entries) => {
@@ -87,7 +87,7 @@ export default function HomeMediaVideo({
     );
     const rect = video.getBoundingClientRect();
     visible = rect.bottom > -200 && rect.top < innerHeight + 200;
-    if (rect.bottom > -2500 && rect.top < innerHeight + 2500)
+    if (rect.bottom > -800 && rect.top < innerHeight + 800)
       video.preload = "auto";
     near.observe(video);
     visibility.observe(video);
@@ -113,5 +113,5 @@ export default function HomeMediaVideo({
   }, [autoPlay]);
 
   // Native sources retain metadata/first-frame preparation; never reset currentTime.
-  return <video {...props} autoPlay={false} preload="metadata" ref={setRef} />;
+  return <video {...props} autoPlay={false} preload="none" ref={setRef} />;
 }

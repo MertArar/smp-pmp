@@ -250,7 +250,10 @@ export default function PumpSeriesPage({
         data-series-newsletter
         className="mx-auto w-full max-w-[1600px] px-5 pt-1 pb-32 md:w-[94%] md:px-8 md:pt-8 lg:w-[90%] lg:px-6 xl:px-10"
       >
-        <NewsletterSubscription />
+        <NewsletterSubscription
+          scaled
+          className="max-w-none! 2xl:[--mail-unit:1.25px]!"
+        />
       </div>
     </main>
   );
