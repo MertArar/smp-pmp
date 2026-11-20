@@ -12,6 +12,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEnvironment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { buildScatterPaths } from "./heroScatterMotion";
+import { HOME_PUMPS } from "../product/homePumpCatalog";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -40,17 +41,7 @@ function resolveModelUrl(url: string) {
 }
 
 const MODEL_URLS = [
-  LEGACY_PUMP_URL,
-  HOME_DEFAULT_PUMP_URL,
-  DEFAULT_MODEL_URL,
-  "/home/products/models/ARS-UF.glb",
-  "/home/products/models/ASL-600H.glb",
-  "/home/products/models/DPT.glb",
-  LEGACY_SCE_URL,
-  NEW_SCE_URL,
-  "/home/products/models/SVDP-2.glb",
-  "/home/products/models/TKF-2.glb",
-  "/home/products/models/TKF-KE.glb",
+  ...HOME_PUMPS.map((pump) => pump.modelUrl),
 ] as const;
 
 const PRODUCT02_PART_GROUPS = {
@@ -212,8 +203,8 @@ function getFirstMesh(object: THREE.Object3D): THREE.Mesh | null {
   return firstMesh;
 }
 
-// GLB'nin studyo EXR ortam yansimasi.
-function SceStudioEnvironment() {
+// Shared studio reflections preserve the embedded PBR materials of every pump.
+function PumpStudioEnvironment() {
   const getRendererState = useThree((state) => state.get);
   const studio = useEnvironment({
     files: STUDIO_EXR_URL,
@@ -475,6 +466,19 @@ function ExplodableProduct({
       let clone = materials.get(material);
       if (!clone) {
         clone = material.clone();
+        // The seven CAD exports mark painted/metal body materials as BLEND.
+        // GLTFLoader consequently disables depth writes and sorts whole mesh
+        // objects as transparent surfaces, exposing internals and triangular
+        // overlaps. These pump solids are opaque; retain their original PBR
+        // maps/colors and fix only the exported alpha/depth classification.
+        if (modelUrl.startsWith("/3d/pumps/") && clone.transparent) {
+          clone.transparent = false;
+          clone.opacity = 1;
+          clone.depthWrite = true;
+          clone.depthTest = true;
+          clone.alphaTest = 0;
+          clone.needsUpdate = true;
+        }
         materials.set(material, clone);
       }
       return clone;
@@ -1672,29 +1676,11 @@ export function Hero3D({
           zIndex: 15,
         }}
       >
-        {isSceSelected ? (
-          <directionalLight position={[2.5, 4, 2]} intensity={1.4} />
-        ) : (
-          <>
-            <ambientLight intensity={1.05} />
-
-            <directionalLight position={[4, 5, 6]} intensity={2.15} />
-
-            <directionalLight position={[-5, 1, 4]} intensity={0.82} />
-
-            <directionalLight position={[0, -4, 1]} intensity={0.42} />
-
-            <pointLight
-              position={[1.5, 1, 2.5]}
-              intensity={6.25}
-              distance={8}
-            />
-          </>
-        )}
+        <directionalLight position={[2.5, 4, 2]} intensity={1.4} />
 
         <HeroRenderBudget qualityRef={contactQualityRef} />
         <Suspense fallback={null}>
-          {isSceSelected && <SceStudioEnvironment />}
+          <PumpStudioEnvironment />
 
           <ExplodableProduct
             key={activeModelUrl}

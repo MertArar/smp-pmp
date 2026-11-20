@@ -28,17 +28,23 @@ export default function HomeElasticGallery({
   const ball = useRef<HTMLButtonElement>(null);
   const target = useRef(value);
   const current = useRef(value);
+  const rulerCenter = useRef(Math.max(0, Math.min(Math.round(value) - 3, count - 7)) + 3);
+  const dragLastX = useRef(0);
   const velocity = useRef(0);
+  const ropeTension = useRef({ displacement: 0, velocity: 0 });
   const dragging = useRef(false);
   const selection = useRef(value);
   const frame = useRef(0);
   const reduced = useRef(false);
   const animate = useRef<() => void>(() => {});
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
-    target.current = value;
-    selection.current = value;
-    setSelected(value);
+    const snapped = Math.round(value);
+    target.current = snapped;
+    selection.current = snapped;
+    setSelected(snapped);
     animate.current();
   }, [value]);
 
@@ -61,28 +67,43 @@ export default function HomeElasticGallery({
         velocity.current *= Math.pow(0.66, dt);
         current.current += velocity.current * dt;
       }
-      const x = 24 + current.current * 372 / Math.max(1, count - 1);
-      const pull = Math.min(2, Math.abs(velocity.current) * 10);
-      // Fixed endpoints and a fixed gradient: only the local crest follows
-      // the thumb. Sampling fixed x coordinates also avoids edge loops.
-      let path = "M 0 30";
-      for (let sample = 1; sample < 84; sample++) {
-        const px = sample * 5;
-        const edge = Math.min(1, px / 20, (420 - px) / 20);
-        const crest = (18 + pull) * Math.exp(-Math.pow((px - x) / 38, 2)) * edge;
-        path += ` L ${px} ${30 - crest}`;
-      }
-      path += " L 420 30";
+      // Start at the center and pan the ruler window when the thumb reaches
+      // an edge. The product range remains independent of the seven marks.
+      const windowStart = Math.max(0, Math.min(current.current - 6, Math.max(0, count - 7)));
+      rulerCenter.current = windowStart + 3;
+      const x = 48 + (current.current - windowStart) * 54;
+      // The strip consumes this same smoothed clock instead of raw pointer
+      // events. Parent React rendering is bypassed during thumb dragging.
+      onChangeRef.current(current.current);
+      // A separate spring lets the rope stretch during a pull and relax after
+      // release. Keep its crest just above the ball so they read as contact.
+      const tension = ropeTension.current;
+      const pull = reduced.current ? 0 : Math.min(2, Math.abs(velocity.current) * 8);
+      tension.velocity += (pull - tension.displacement) * 0.12 * dt;
+      tension.velocity *= Math.pow(0.68, dt);
+      tension.displacement += tension.velocity * dt;
+      if (reduced.current) tension.displacement = tension.velocity = 0;
+      const crestY = 13 - tension.displacement;
+      // Broad, shallow shoulders match the reference. Shorten only the edge
+      // shoulder at the first/last product to preserve monotonic control points.
+      const leftShoulder = Math.min(72, x - 2);
+      const rightShoulder = Math.min(72, 418 - x);
+      const path = `M 0 30 H ${x - leftShoulder} C ${x - leftShoulder * 0.53} 30 ${x - leftShoulder * 0.56} ${crestY} ${x} ${crestY} C ${x + rightShoulder * 0.56} ${crestY} ${x + rightShoulder * 0.53} 30 ${x + rightShoulder} 30 H 420`;
       line.current?.setAttribute("d", path);
       crestLine.current?.setAttribute("d", path);
       crestGradient.current?.setAttribute("x1", String(x - 68));
       crestGradient.current?.setAttribute("x2", String(x + 68));
       ball.current?.style.setProperty("left", `${(x / 420) * 100}%`);
+      ball.current?.style.setProperty("top", "27px");
       markers.current?.querySelectorAll<HTMLElement>("[data-ruler-mark]").forEach((mark, index) => {
-        const distance = Math.abs(x - (24 + index * 62));
-        const lift = Math.pow(Math.max(0, 1 - distance / 62), 2);
+        const position = Math.floor(windowStart) - 1 + index;
+        const markX = 48 + (position - windowStart) * 54;
+        mark.style.left = `${markX / 420 * 100}%`;
+        const distance = Math.abs(x - markX);
+        const lift = Math.pow(Math.max(0, 1 - distance / 54), 2);
         mark.style.transform = `translateY(${-18 * lift}px)`;
-        mark.style.opacity = String(0.35 + lift * 0.65);
+        const edgeFade = Math.max(0, Math.min(1, (markX - 8) / 16, (412 - markX) / 16));
+        mark.style.opacity = String(position < 0 || position >= count ? 0 : (0.35 + lift * 0.65) * edgeFade);
       });
       ball.current?.style.setProperty(
         "--ball-lean",
@@ -90,7 +111,9 @@ export default function HomeElasticGallery({
       );
       if (
         Math.abs(target.current - current.current) > 0.0005 ||
-        Math.abs(velocity.current) > 0.0005
+        Math.abs(velocity.current) > 0.0005 ||
+        Math.abs(tension.displacement) > 0.005 ||
+        Math.abs(tension.velocity) > 0.005
       )
         frame.current = requestAnimationFrame(paint);
       else {
@@ -113,19 +136,20 @@ export default function HomeElasticGallery({
     const stop = Math.max(0, Math.min(count - 1, index));
     target.current = stop;
     selection.current = stop;
-    setSelected(stop);
-    onChange(stop);
+    setSelected((previous) => Math.round(previous) === Math.round(stop) ? previous : stop);
     animate.current();
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     if (!dragging.current || !track.current) return;
     const rect = track.current.getBoundingClientRect();
-    setStop(
-      (((event.clientX - rect.left) / rect.width) * 420 - 24) / 372 * (count - 1),
-    );
+    const delta = (event.clientX - dragLastX.current) / rect.width * 420 / 54;
+    dragLastX.current = event.clientX;
+    setStop(selection.current + delta);
   }
   function end() {
+    if (!dragging.current) return;
     dragging.current = false;
+    setStop(Math.round(selection.current));
   }
   function keyboard(event: KeyboardEvent<HTMLButtonElement>) {
     const next =
@@ -140,7 +164,7 @@ export default function HomeElasticGallery({
               : null;
     if (next !== null) {
       event.preventDefault();
-      setStop(next);
+      setStop(Math.round(next));
     }
   }
   function stopKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
@@ -160,8 +184,8 @@ export default function HomeElasticGallery({
         onPointerDown={(event) => {
           if (event.pointerType === "mouse" && event.button !== 0) return;
           dragging.current = true;
+          dragLastX.current = event.clientX;
           event.currentTarget.setPointerCapture(event.pointerId);
-          move(event);
         }}
         onPointerMove={move}
         onPointerUp={end}
@@ -178,9 +202,9 @@ export default function HomeElasticGallery({
         <div
           aria-hidden="true"
           ref={markers}
-          className="pointer-events-none absolute inset-x-[5.7143%] top-0 flex justify-between"
+          className="pointer-events-none absolute inset-x-0 -top-6 h-12 overflow-hidden"
         >
-          {Array.from({ length: 7 }, (_, i) => (
+          {Array.from({ length: 9 }, (_, i) => (
             <span
               key={i}
               data-ruler-mark
@@ -188,9 +212,10 @@ export default function HomeElasticGallery({
                 transform:
                   "translateY(0)",
                 height: 16,
+                left: `${(48 + (i - 1) * 54) / 420 * 100}%`,
                 opacity: 0.35,
               }}
-              className="w-px bg-linear-to-b from-transparent via-[#e0e3e5] to-transparent"
+              className="absolute top-6 w-px bg-linear-to-b from-transparent via-[#e0e3e5] to-transparent"
             />
           ))}
         </div>
@@ -288,10 +313,10 @@ export default function HomeElasticGallery({
           onKeyUp={stopKeyboard}
           onBlur={end}
           style={{
-            left: `${(24 + current.current * 372 / Math.max(1, count - 1)) / 420 * 100}%`,
+            left: `${(210 + (current.current - rulerCenter.current) * 54) / 420 * 100}%`,
             transform: "translateX(-50%) rotate(var(--ball-lean,0deg))",
           }}
-          className="absolute top-[30px] grid size-[60px] cursor-grab touch-none place-items-center rounded-full border border-[#a5c7dc]/55 bg-[#4687B8]/30 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          className="absolute top-[27px] grid size-[60px] cursor-grab touch-none place-items-center rounded-full border border-[#a5c7dc]/55 bg-[#4687B8]/30 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
         >
           <span className="relative size-[40px] rounded-full border border-white/85 bg-[#dedede]" />
         </button>

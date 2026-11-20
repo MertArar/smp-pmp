@@ -5,86 +5,13 @@ import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef,
 import { FiArrowUpRight } from "react-icons/fi";
 import { gsap, useGSAP } from "@/lib/gsap";
 import HomeElasticGallery from "./HomeElasticGallery";
-const PRODUCTS = [
-  {
-    id: 1,
-    image: "/home/products/product.webp",
-    title: "ASL Series Axial Flow Elbow Propeller Pumps",
-    description: "High-capacity pumping for industrial applications.",
-    modelUrl: "/home/products/models/product.glb",
-  },
-  {
-    id: 2,
-    image: "/home/products/1-k.jpg",
-    title: "End Suction Pumps",
-    description: "Reliable centrifugal pumping for industrial systems.",
-    modelUrl: "/home/products/models/ARS-UF.glb",
-  },
-  {
-    id: 3,
-    image: "/home/products/asl.jpg",
-    title: "Split Case Pumps",
-    description: "High-capacity solutions for demanding systems.",
-    modelUrl: "/home/products/models/ASL-600H.glb",
-  },
-  {
-    id: 4,
-    image: "/home/products/dpt-di.jpg",
-    title: "Inline Centrifugal Pumps",
-    description: "Compact pumping for efficient fluid transfer.",
-    modelUrl: "/home/products/models/DPT.glb",
-  },
-  {
-    id: 5,
-    image: "/home/products/dpt-tr-100.jpg",
-    title: "Vertical Centrifugal Pumps",
-    description: "Vertical technology for demanding applications.",
-    modelUrl: "/home/products/models/SCE.glb",
-  },
-  {
-    id: 6,
-    image: "/home/products/tkf-80.jpg",
-    title: "Process Pumps",
-    description: "Reliable performance for industrial processes.",
-    modelUrl: "/home/products/models/SVDP-2.glb",
-  },
-  {
-    id: 7,
-    image: "/home/products/tkf-ah.jpg",
-    title: "Booster Pumps",
-    description: "Pressure boosting for industrial networks.",
-    modelUrl: "/home/products/models/TKF-2.glb",
-  },
-  {
-    id: 8,
-    image: "/home/products/tkf-k-100.jpg",
-    title: "Multistage Pumps",
-    description: "High-pressure multistage pumping solutions.",
-    modelUrl: "/home/products/models/TKF-KE.glb",
-  },
-  {
-    id: 9,
-    image: "/home/products/tkf-ke.jpg",
-    title: "TKF KE Series Pumps",
-    description: "Industrial pump solutions.",
-    // Geçici model eşlemesi; ürünün kendi GLB dosyası geldiğinde güncellenebilir.
-    modelUrl: "/home/products/models/TKF-KE.glb",
-  },
-  {
-    id: 10,
-    image: "/home/products/tkf-m-80.jpg",
-    title: "TKF M Series Pumps",
-    description: "Industrial pump solutions.",
-    // Geçici model eşlemesi; ürünün kendi GLB dosyası geldiğinde güncellenebilir.
-    modelUrl: "/home/products/models/TKF-2.glb",
-  },
-];
+import { HOME_PUMPS } from "./homePumpCatalog";
 const PUMP_MODEL_SELECT_EVENT = "sempa:pump-model-select";
 const PRODUCT_UPWARD_BLAST_EVENT = "sempa:product-upward-blast";
 const PUMP_ROTATE_START_EVENT = "sempa:pump-rotate-start";
 const PUMP_ROTATE_DELTA_EVENT = "sempa:pump-rotate-delta";
 const PUMP_ROTATE_END_EVENT = "sempa:pump-rotate-end";
-const ACTIVE_PRODUCTS = PRODUCTS;
+const ACTIVE_PRODUCTS = HOME_PUMPS;
 const LOOP_PRODUCTS = Array.from({ length: ACTIVE_PRODUCTS.length * 5 }, (_, index) => ({ ...ACTIVE_PRODUCTS[index % ACTIVE_PRODUCTS.length], loopKey: `p-${index}` }));
 const PRODUCT_STAGE_Y = -96;
 export default function Product() {
@@ -95,18 +22,25 @@ export default function Product() {
   const categoriesButtonRef = useRef<HTMLAnchorElement>(null);
   const controlBarRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeProduct = ACTIVE_PRODUCTS[activeIndex];
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const stripTrackRef = useRef<HTMLDivElement>(null);
   const [galleryPosition, setGalleryPosition] = useState(0);
-  const stripPositionRef = useRef(ACTIVE_PRODUCTS.length);
+  const stripPositionRef = useRef<number>(ACTIVE_PRODUCTS.length);
   const stripStepRef = useRef(1);
   const stripDragRef = useRef({ active: false, startX: 0, startPosition: 0, moved: false });
   const wakeStripRef = useRef<() => void>(() => {});
-  const setStripPosition = useCallback((value: number) => {
+  const setStripPosition = useCallback((value: number, syncControl = true) => {
     const position = Math.max(0, Math.min(ACTIVE_PRODUCTS.length - 1, value));
     stripPositionRef.current = ACTIVE_PRODUCTS.length + position;
-    setGalleryPosition(position);
+    const index = Math.round(position);
+    if (activeIndexRef.current !== index) {
+      activeIndexRef.current = index;
+      setActiveIndex(index);
+      window.dispatchEvent(new CustomEvent(PUMP_MODEL_SELECT_EVENT, { detail: { modelUrl: ACTIVE_PRODUCTS[index].modelUrl } }));
+    }
+    if (syncControl) setGalleryPosition(position);
     wakeStripRef.current();
   }, []);
 
@@ -114,15 +48,19 @@ export default function Product() {
     const row = stripTrackRef.current;
     if (!row) return;
     let frame = 0;
-    let position = ACTIVE_PRODUCTS.length;
+    let position: number = ACTIVE_PRODUCTS.length;
     let cardStep = 1;
+    let lastBlurSlot = -1;
     const render = () => {
       position = stripPositionRef.current;
       row.style.transform = `translate3d(${-position * cardStep}px,0,0)`;
+      const blurSlot = Math.floor(position);
+      if (blurSlot === lastBlurSlot) return;
+      lastBlurSlot = blurSlot;
       Array.from(row.children).forEach((item, index) => {
         const image = item.firstElementChild?.firstElementChild as HTMLElement | null;
         if (!image) return;
-        const blur = Math.max(0, Math.min(15, (index - position - (innerWidth < 1024 ? 1 : 8)) * 4 - 1));
+        const blur = Math.max(0, Math.min(15, (index - blurSlot - (innerWidth < 1024 ? 1 : 8)) * 4 - 1));
         const filter = blur > 0 ? `blur(${blur.toFixed(2)}px)` : "none";
         if (image.style.filter !== filter) image.style.filter = filter;
         const opacity = String(1 - blur * .015);
@@ -170,7 +108,6 @@ export default function Product() {
   const modelRotateRef = useRef({ active: false, pointerId: -1, lastX: 0, lastY: 0 });
   const jumpToProduct = (index: number) => {
     if (index < 0 || index >= ACTIVE_PRODUCTS.length) return;
-    setStripPosition(index);
     if (activeIndexRef.current === index) return;
     activeIndexRef.current = index;
     setActiveIndex(index);
@@ -707,6 +644,7 @@ export default function Product() {
                 absolute
                 left-[40px]
                 top-[115px]
+                w-[270px]
                 z-10
                 text-[33px]
                 leading-[1]
@@ -718,9 +656,7 @@ export default function Product() {
                   fontVariationSettings: '"wght" 650, "wdth" 125, "opsz" 33',
                 }}
               >
-                End Suction
-                <br />
-                Pumps
+                {activeProduct.title}
               </p>
               <p
                 className="
@@ -740,7 +676,7 @@ export default function Product() {
                   fontVariationSettings: '"wght" 270, "wdth" 125, "opsz" 16',
                 }}
               >
-                End-suction pumps are a subtype of centrifugal pumps.
+                {activeProduct.description}
               </p>
               <span
                 className="
@@ -760,7 +696,7 @@ export default function Product() {
                   fontVariationSettings: '"wght" 270, "wdth" 125, "opsz" 16',
                 }}
               >
-                DPT ASL SCE
+                {activeProduct.name}
               </span>
             </div>
           </div>
@@ -799,7 +735,7 @@ export default function Product() {
             className="absolute left-0 top-[795px] z-[90] h-[460px] w-full overflow-hidden select-none touch-pan-y cursor-grab active:cursor-grabbing"
             onPointerDown={(event) => {
               if (event.pointerType === "mouse" && event.button !== 0) return;
-              stripDragRef.current = { active: true, startX: event.clientX, startPosition: galleryPosition, moved: false };
+              stripDragRef.current = { active: true, startX: event.clientX, startPosition: stripPositionRef.current - ACTIVE_PRODUCTS.length, moved: false };
             }}
             onPointerMove={(event) => {
               const drag = stripDragRef.current;
@@ -810,7 +746,10 @@ export default function Product() {
               event.currentTarget.setPointerCapture(event.pointerId);
               setStripPosition(drag.startPosition - dx / stripStepRef.current);
             }}
-            onPointerUp={() => { stripDragRef.current.active = false; }}
+            onPointerUp={() => {
+              stripDragRef.current.active = false;
+              if (stripDragRef.current.moved) setStripPosition(Math.round(stripPositionRef.current - ACTIVE_PRODUCTS.length));
+            }}
             onPointerCancel={() => { stripDragRef.current.active = false; }}
             onLostPointerCapture={() => { stripDragRef.current.active = false; }}
             onClickCapture={(event) => {
@@ -833,7 +772,7 @@ export default function Product() {
                   >
                     <button
                       type="button"
-                      aria-label={`${product.title} 3D modelini göster`}
+                      aria-label={`${product.name} ${product.title} 3D modelini göster`}
                       aria-pressed={isActive}
                       onClick={() => {
                         if (window.matchMedia("(min-width: 768px) and (width < 1024px)").matches) {
@@ -899,7 +838,7 @@ export default function Product() {
             </div>
           </div>
           <div ref={controlBarRef} data-home-gallery-layer className="absolute bottom-5 left-1/2 z-[75] w-[calc(100%-24px)] -translate-x-1/2">
-            <HomeElasticGallery value={galleryPosition} count={ACTIVE_PRODUCTS.length} onChange={setStripPosition} />
+            <HomeElasticGallery value={galleryPosition} count={ACTIVE_PRODUCTS.length} onChange={(position) => setStripPosition(position, false)} />
           </div>
         </div>
       </div>
