@@ -98,10 +98,15 @@ export default function Product() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const stripTrackRef = useRef<HTMLDivElement>(null);
-  const stripSpeedRef = useRef(0);
+  const [galleryPosition, setGalleryPosition] = useState(0);
+  const stripPositionRef = useRef(ACTIVE_PRODUCTS.length);
+  const stripStepRef = useRef(1);
+  const stripDragRef = useRef({ active: false, startX: 0, startPosition: 0, moved: false });
   const wakeStripRef = useRef<() => void>(() => {});
-  const setStripSpeed = useCallback((speed: number) => {
-    stripSpeedRef.current = speed;
+  const setStripPosition = useCallback((value: number) => {
+    const position = Math.max(0, Math.min(ACTIVE_PRODUCTS.length - 1, value));
+    stripPositionRef.current = ACTIVE_PRODUCTS.length + position;
+    setGalleryPosition(position);
     wakeStripRef.current();
   }, []);
 
@@ -109,11 +114,10 @@ export default function Product() {
     const row = stripTrackRef.current;
     if (!row) return;
     let frame = 0;
-    let last = 0;
-    let speed = 0;
     let position = ACTIVE_PRODUCTS.length;
     let cardStep = 1;
     const render = () => {
+      position = stripPositionRef.current;
       row.style.transform = `translate3d(${-position * cardStep}px,0,0)`;
       Array.from(row.children).forEach((item, index) => {
         const image = item.firstElementChild?.firstElementChild as HTMLElement | null;
@@ -129,23 +133,20 @@ export default function Product() {
       const card = row.firstElementChild;
       if (!card) return;
       cardStep = card.getBoundingClientRect().width + 12;
+      stripStepRef.current = cardStep;
       render();
     };
-    const paint = (time: number) => {
-      const dt = last ? Math.min((time - last) / 1000, .05) : 1 / 60;
-      last = time;
-      speed += (stripSpeedRef.current - speed) * (1 - Math.exp(-dt / .18));
-      position += speed * .85 * dt;
+    const paint = () => {
+      position = stripPositionRef.current;
       // Identical repeated cycles make wrapping seamless in either direction.
-      position = ACTIVE_PRODUCTS.length + ((position - ACTIVE_PRODUCTS.length) % ACTIVE_PRODUCTS.length + ACTIVE_PRODUCTS.length) % ACTIVE_PRODUCTS.length;
+      stripPositionRef.current = position;
       render();
-      if (stripSpeedRef.current !== 0 || Math.abs(speed) > .002) frame = requestAnimationFrame(paint);
-      else { frame = 0; last = 0; speed = 0; }
+      frame = 0;
     };
     wakeStripRef.current = () => {
       if (!frame) frame = requestAnimationFrame(paint);
     };
-    const stop = () => { stripSpeedRef.current = 0; };
+    const stop = () => { stripDragRef.current.active = false; };
     const visibility = () => { if (document.hidden) stop(); };
     const observer = new ResizeObserver(measure);
     observer.observe(row);
@@ -162,14 +163,15 @@ export default function Product() {
       intersection.disconnect();
       window.removeEventListener("blur", stop);
       document.removeEventListener("visibilitychange", visibility);
-      stripSpeedRef.current = 0;
       wakeStripRef.current = () => {};
     };
   }, []);
   const activeIndexRef = useRef(0);
   const modelRotateRef = useRef({ active: false, pointerId: -1, lastX: 0, lastY: 0 });
   const jumpToProduct = (index: number) => {
-    if (index < 0 || index >= ACTIVE_PRODUCTS.length || activeIndexRef.current === index) return;
+    if (index < 0 || index >= ACTIVE_PRODUCTS.length) return;
+    setStripPosition(index);
+    if (activeIndexRef.current === index) return;
     activeIndexRef.current = index;
     setActiveIndex(index);
     window.dispatchEvent(new CustomEvent(PUMP_MODEL_SELECT_EVENT, { detail: { modelUrl: ACTIVE_PRODUCTS[index].modelUrl } }));
@@ -430,7 +432,7 @@ export default function Product() {
         card,
         {
           left: "61.5%",
-          top: "30.5%",
+          top: "27.5%",
           scale: 1,
           autoAlpha: 1,
           rotate: 0,
@@ -794,7 +796,27 @@ export default function Product() {
                 "--product-card-size": "calc((100vw - 168px) / 13)",
               } as React.CSSProperties
             }
-            className="absolute left-0 top-[795px] z-[90] h-[460px] w-full overflow-hidden select-none"
+            className="absolute left-0 top-[795px] z-[90] h-[460px] w-full overflow-hidden select-none touch-pan-y cursor-grab active:cursor-grabbing"
+            onPointerDown={(event) => {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              stripDragRef.current = { active: true, startX: event.clientX, startPosition: galleryPosition, moved: false };
+            }}
+            onPointerMove={(event) => {
+              const drag = stripDragRef.current;
+              if (!drag.active) return;
+              const dx = event.clientX - drag.startX;
+              if (!drag.moved && Math.abs(dx) < 6) return;
+              drag.moved = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setStripPosition(drag.startPosition - dx / stripStepRef.current);
+            }}
+            onPointerUp={() => { stripDragRef.current.active = false; }}
+            onPointerCancel={() => { stripDragRef.current.active = false; }}
+            onLostPointerCapture={() => { stripDragRef.current.active = false; }}
+            onClickCapture={(event) => {
+              if (stripDragRef.current.moved) { event.preventDefault(); event.stopPropagation(); stripDragRef.current.moved = false; }
+            }}
+            onDragStart={(event) => event.preventDefault()}
           >
             <div
               ref={stripTrackRef}
@@ -877,7 +899,7 @@ export default function Product() {
             </div>
           </div>
           <div ref={controlBarRef} data-home-gallery-layer className="absolute bottom-5 left-1/2 z-[75] w-[calc(100%-24px)] -translate-x-1/2">
-            <HomeElasticGallery onVelocity={setStripSpeed} />
+            <HomeElasticGallery value={galleryPosition} count={ACTIVE_PRODUCTS.length} onChange={setStripPosition} />
           </div>
         </div>
       </div>

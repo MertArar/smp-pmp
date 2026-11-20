@@ -8,30 +8,39 @@ import {
   type KeyboardEvent,
 } from "react";
 
-/** Product-detail styling with the home strip's hold-to-scroll speed control. */
+/** Elastic crest and ruler highlights share the thumb's animated position. */
 export default function HomeElasticGallery({
-  onVelocity,
+  value,
+  count,
+  onChange,
 }: {
-  onVelocity: (speed: number) => void;
+  value: number;
+  count: number;
+  onChange: (position: number) => void;
 }) {
-  const count = 7;
-  const [selected, setSelected] = useState(3);
+  const [selected, setSelected] = useState(value);
   const ropeId = `home-product-rope-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const track = useRef<HTMLDivElement>(null);
   const line = useRef<SVGPathElement>(null);
-  const softLight = useRef<SVGPathElement>(null);
-  const upperLightMask = useRef<SVGPathElement>(null);
-  const ropeGradient = useRef<SVGLinearGradientElement>(null);
-  const lightGradient = useRef<SVGLinearGradientElement>(null);
+  const crestLine = useRef<SVGPathElement>(null);
+  const crestGradient = useRef<SVGLinearGradientElement>(null);
+  const markers = useRef<HTMLDivElement>(null);
   const ball = useRef<HTMLButtonElement>(null);
-  const target = useRef(3);
-  const current = useRef(3);
+  const target = useRef(value);
+  const current = useRef(value);
   const velocity = useRef(0);
   const dragging = useRef(false);
-  const selection = useRef(3);
+  const selection = useRef(value);
   const frame = useRef(0);
   const reduced = useRef(false);
   const animate = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    target.current = value;
+    selection.current = value;
+    setSelected(value);
+    animate.current();
+  }, [value]);
 
   useEffect(() => {
     const preference = matchMedia("(prefers-reduced-motion: reduce)");
@@ -52,17 +61,29 @@ export default function HomeElasticGallery({
         velocity.current *= Math.pow(0.66, dt);
         current.current += velocity.current * dt;
       }
-      const x = 24 + current.current * 62;
+      const x = 24 + current.current * 372 / Math.max(1, count - 1);
       const pull = Math.min(2, Math.abs(velocity.current) * 10);
-      const path = `M 0 26 H ${Math.max(0, x - 72)} C ${x - 38} 26 ${x - 40} ${13 - pull} ${x} ${13 - pull} C ${x + 40} ${13 - pull} ${x + 38} 26 ${Math.min(420, x + 72)} 26 H 420`;
+      // Fixed endpoints and a fixed gradient: only the local crest follows
+      // the thumb. Sampling fixed x coordinates also avoids edge loops.
+      let path = "M 0 30";
+      for (let sample = 1; sample < 84; sample++) {
+        const px = sample * 5;
+        const edge = Math.min(1, px / 20, (420 - px) / 20);
+        const crest = (18 + pull) * Math.exp(-Math.pow((px - x) / 38, 2)) * edge;
+        path += ` L ${px} ${30 - crest}`;
+      }
+      path += " L 420 30";
       line.current?.setAttribute("d", path);
-      softLight.current?.setAttribute("d", path);
-      upperLightMask.current?.setAttribute("d", `${path} V -100 H 0 Z`);
-      ropeGradient.current?.setAttribute("x1", `${x - 190}`);
-      ropeGradient.current?.setAttribute("x2", `${x + 190}`);
-      lightGradient.current?.setAttribute("x1", `${x - 100}`);
-      lightGradient.current?.setAttribute("x2", `${x + 100}`);
+      crestLine.current?.setAttribute("d", path);
+      crestGradient.current?.setAttribute("x1", String(x - 68));
+      crestGradient.current?.setAttribute("x2", String(x + 68));
       ball.current?.style.setProperty("left", `${(x / 420) * 100}%`);
+      markers.current?.querySelectorAll<HTMLElement>("[data-ruler-mark]").forEach((mark, index) => {
+        const distance = Math.abs(x - (24 + index * 62));
+        const lift = Math.pow(Math.max(0, 1 - distance / 62), 2);
+        mark.style.transform = `translateY(${-18 * lift}px)`;
+        mark.style.opacity = String(0.35 + lift * 0.65);
+      });
       ball.current?.style.setProperty(
         "--ball-lean",
         `${Math.max(-9, Math.min(9, velocity.current * 22))}deg`,
@@ -86,40 +107,37 @@ export default function HomeElasticGallery({
       frame.current = 0;
       preference.removeEventListener("change", sync);
     };
-  }, []);
+  }, [count]);
 
   function setStop(index: number) {
-    const stop = Math.max(0, Math.min(6, index));
+    const stop = Math.max(0, Math.min(count - 1, index));
     target.current = stop;
     selection.current = stop;
     setSelected(stop);
-    onVelocity(stop - 3);
+    onChange(stop);
     animate.current();
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     if (!dragging.current || !track.current) return;
     const rect = track.current.getBoundingClientRect();
     setStop(
-      Math.round((((event.clientX - rect.left) / rect.width) * 420 - 24) / 62),
+      (((event.clientX - rect.left) / rect.width) * 420 - 24) / 372 * (count - 1),
     );
   }
   function end() {
     dragging.current = false;
-    setStop(3);
   }
   function keyboard(event: KeyboardEvent<HTMLButtonElement>) {
     const next =
       event.key === "Home"
         ? 0
         : event.key === "End"
-          ? 6
+          ? count - 1
           : event.key === "ArrowRight"
             ? selection.current + 1
             : event.key === "ArrowLeft"
               ? selection.current - 1
-              : ["Escape", " ", "Enter"].includes(event.key)
-                ? 3
-                : null;
+              : null;
     if (next !== null) {
       event.preventDefault();
       setStop(next);
@@ -133,7 +151,7 @@ export default function HomeElasticGallery({
     <div
       data-home-product-gallery
       className="relative mx-auto w-full max-w-[480px] translate-y-4 px-3 md:translate-y-5 lg:translate-y-6 xl:translate-y-8"
-      aria-label="Pump card scroll speed"
+      aria-label="Pump gallery position"
     >
       <div
         ref={track}
@@ -152,18 +170,27 @@ export default function HomeElasticGallery({
       >
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-[5.7%]"
+          data-slider-glow
+          className="pointer-events-none absolute -top-[160px] left-1/2 h-[190px] w-[92%] -translate-x-1/2"
         >
-          {Array.from({ length: count }, (_, i) => (
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_100%,#4687B852_0%,#4687B82b_32%,#4687B80d_58%,transparent_78%)] blur-[12px]" />
+        </div>
+        <div
+          aria-hidden="true"
+          ref={markers}
+          className="pointer-events-none absolute inset-x-[5.7143%] top-0 flex justify-between"
+        >
+          {Array.from({ length: 7 }, (_, i) => (
             <span
               key={i}
+              data-ruler-mark
               style={{
                 transform:
-                  i === selected ? "translateY(-18px)" : "translateY(0)",
-                height: i === selected ? 18 : 12,
-                opacity: i === selected ? 1 : 0.4,
+                  "translateY(0)",
+                height: 16,
+                opacity: 0.35,
               }}
-              className="w-px bg-linear-to-b from-transparent via-[#e0e3e5] to-transparent transition-[transform,height,opacity] duration-500 motion-reduce:transition-none"
+              className="w-px bg-linear-to-b from-transparent via-[#e0e3e5] to-transparent"
             />
           ))}
         </div>
@@ -175,7 +202,6 @@ export default function HomeElasticGallery({
         >
           <defs>
             <linearGradient
-              ref={ropeGradient}
               id={ropeId}
               gradientUnits="userSpaceOnUse"
               x1="20"
@@ -185,14 +211,16 @@ export default function HomeElasticGallery({
             >
               <stop stopColor="#a3adb5" stopOpacity="0" />
               <stop offset=".25" stopColor="#a3adb5" stopOpacity=".35" />
-              <stop offset=".4" stopColor="#6b9fbe" stopOpacity=".65" />
-              <stop offset=".5" stopColor="#398abd" stopOpacity=".85" />
-              <stop offset=".6" stopColor="#6b9fbe" stopOpacity=".65" />
+              <stop offset=".5" stopColor="#a3adb5" stopOpacity=".45" />
               <stop offset=".75" stopColor="#a3adb5" stopOpacity=".35" />
               <stop offset="1" stopColor="#a3adb5" stopOpacity="0" />
             </linearGradient>
+            <linearGradient ref={crestGradient} id={`${ropeId}-crest`} gradientUnits="userSpaceOnUse" x1="142" x2="278" y1="0" y2="0">
+              <stop stopColor="#4687B8" stopOpacity="0" />
+              <stop offset=".5" stopColor="#398abd" stopOpacity=".95" />
+              <stop offset="1" stopColor="#4687B8" stopOpacity="0" />
+            </linearGradient>
             <linearGradient
-              ref={lightGradient}
               id={`${ropeId}-light`}
               gradientUnits="userSpaceOnUse"
               x1="110"
@@ -200,9 +228,9 @@ export default function HomeElasticGallery({
               y1="0"
               y2="0"
             >
-              <stop stopColor="#fff" stopOpacity="0" />
-              <stop offset=".5" stopColor="#fff" stopOpacity=".5" />
-              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+              <stop stopColor="#4687B8" stopOpacity="0" />
+              <stop offset=".5" stopColor="#4687B8" stopOpacity="1" />
+              <stop offset="1" stopColor="#27272A" stopOpacity="1" />
             </linearGradient>
             <filter
               id={`${ropeId}-light-feather`}
@@ -223,7 +251,6 @@ export default function HomeElasticGallery({
               height="170"
             >
               <path
-                ref={upperLightMask}
                 d="M0 26H138C172 26 170 13 210 13C250 13 248 26 282 26H420V-100H0Z"
                 transform="translate(0,-4)"
                 fill="white"
@@ -231,25 +258,20 @@ export default function HomeElasticGallery({
               />
             </mask>
           </defs>
-          <g mask={`url(#${ropeId}-upper-light)`}>
-            <path
-              ref={softLight}
-              d="M0 26H138C172 26 170 13 210 13C250 13 248 26 282 26H420"
-              transform="translate(0,-10)"
-              fill="none"
-              stroke={`url(#${ropeId}-light)`}
-              strokeWidth="32"
-              strokeLinecap="round"
-              opacity=".55"
-              className="blur-[16px]"
-            />
-          </g>
           <path
             ref={line}
             d="M0 26H138C172 26 170 13 210 13C250 13 248 26 282 26H420"
             fill="none"
             stroke={`url(#${ropeId})`}
-            strokeWidth="5"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+          <path
+            ref={crestLine}
+            d="M0 26H138C172 26 170 13 210 13C250 13 248 26 282 26H420"
+            fill="none"
+            stroke={`url(#${ropeId}-crest)`}
+            strokeWidth="4"
             strokeLinecap="round"
           />
         </svg>
@@ -258,37 +280,24 @@ export default function HomeElasticGallery({
           type="button"
           role="slider"
           aria-label="Scroll pump cards"
-          aria-valuemin={-3}
-          aria-valuemax={3}
-          aria-valuenow={selected - 3}
-          aria-valuetext={
-            selected === 3
-              ? "Stopped"
-              : `${selected < 3 ? "Left" : "Right"} speed ${Math.abs(selected - 3)}`
-          }
+          aria-valuemin={0}
+          aria-valuemax={count - 1}
+          aria-valuenow={Number(selected.toFixed(2))}
+          aria-valuetext={`Product ${Math.round(selected) + 1} of ${count}`}
           onKeyDown={keyboard}
           onKeyUp={stopKeyboard}
           onBlur={end}
           style={{
-            left: "50%",
+            left: `${(24 + current.current * 372 / Math.max(1, count - 1)) / 420 * 100}%`,
             transform: "translateX(-50%) rotate(var(--ball-lean,0deg))",
           }}
-          className="absolute top-[35px] grid size-[46px] cursor-grab touch-none place-items-center rounded-full border border-white/45 bg-white/15 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          className="absolute top-[30px] grid size-[60px] cursor-grab touch-none place-items-center rounded-full border border-[#a5c7dc]/55 bg-[#4687B8]/30 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
         >
-          <span
-            aria-hidden="true"
-            data-slider-glow
-            className="pointer-events-none absolute bottom-[calc(100%+20px)] left-1/2 h-28 w-56 -translate-x-1/2 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_25%,#000_80%,transparent)] md:w-64"
-          >
-            <span className="absolute inset-x-0 top-4 -bottom-5 rounded-full bg-[radial-gradient(ellipse_at_50%_85%,#ffffff50_0%,#ffffff1f_45%,transparent_75%)] blur-[18px]" />
-          </span>
-          <span className="relative size-[30px] rounded-full border border-white/80 bg-[#dedede]" />
+          <span className="relative size-[40px] rounded-full border border-white/85 bg-[#dedede]" />
         </button>
       </div>
       <p className="sr-only" aria-live="polite">
-        {selected === 3
-          ? "Card scrolling stopped"
-          : `Scrolling ${selected < 3 ? "left" : "right"}, speed ${Math.abs(selected - 3)}`}
+        {`Product ${Math.round(selected) + 1} of ${count}`}
       </p>
     </div>
   );

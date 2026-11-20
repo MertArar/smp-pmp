@@ -110,17 +110,17 @@ export default function HomeJourney() {
             // Ilk scroll pikselinden itibaren acilma baslar; %10 bekleme yok.
             if (progress > 0 && progress < 0.32) {
               explosion = Math.pow(rangeProgress(progress, 0, 0.32), 1.1);
-            } else if (progress >= 0.32 && progress < 0.56) {
+            } else if (progress >= 0.32 && progress < 0.64) {
               explosion = 1;
-            } else if (progress >= 0.56 && progress < 0.8) {
-              explosion = 1 - smoothstep(rangeProgress(progress, 0.56, 0.8));
+            } else if (progress >= 0.64 && progress < 0.88) {
+              explosion = 1 - smoothstep(rangeProgress(progress, 0.64, 0.88));
             }
 
             // Product karti geri cekilirken patlama 0 -> 1 ilerler.
             // Geri donuste Product karti cekildiginde,
             // Hero animasyonu ayni acik pozdan devam eder.
             // Boylece model toplanip ikinci kez patlamaz.
-            if (self.direction === -1 && progress >= 0.17 && progress <= 0.8) {
+            if (self.direction === -1 && progress >= 0.17 && progress <= 0.88) {
               explosion = 1;
             }
 

@@ -163,6 +163,8 @@ type ExplodablePart = {
   launchPower: number;
   rotationLag: number;
   flightPath: Float32Array | null;
+  parentAxes: THREE.Matrix3;
+  inverseParentAxes: THREE.Matrix3;
 };
 
 type ExplodablePartSource = {
@@ -411,8 +413,16 @@ function ExplodableProduct({
 
   const tempQuaternion = useMemo(() => new THREE.Quaternion(), []);
   const tempPivot = useMemo(() => new THREE.Vector3(), []);
+  const scatterViewRotation = useMemo(() => new THREE.Matrix3(), []);
+  const scatterParentRotation = useMemo(() => new THREE.Matrix3(), []);
+  const scatterRootMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const scatterReferenceMatrix = useMemo(() => new THREE.Matrix3().setFromMatrix4(
+    new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
+      THREE.MathUtils.degToRad(8), THREE.MathUtils.degToRad(-30), THREE.MathUtils.degToRad(-3),
+    )),
+  ), []);
   const pointerYawRef = useRef(0);
-  const previousJourneyRef = useRef(journeyProgressRef.current);
+  const previousScrollYRef = useRef<number | null>(null);
   const scrollSpinRef = useRef(0);
   const hoverProbe = useMemo(
     () => ({
@@ -433,8 +443,8 @@ function ExplodableProduct({
   const BLAST_OPEN_SPEED = 1.25;
   const BLAST_CLOSE_SPEED = 3.8;
   const SCROLL_BLAST_SPEED = 4.8;
-  // Stop moving the whole assembly as its individual parts separate.
-  const ASSEMBLY_ROTATION_FADE = 0.32;
+  // Keep the exploded assembly rotating at a calm, constant pace.
+  const EXPLODED_ROTATION_MULTIPLIER = 1.7;
   const POINTER_TILT_FADE = 0.25;
 
   const MANUAL_ROTATION_SENSITIVITY = 0.014;
@@ -1021,6 +1031,8 @@ function ExplodableProduct({
           launchPower,
           rotationLag,
           flightPath: null,
+          parentAxes: new THREE.Matrix3().setFromMatrix4(parentRestInverse.clone().invert()),
+          inverseParentAxes: new THREE.Matrix3().setFromMatrix4(parentRestInverse),
         });
       },
     );
@@ -1269,10 +1281,19 @@ function ExplodableProduct({
     const globalProgress = smoothstep(blastProgress.current);
     renderProgressRef.current = globalProgress;
 
+    // Keep the authored hero flight facing the camera at any product yaw.
+    // Only displacement is reoriented; assembled geometry and its own spin
+    // retain their exact model-space transforms.
+    if (rootRef.current) {
+      scatterRootMatrix.makeRotationFromQuaternion(rootRef.current.quaternion);
+      scatterViewRotation.setFromMatrix4(scatterRootMatrix).invert().multiply(scatterReferenceMatrix);
+    }
+
     // Assembled pumps only rotate as a group; do not rewrite every part each frame.
     if (
       lastPartsPose.current.parts !== modelData.parts ||
-      lastPartsPose.current.progress !== globalProgress
+      lastPartsPose.current.progress !== globalProgress ||
+      globalProgress > 0
     ) {
       lastPartsPose.current.parts = modelData.parts;
       lastPartsPose.current.progress = globalProgress;
@@ -1319,6 +1340,12 @@ function ExplodableProduct({
               .copy(part.originalPosition)
               .addScaledVector(part.explodeOffset, smootherstep(t));
           }
+
+          tempPivot.copy(part.object.position).sub(part.originalPosition);
+          scatterParentRotation.copy(part.inverseParentAxes)
+            .multiply(scatterViewRotation).multiply(part.parentAxes);
+          tempPivot.applyMatrix3(scatterParentRotation);
+          part.object.position.copy(part.originalPosition).add(tempPivot);
 
           // Rotation follows the breakaway and keeps a little momentum in the slow tail.
           const spinT = clamp01(
@@ -1422,25 +1449,27 @@ function ExplodableProduct({
 
     // Lenis already drives journey progress. Add rotation while it advances,
     // then let that extra momentum decay smoothly when scrolling stops.
-    const journeyDelta = Math.max(
-      0,
-      journeyProgressRef.current - previousJourneyRef.current,
-    );
-    previousJourneyRef.current = journeyProgressRef.current;
-    const scrollActivity = clamp01((journeyDelta / Math.max(delta, 0.001)) * 6);
+    const scrollY = window.scrollY;
+    const scrollDistance = Math.abs(scrollY - (previousScrollYRef.current ?? scrollY));
+    previousScrollYRef.current = scrollY;
+    const scrollDelta = Math.min(scrollDistance / Math.max(window.innerHeight, 1), 0.04);
+    const scrollActivity = clamp01((scrollDelta / Math.max(delta, 0.001)) * 3);
     scrollSpinRef.current = THREE.MathUtils.damp(
       scrollSpinRef.current,
       scrollActivity,
       scrollActivity > scrollSpinRef.current ? 8 : 2.5,
       delta,
     );
-    const assemblyRotationGate =
-      1 - smootherstep(globalProgress / ASSEMBLY_ROTATION_FADE);
+    const assemblyRotationMultiplier = THREE.MathUtils.lerp(
+      1,
+      EXPLODED_ROTATION_MULTIPLIER,
+      smootherstep(globalProgress),
+    );
     const targetRotationSpeed = manualDraggingRef.current
       ? 0
       : AUTO_ROTATION_SPEED *
-        assemblyRotationGate *
-        (1 + scrollSpinRef.current * 0.85) *
+        assemblyRotationMultiplier *
+        (1 + scrollSpinRef.current * 2.2) *
         (hoveringPump ? HOVER_ROTATION_MULTIPLIER : 1);
 
     currentRotationSpeedRef.current = THREE.MathUtils.damp(
@@ -1451,7 +1480,7 @@ function ExplodableProduct({
     );
 
     if (!manualDraggingRef.current) {
-      autoRotationRef.current += currentRotationSpeedRef.current * delta;
+      autoRotationRef.current += currentRotationSpeedRef.current * delta + scrollDelta * 0.75;
     }
 
     const pointerStrength =
