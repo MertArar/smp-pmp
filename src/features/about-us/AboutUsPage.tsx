@@ -30,7 +30,6 @@ import {
 import { FiArrowUpRight, FiEye } from "react-icons/fi";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
 import useViewportVideo from "@/components/media/useViewportVideo";
-import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
 // Scroll reveals: transform and opacity only, so the existing layout stays intact.
 const revealVariants: Variants = {
   hidden: ({
@@ -68,6 +67,34 @@ function reveal(
       duration: reduced ? 0 : 0.95,
       delay: reduced ? 0 : delay,
       ease: [0.25, 0.85, 0.3, 1] as [number, number, number, number],
+    },
+  };
+}
+
+// The hero has its own entrance sequence: it plays once on load, independent of scroll.
+const heroTitleVariants: Variants = {
+  hidden: {},
+  visible: { transition: { delayChildren: 0.2, staggerChildren: 0.14 } },
+};
+const heroLineVariants: Variants = {
+  hidden: { opacity: 0, y: "110%", filter: "blur(12px)" },
+  visible: {
+    opacity: 1,
+    y: "0%",
+    filter: "blur(0px)",
+    transition: { duration: 1.05, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+const heroTitleLines = ["Reliable", "Engineering", "Wherever Fluid", "Flows"];
+
+function heroEnter(reduced: boolean, delay: number, y = 18) {
+  return {
+    initial: reduced ? false : { opacity: 0, y, filter: "blur(7px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 0.85,
+      delay: reduced ? 0 : delay,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   };
 }
@@ -484,7 +511,6 @@ function CompactStatistic({ year = false }: { year?: boolean }) {
   );
 }
 export default function AboutUsPage() {
-  const headingRef = useRepeatingTitle(1300);
   const reduced = useReducedMotion() ?? false;
   return (
     <main
@@ -494,7 +520,7 @@ export default function AboutUsPage() {
     >
       <section
         aria-labelledby="about-hero-title"
-        className="box-content! pt-[var(--site-header-height,97px)] relative h-[clamp(600px,184vw,780px)] bg-[#202747] text-[#F7F7F7] min-[1200px]:h-[calc(800*var(--about-unit))] min-[1200px]:min-h-0"
+        className="box-content! relative h-[max(760px,100svh)] bg-[#202747] pt-[var(--site-header-height,97px)] text-[#F7F7F7] min-[1200px]:h-[max(660px,100svh)]"
       >
         <Image
           src={asset("HAKKIMIZDA HERO.png")}
@@ -509,85 +535,58 @@ export default function AboutUsPage() {
           className="pointer-events-none absolute inset-0 bg-linear-to-r from-[#141A39]/35 to-transparent min-[1200px]:hidden"
         />
         <div
-          className={`${frame} relative h-full pt-10 min-[1200px]:h-auto min-[1200px]:pb-36 min-[1200px]:pt-[calc(55*var(--about-unit))]`}
+          className={`${frame} relative flex h-full flex-col pb-[214px] pt-7 min-[1200px]:pb-[calc(242*var(--about-unit))] min-[1200px]:pt-[calc(55*var(--about-unit))]`}
         >
-          <nav
+          <motion.nav
+            {...heroEnter(reduced, 0.05, 10)}
             aria-label="Breadcrumb"
-            className="mb-7 hidden text-[10px] text-white/65 min-[1200px]:block min-[1200px]:mb-[calc(20*var(--about-unit))] min-[1200px]:text-[calc(12*var(--about-unit))]"
+            className="mb-6 flex items-center gap-2 text-[10px] text-white/65 min-[1200px]:mb-[calc(20*var(--about-unit))] min-[1200px]:text-[calc(12*var(--about-unit))]"
           >
-            <Link href="/">Home</Link> &gt; Corporate &gt;{" "}
-            <span aria-current="page">About Us</span>
-          </nav>
-          <div className="absolute top-[58%] left-0 inline-flex w-fit max-w-[calc(100vw-24px)] items-center gap-[9px] rounded-[10px] border border-white/25 bg-white/15 px-[10px] py-[6px] text-[11px] leading-[1.05] tracking-[-0.015em] text-[#F7F7F7] shadow-[0_3px_9px_rgba(0,0,0,0.07)] backdrop-blur-[8px] min-[1200px]:top-[calc(60*var(--about-unit))] min-[1200px]:right-0 min-[1200px]:left-auto min-[1200px]:max-w-none min-[1200px]:gap-[calc(9*var(--about-unit))] min-[1200px]:rounded-[calc(10*var(--about-unit))] min-[1200px]:px-[calc(10*var(--about-unit))] min-[1200px]:py-[calc(6*var(--about-unit))] min-[1200px]:text-[calc(11*var(--about-unit))]">
-            <Image
-              src="/about-us/sempa-icon.png"
-              alt=""
-              width={96}
-              height={96}
-              priority
-              className="h-auto w-[36px] shrink-0 scale-[1.2] origin-center object-contain min-[1200px]:w-[calc(36*var(--about-unit))]"
-            />
-            <span className="block whitespace-nowrap">
-              <span className="block">SINCE 1972 · 50+ YEARS OF</span>
-              <span className="block">
-                <strong className="font-semibold">ENGINEERING</strong> HERITAGE
-              </span>
-            </span>
-          </div>
-          <h1
-            ref={headingRef}
+            <Link
+              href="/"
+              className="relative inline-block pb-0.5 transition-colors duration-300 hover:text-white focus-visible:text-white after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100"
+            >
+              Home
+            </Link>
+            <span aria-hidden="true">&gt;</span>
+            <span>Corporate</span>
+            <span aria-hidden="true">&gt;</span>
+            <Link
+              href="/about-us"
+              aria-current="page"
+              className="relative inline-block pb-0.5 transition-colors duration-300 hover:text-white focus-visible:text-white after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100"
+            >
+              About Us
+            </Link>
+          </motion.nav>
+          <motion.h1
             id="about-hero-title"
             aria-label="Reliable Engineering Wherever Fluid Flows"
-            className="m-0 text-[clamp(22px,5.6vw,36px)] leading-none tracking-[-0.04em] min-[1200px]:max-w-[calc(756*var(--about-unit))] min-[1200px]:text-[calc(80*var(--about-unit))]"
+            variants={heroTitleVariants}
+            initial={reduced ? false : "hidden"}
+            animate="visible"
+            className="m-0 max-w-full text-[clamp(34px,8.5vw,52px)] leading-[0.99] tracking-[-0.045em] min-[1200px]:max-w-[calc(790*var(--about-unit))] min-[1200px]:text-[calc(66*var(--about-unit))]"
           >
             <span aria-hidden="true">
-              <span className="about-title-settle inline-block">Reliable</span>
-              <span className="min-[1200px]:hidden"> </span>
-              <br className="hidden min-[1200px]:block" />
-              <span className="about-title-settle inline-block [animation-delay:140ms] [--about-title-duration:620ms]">
-                Engineering
-              </span>
-              <br />
-              <span className="about-title-flow inline-block [animation-delay:320ms]">
-                Wherever
-              </span>{" "}
-              <span className="about-title-flow inline-block [animation-delay:420ms]">
-                Fluid
-              </span>
-              <span className="min-[1200px]:hidden"> </span>
-              <br className="hidden min-[1200px]:block" />
-              <span className="about-title-flow inline-block [animation-delay:520ms]">
-                Flows
-              </span>
+              {heroTitleLines.map((line) => (
+                <span
+                  key={line}
+                  className="-mb-[0.09em] block overflow-hidden pb-[0.09em]"
+                >
+                  <motion.span
+                    variants={heroLineVariants}
+                    className="block will-change-transform"
+                  >
+                    {line}
+                  </motion.span>
+                </span>
+              ))}
             </span>
-          </h1>
-          <style>{`
-          @media (prefers-reduced-motion: no-preference) {
-            #about-hero-title[data-title-revealing] .about-title-settle {
-              animation-name: about-title-settle;
-              animation-duration: var(--about-title-duration, 500ms);
-              animation-fill-mode: both;
-              animation-timing-function: cubic-bezier(.22, 1, .36, 1);
-            }
-            #about-hero-title[data-title-revealing] .about-title-flow {
-              animation-name: about-title-flow;
-              animation-duration: 780ms;
-              animation-fill-mode: both;
-            }
-          }
-          @keyframes about-title-settle {
-            from { opacity: 0; transform: translateY(.45em); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes about-title-flow {
-            0% { opacity: 0; transform: translate(-.42em, .24em) rotate(-3deg); animation-timing-function: cubic-bezier(.2, .65, .35, 1); }
-            60% { opacity: 1; transform: translate(.045em, -.085em) rotate(.7deg); animation-timing-function: ease-out; }
-            100% { opacity: 1; transform: translate(0, 0) rotate(0); }
-          }
-        `}</style>
-          <ul
+          </motion.h1>
+          <motion.ul
+            {...heroEnter(reduced, 0.88, 12)}
             aria-label="Our capabilities"
-            className="mt-4 flex max-w-[600px] flex-wrap gap-2 p-0 text-[9px] leading-none min-[1200px]:mt-[calc(20*var(--about-unit))] min-[1200px]:max-w-none min-[1200px]:text-[calc(12*var(--about-unit))]"
+            className="mt-5 flex max-w-[600px] flex-wrap gap-2 p-0 text-[9px] leading-none min-[1200px]:mt-[calc(20*var(--about-unit))] min-[1200px]:max-w-none min-[1200px]:text-[calc(12*var(--about-unit))]"
           >
             {[
               "Precision Engineering",
@@ -602,22 +601,49 @@ export default function AboutUsPage() {
                 {item}
               </li>
             ))}
-          </ul>
-          <div className="mt-20 hidden items-end justify-between min-[1200px]:flex gap-5 min-[1200px]:mt-[calc(125*var(--about-unit))]">
-            <p className="m-0 max-w-[46ch] text-[12px] leading-[1.15] tracking-[-0.04em] min-[1200px]:max-w-[calc(711*var(--about-unit))] min-[1200px]:text-[calc(15*var(--about-unit))]">
+          </motion.ul>
+          <motion.div
+            {...heroEnter(reduced, 0.95, 12)}
+            className="mt-6 ml-auto inline-flex w-fit max-w-full items-center gap-[9px] rounded-[10px] border border-white/25 bg-white/15 px-[10px] py-[6px] text-[11px] leading-[1.05] tracking-[-0.015em] text-[#F7F7F7] shadow-[0_3px_9px_rgba(0,0,0,0.07)] backdrop-blur-[8px] min-[1200px]:absolute min-[1200px]:top-[calc(60*var(--about-unit))] min-[1200px]:right-0 min-[1200px]:mt-0 min-[1200px]:gap-[calc(9*var(--about-unit))] min-[1200px]:rounded-[calc(10*var(--about-unit))] min-[1200px]:px-[calc(10*var(--about-unit))] min-[1200px]:py-[calc(6*var(--about-unit))] min-[1200px]:text-[calc(11*var(--about-unit))]"
+          >
+            <Image
+              src="/about-us/sempa-icon.png"
+              alt=""
+              width={96}
+              height={96}
+              priority
+              className="h-auto w-[36px] shrink-0 origin-center scale-[1.2] object-contain min-[1200px]:w-[calc(36*var(--about-unit))]"
+            />
+            <span className="block whitespace-nowrap">
+              <span className="block">SINCE 1972 · 50+ YEARS OF</span>
+              <span className="block">
+                <strong className="font-semibold">ENGINEERING</strong> HERITAGE
+              </span>
+            </span>
+          </motion.div>
+          <div className="mt-auto flex min-w-0 items-end justify-between gap-4 min-[1200px]:gap-[calc(60*var(--about-unit))]">
+            <motion.p
+              {...heroEnter(reduced, 1.15, 22)}
+              className="relative top-[5px] m-0 max-w-[46ch] min-w-0 text-[12px] font-[360] leading-[1.22] tracking-[-0.035em] [font-variation-settings:'wght'_360,'wdth'_132,'opsz'_28] min-[1200px]:top-[calc(4*var(--about-unit))] min-[1200px]:max-w-[calc(711*var(--about-unit))] min-[1200px]:text-[calc(15*var(--about-unit))]"
+            >
               By managing every stage in-house—from CFD simulation and precision
               metallurgy in our foundry to CNC machining and accredited
               performance testing, we deliver ultra-efficient fluid technologies
               adhering to global standards.
-            </p>
-            <Image
-              src={asset("koordinat.webp")}
-              alt="Konya, Türkiye. Since 1972."
-              width={102}
-              height={76}
-              unoptimized
-              className="hidden h-auto w-[calc(102*var(--about-unit))] shrink-0 min-[768px]:block"
-            />
+            </motion.p>
+            <motion.div
+              {...heroEnter(reduced, 1.32, 16)}
+              className="w-[72px] shrink-0 min-[768px]:w-[90px] min-[1200px]:w-[calc(102*var(--about-unit))]"
+            >
+              <Image
+                src={asset("koordinat.webp")}
+                alt="Konya, Türkiye. Since 1972."
+                width={102}
+                height={76}
+                unoptimized
+                className="h-auto w-full object-contain"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -983,9 +1009,10 @@ export default function AboutUsPage() {
             client partnerships, and global standards.
           </span>
         </SectionHeading>
-
-        {/* OUR CORPORATE CULTURE VIDEO */}
-        <div className="pointer-events-none relative mx-auto mt-8 -mb-20 h-[230px] w-full overflow-hidden min-[768px]:-mb-[120px] min-[768px]:h-[380px] min-[1200px]:-mb-[calc(275*var(--about-unit))] min-[1200px]:h-[calc(590*var(--about-unit))] min-[1200px]:w-[calc(952*var(--about-unit))]">
+        <motion.div
+          {...reveal("up", 0, reduced)}
+          className="pointer-events-none relative mx-auto mt-8 -mb-20 h-[230px] w-full overflow-hidden min-[768px]:-mb-[120px] min-[768px]:h-[380px] min-[1200px]:-mb-[calc(275*var(--about-unit))] min-[1200px]:h-[calc(590*var(--about-unit))] min-[1200px]:w-[calc(952*var(--about-unit))]"
+        >
           <AboutVideo
             src={cultureVideo}
             style={{
@@ -995,8 +1022,7 @@ export default function AboutUsPage() {
             className="block h-full w-full object-cover mix-blend-multiply brightness-[1.12]"
             label="Sempa corporate culture and connected engineering"
           />
-        </div>
-
+        </motion.div>
         <AboutCultureCards items={principles} />
       </section>
       <motion.div {...reveal("up", 0, reduced)} className={`${frame} pb-20`}>

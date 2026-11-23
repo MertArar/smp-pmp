@@ -1,15 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
 
 import UncompromisingPerformance from "@/components/UncompromissingPerformence/UncompromisingPerformance";
 
-import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
-
 import { useEffect, useRef } from "react";
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import {
+  animate,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 
 // Page-level entrances only: never animate GSAP-owned transforms or interactive state.
 type EntranceDirection = "up" | "left" | "right";
@@ -65,133 +69,7 @@ const EMISSION_HERO_IMAGE = "/e-mission/e-mission%20hero.webp";
 const emissionQuestion = "What is e-mission?";
 
 function EmissionHero() {
-  const headingRef = useRepeatingTitle();
   const reduced = useReducedMotion() ?? false;
-
-  useEffect(() => {
-    const heading = headingRef.current;
-
-    const title = heading?.querySelector<HTMLElement>(".emission-geyser-title");
-
-    if (!heading || !title) return;
-
-    const letters = Array.from(
-      title.querySelectorAll<HTMLElement>(".emission-smoke-letter"),
-    );
-
-    let frame = 0;
-
-    let startedAt = 0;
-
-    let positions: { x: number; y: number }[] = [];
-
-    let width = 0;
-
-    let bendLength = 0;
-
-    let bendHeight = 0;
-
-    const measure = () => {
-      positions = letters.map((letter) => ({
-        x: letter.offsetLeft,
-        y: letter.offsetTop,
-      }));
-
-      width = title.offsetWidth;
-
-      const fontSize = parseFloat(getComputedStyle(title).fontSize);
-
-      bendLength = fontSize * 3.2;
-
-      bendHeight = fontSize * 2;
-    };
-
-    const reset = () => {
-      letters.forEach((letter) => {
-        letter.style.removeProperty("transform");
-
-        letter.style.removeProperty("opacity");
-      });
-    };
-
-    const animate = (now: number) => {
-      if (!startedAt) startedAt = now;
-
-      const cycle = ((now - startedAt) % 4000) / 4000;
-
-      const progress = Math.min(1, Math.max(0, (cycle - 0.58) / 0.38));
-
-      const travel = (width + bendLength) * progress * progress;
-
-      letters.forEach((letter, index) => {
-        const original = positions[index];
-
-        const along = original.x - travel;
-
-        const turn = Math.min(1, Math.max(0, -along / bendLength));
-
-        // Every letter follows the same curve and tangent, like the Home media ribbon.
-
-        const smoothTurn = turn * turn * (3 - 2 * turn);
-
-        const x = Math.max(-bendLength, along);
-
-        const y = original.y * (1 - smoothTurn) - bendHeight * smoothTurn;
-
-        const angle =
-          (Math.atan2(bendHeight * 6 * turn * (1 - turn), bendLength) * 180) /
-          Math.PI;
-
-        const scale = 1 - 0.98 * smoothTurn;
-
-        letter.style.transform = `translate(${x - original.x}px, ${y - original.y}px) rotate(${angle}deg) scale(${scale}, ${scale * (1 - 0.35 * smoothTurn)})`;
-
-        letter.style.opacity = String(
-          1 - Math.min(1, Math.max(0, (turn - 0.85) / 0.15)),
-        );
-      });
-
-      frame = requestAnimationFrame(animate);
-    };
-
-    const sync = () => {
-      cancelAnimationFrame(frame);
-
-      reset();
-
-      startedAt = 0;
-
-      if (heading.hasAttribute("data-title-revealing")) {
-        measure();
-
-        frame = requestAnimationFrame(animate);
-      }
-    };
-
-    const visibility = new MutationObserver(sync);
-
-    visibility.observe(heading, {
-      attributes: true,
-      attributeFilter: ["data-title-revealing"],
-    });
-
-    const resize = new ResizeObserver(measure);
-
-    resize.observe(title);
-
-    sync();
-
-    return () => {
-      cancelAnimationFrame(frame);
-
-      visibility.disconnect();
-
-      resize.disconnect();
-
-      reset();
-    };
-  }, [headingRef]);
-
   return (
     <section
       className="emission-hero [.emission-page_&]:[position:relative] [.emission-page_&]:[isolation:isolate] [.emission-page_&]:[width:100%] [.emission-page_&]:[height:calc(966_*_var(--emission-unit))] [.emission-page_&]:[overflow:hidden] min-[768px]:max-[1200px]:[.emission-page_&]:[min-height:680px] max-[768px]:[.emission-page_&]:[height:auto] max-[768px]:[.emission-page_&]:[padding-top:clamp(380px,_99vw,_650px)] max-[768px]:[.emission-page_&]:[padding-right:40px] max-[768px]:[.emission-page_&]:[padding-bottom:56px] max-[768px]:[.emission-page_&]:[padding-left:40px] max-[768px]:[.emission-page_&]:[background:#e8f4fb] max-[768px]:[.emission-page_&::after]:[content:''] max-[768px]:[.emission-page_&::after]:[position:absolute] max-[768px]:[.emission-page_&::after]:[top:0] max-[768px]:[.emission-page_&::after]:[right:0] max-[768px]:[.emission-page_&::after]:[bottom:0] max-[768px]:[.emission-page_&::after]:[left:0] max-[768px]:[.emission-page_&::after]:[z-index:-1] max-[768px]:[.emission-page_&::after]:[background:linear-gradient(to_bottom,_transparent_45%,_#d5eaf8_83%,_#e8f4fb_100%)] max-[768px]:[.emission-page_&::after]:[pointer-events:none] [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]"
@@ -230,88 +108,78 @@ function EmissionHero() {
         E-Mission
       </motion.h1>
 
+      <motion.nav
+        {...entrance("up", 0.18, reduced, 0.12, 12)}
+        aria-label="Breadcrumb"
+        className="absolute left-[calc(102*var(--emission-x-unit))] top-[calc(233*var(--emission-unit))] z-10 flex items-center gap-2.5 text-[calc(13*var(--emission-unit))] text-[#9eb7d0] min-[768px]:max-[1200px]:top-[196px] min-[768px]:max-[1200px]:text-[12px] max-[768px]:left-[24px] max-[768px]:top-[199px] max-[768px]:text-[12px]"
+      >
+        <Link
+          href="/"
+          className="relative inline-block cursor-pointer pb-1 transition-colors duration-300 hover:text-[#f7f7f7] focus-visible:text-[#f7f7f7] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100"
+        >
+          Home
+        </Link>
+        <span aria-hidden="true">&gt;</span>
+        <Link
+          href="/e-mission"
+          aria-current="page"
+          className="relative inline-block cursor-pointer pb-1 transition-colors duration-300 hover:text-[#f7f7f7] focus-visible:text-[#f7f7f7] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100"
+        >
+          E-Mission
+        </Link>
+      </motion.nav>
+
       <div className="emission-introduction [.emission-page_&]:[position:absolute] [.emission-page_&]:[top:calc(756_*_var(--emission-unit))] [.emission-page_&]:[left:calc(183_*_var(--emission-x-unit))] [.emission-page_&]:[width:calc(877_*_var(--emission-x-unit))] [.emission-page_&]:[max-width:calc(100%_-_48px)] [.emission-page_&]:[letter-spacing:-0.04em] [.emission-page_&_h2]:[margin-top:0] [.emission-page_&_h2]:[margin-right:0] [.emission-page_&_h2]:[margin-bottom:0] [.emission-page_&_h2]:[margin-left:0] [.emission-page_&_h2]:[color:#f7f7f7]! [.emission-page_&_h2]:[font-size:calc(50_*_var(--emission-unit))]! [.emission-page_&_h2]:[font-weight:410]! [.emission-page_&_h2]:[line-height:1]! [.emission-page_&_p]:[width:calc(869_*_var(--emission-x-unit))] [.emission-page_&_p]:[max-width:100%] [.emission-page_&_p]:[margin-top:calc(11_*_var(--emission-unit))] [.emission-page_&_p]:[margin-right:0] [.emission-page_&_p]:[margin-bottom:0] [.emission-page_&_p]:[margin-left:calc(8_*_var(--emission-x-unit))] [.emission-page_&_p]:[color:#9eb7d0]! [.emission-page_&_p]:[font-size:calc(20_*_var(--emission-unit))]! [.emission-page_&_p]:[line-height:1.07]! min-[768px]:max-[1200px]:[.emission-page_&]:[top:auto] min-[768px]:max-[1200px]:[.emission-page_&]:[bottom:76px] min-[768px]:max-[1200px]:[.emission-page_&]:[left:8%] min-[768px]:max-[1200px]:[.emission-page_&]:[width:84%] min-[768px]:max-[1200px]:[.emission-page_&]:[max-width:none] min-[768px]:max-[1200px]:[.emission-page_&_h2]:[font-size:clamp(36px,_4vw,_50px)]! min-[768px]:max-[1200px]:[.emission-page_&_p]:[width:min(869px,_100%)] min-[768px]:max-[1200px]:[.emission-page_&_p]:[margin-left:0] min-[768px]:max-[1200px]:[.emission-page_&_p]:[font-size:18px]! min-[768px]:max-[1200px]:[.emission-page_&_p]:[line-height:1.2]! max-[768px]:[.emission-page_&]:[position:relative] max-[768px]:[.emission-page_&]:[top:auto] max-[768px]:[.emission-page_&]:[bottom:auto] max-[768px]:[.emission-page_&]:[left:auto] max-[768px]:[.emission-page_&]:[width:100%] max-[768px]:[.emission-page_&]:[max-width:none] max-[768px]:[.emission-page_&_h2]:[max-width:7em] max-[768px]:[.emission-page_&_h2]:[font-size:clamp(27px,_7.8vw,_40px)]! max-[768px]:[.emission-page_&_h2]:[line-height:1]! max-[768px]:[.emission-page_&_p]:[width:100%] max-[768px]:[.emission-page_&_p]:[margin-top:24px] max-[768px]:[.emission-page_&_p]:[margin-right:0] max-[768px]:[.emission-page_&_p]:[margin-bottom:0] max-[768px]:[.emission-page_&_p]:[margin-left:0] max-[768px]:[.emission-page_&_p]:[font-size:16px]! max-[768px]:[.emission-page_&_p]:[line-height:1.07]!">
-        <h2 ref={headingRef} aria-label={emissionQuestion}>
+        <h2 aria-label={emissionQuestion}>
           <span
             aria-hidden="true"
-            className="emission-geyser-title relative block w-fit max-w-full origin-bottom"
+            className="flex flex-wrap gap-x-[0.28em] gap-y-0"
           >
-            <svg
-              className="emission-smoke-trail pointer-events-none absolute -left-[3.2em] -top-[1.6em] h-[2.6em] w-[4em] overflow-visible opacity-0"
-              viewBox="0 0 200 130"
-              fill="none"
-            >
-              <path
-                d="M200 130 C110 126 87 5 0 12"
-                stroke="#87dcff"
-                strokeWidth="2"
-                strokeLinecap="round"
-                pathLength="1"
-              />
-            </svg>
-
-            {emissionQuestion.split(" ").map((word, wordIndex) => (
-              <span key={word}>
-                {wordIndex > 0 && " "}
-
-                <span className="whitespace-nowrap">
-                  {Array.from(word, (letter, index) => (
-                    <span
-                      key={index}
-                      className="emission-smoke-letter inline-block origin-left"
-                    >
-                      {letter}
-                    </span>
-                  ))}
-                </span>
+            {emissionQuestion.split(" ").map((word, index) => (
+              <span
+                key={word}
+                className="-mb-[0.12em] inline-block overflow-hidden pb-[0.12em]"
+              >
+                <motion.span
+                  className="inline-block will-change-transform"
+                  initial={
+                    reduced
+                      ? false
+                      : { opacity: 0, y: "100%", filter: "blur(10px)" }
+                  }
+                  animate={
+                    reduced
+                      ? { opacity: 1, y: "0%", filter: "blur(0px)" }
+                      : {
+                          opacity: [0, 1, 1, 1, 0],
+                          y: ["100%", "0%", "0%", "0%", "-65%"],
+                          filter: [
+                            "blur(10px)",
+                            "blur(0px)",
+                            "blur(0px)",
+                            "blur(0px)",
+                            "blur(8px)",
+                          ],
+                        }
+                  }
+                  transition={
+                    reduced
+                      ? { duration: 0 }
+                      : {
+                          duration: 5.6,
+                          delay: index * 0.17,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          times: [0, 0.16, 0.72, 0.86, 1],
+                        }
+                  }
+                >
+                  {word}
+                </motion.span>
               </span>
             ))}
           </span>
         </h2>
-
-        <style>{`
-
-          @media (prefers-reduced-motion: no-preference) {
-
-            [data-title-revealing] > .emission-geyser-title {
-
-              animation: emission-geyser 4s infinite;
-
-            }
-
-            [data-title-revealing] .emission-smoke-trail {
-
-              animation: emission-smoke-trail 4s infinite;
-
-              filter: drop-shadow(0 0 4px #55bfff);
-
-            }
-
-          }
-
-          @keyframes emission-geyser {
-
-            0% { opacity: 0; transform: translateY(.65em) scale(.12, .35); animation-timing-function: cubic-bezier(.15, .7, .25, 1); }
-
-            9% { opacity: 1; transform: translateY(-.22em) scale(.94, 1.13); animation-timing-function: ease-out; }
-
-            18%, 100% { opacity: 1; transform: none; }
-
-          }
-
-          @keyframes emission-smoke-trail {
-
-            0%, 62% { opacity: 0; stroke-dasharray: 1; stroke-dashoffset: -1; }
-
-            73% { opacity: .8; stroke-dasharray: 1; stroke-dashoffset: 0; }
-
-            88% { opacity: .7; stroke-dasharray: 1; stroke-dashoffset: 0; }
-
-            97%, 100% { opacity: 0; stroke-dasharray: 1; stroke-dashoffset: 1; }
-
-          }
-
-        `}</style>
 
         <motion.p {...entrance("up", 0.14, reduced, 0.3, 28)}>
           Discover our commitment to a sustainable future by reducing carbon
@@ -456,6 +324,94 @@ function EmissionContentSections() {
   );
 }
 
+// E-Service timing/easing, with safe replay when this section enters again.
+// The headline stays visible between visits; no hidden inline state is retained.
+function EmissionPerformanceReveal() {
+  const root = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion() ?? false;
+
+  useEffect(() => {
+    const scope = root.current;
+    if (!scope || reduced) return;
+
+    const headings = Array.from(
+      scope.querySelectorAll<HTMLElement>(".uncompromising-stage h2"),
+    );
+    const copy = Array.from(
+      scope.querySelectorAll<HTMLElement>(".uncompromising-glass p"),
+    );
+    const targets = [...headings, ...copy];
+    const controls = new Map<HTMLElement, ReturnType<typeof animate>>();
+    let readyToReplay = true;
+
+    const showImmediately = () => {
+      controls.forEach((control) => control.stop());
+      controls.clear();
+      targets.forEach((element) => {
+        element.style.opacity = "1";
+        element.style.filter = "blur(0px)";
+        if (headings.includes(element)) element.style.translate = "0px 0px";
+      });
+    };
+
+    const play = () => {
+      showImmediately();
+      targets.forEach((element) => {
+        const isHeading = headings.includes(element);
+        controls.set(
+          element,
+          animate(
+            element,
+            {
+              opacity: [0, 1],
+              filter: ["blur(7px)", "blur(0px)"],
+              ...(isHeading ? { translate: ["0px 54px", "0px 0px"] } : {}),
+            },
+            {
+              duration: isHeading ? 1.15 : 0.95,
+              delay: isHeading ? 0.03 : 0.16,
+              ease: entranceEase,
+            },
+          ),
+        );
+      });
+    };
+
+    // Observe a stationary wrapper, never the translating heading itself.
+    // On exit, stop the animations AND leave every element fully visible.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio >= 0.14 && readyToReplay) {
+          readyToReplay = false;
+          play();
+        } else if (entry.intersectionRatio <= 0.02 && !readyToReplay) {
+          readyToReplay = true;
+          showImmediately();
+        }
+      },
+      { threshold: [0, 0.02, 0.14], rootMargin: "0px 0px -8% 0px" },
+    );
+
+    observer.observe(scope);
+
+    return () => {
+      observer.disconnect();
+      showImmediately();
+      targets.forEach((element) => {
+        element.style.removeProperty("opacity");
+        element.style.removeProperty("filter");
+        element.style.removeProperty("translate");
+      });
+    };
+  }, [reduced]);
+
+  return (
+    <div ref={root}>
+      <UncompromisingPerformance />
+    </div>
+  );
+}
+
 export default function EmissionPage() {
   const pageRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotion() ?? false;
@@ -501,9 +457,7 @@ export default function EmissionPage() {
       <div className="emission-newsletter [.emission-page_&]:[--newsletter-spacing-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [.emission-page_&]:[display:flow-root]! [.emission-page_&]:[padding-top:40px] [.emission-page_&]:[padding-right:24px] [.emission-page_&]:[padding-bottom:calc(115_*_var(--newsletter-spacing-unit))] [.emission-page_&]:[padding-left:24px] [.emission-page_&]:[background:linear-gradient(180deg,_#16263a_0,_#9eb7d0_calc(260_*_var(--newsletter-spacing-unit)),_#d5eaf8_calc(440_*_var(--newsletter-spacing-unit)),_#e8f4fb_100%)] max-[768px]:[.emission-page_&]:[--newsletter-spacing-unit:1px] max-[768px]:[.emission-page_&]:[padding-top:24px] max-[768px]:[.emission-page_&]:[padding-right:20px] max-[768px]:[.emission-page_&]:[padding-bottom:80px] max-[768px]:[.emission-page_&]:[padding-left:20px] max-[768px]:[.emission-page_&]:[background:linear-gradient(110deg,_#e8f4fb,_#d5eaff)]">
         <EmissionContentSections />
 
-        <motion.div {...entrance("up", 0, reduced, 0.12, 28)}>
-          <UncompromisingPerformance />
-        </motion.div>
+        <EmissionPerformanceReveal />
 
         <motion.div {...entrance("up", 0, reduced, 0.12, 30)}>
           <NewsletterSubscription requireValidInput />

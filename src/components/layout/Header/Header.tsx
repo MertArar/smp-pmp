@@ -172,7 +172,7 @@ export const HEADER_PAGE_OPTIONS: Record<string, HeaderOptions> = {
   },
   // Gray uses the complete static Sempa logo.
   "/about-us": {
-    variant: "gray",
+    variant: "white",
     textColors: {
       pumpSelection: "#9EB7D0",
       contactUs: "#9EB7D0",
@@ -1056,7 +1056,9 @@ export default function Header(options: HeaderOptions = {}) {
           backdrop-filter: none;
           -webkit-backdrop-filter: none;
         }
-        .site-header.site-header[data-hero-blasting]::before { opacity: 0; }
+        .site-header.site-header[data-hero-blasting]::before {
+          opacity: 0;
+        }
         .site-header[data-hero-blasting] [data-hero-scatter] {
           transition-property: background-color, border-color, box-shadow;
           backdrop-filter: none;

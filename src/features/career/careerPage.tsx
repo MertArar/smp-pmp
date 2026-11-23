@@ -1,4 +1,5 @@
 "use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -33,6 +34,7 @@ import {
 import { menuItems } from "@/lib/navigation";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
 import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
+
 // Motion only animates an element's own opacity/translate; form layout,
 // input interactions and the existing title effect remain independent.
 type Direction = "up" | "left" | "right";
@@ -77,14 +79,21 @@ function reveal(
     },
   };
 }
+
 type CareerPosition = {
   id: string;
+
   title: string;
+
   department: string;
+
   employmentType: string;
+
   location: string;
+
   keywords: string[];
 };
+
 // Frontend sample vacancies. Replace this array when the vacancies API is connected.
 const positions: CareerPosition[] = [
   {
@@ -95,6 +104,7 @@ const positions: CareerPosition[] = [
     location: "Konya",
     keywords: ["CFD", "fluid dynamics", "design", "research"],
   },
+
   {
     id: "mechanical-design",
     title: "Mechanical Design Engineer",
@@ -103,6 +113,7 @@ const positions: CareerPosition[] = [
     location: "Konya",
     keywords: ["CAD", "product development", "pumps"],
   },
+
   {
     id: "production-engineer",
     title: "Production Planning Engineer",
@@ -111,6 +122,7 @@ const positions: CareerPosition[] = [
     location: "Konya",
     keywords: ["manufacturing", "operations", "planning"],
   },
+
   {
     id: "export-sales",
     title: "Regional Export Sales Specialist",
@@ -119,6 +131,7 @@ const positions: CareerPosition[] = [
     location: "Istanbul",
     keywords: ["international", "business development", "sales"],
   },
+
   {
     id: "quality-specialist",
     title: "Quality Assurance Specialist",
@@ -127,6 +140,7 @@ const positions: CareerPosition[] = [
     location: "Konya",
     keywords: ["testing", "inspection", "quality control"],
   },
+
   {
     id: "hr-specialist",
     title: "Human Resources Specialist",
@@ -135,6 +149,7 @@ const positions: CareerPosition[] = [
     location: "Konya",
     keywords: ["recruitment", "people", "HR"],
   },
+
   {
     id: "engineering-intern",
     title: "Engineering & Research Intern",
@@ -144,23 +159,29 @@ const positions: CareerPosition[] = [
     keywords: ["student", "graduate", "research", "R&D"],
   },
 ];
+
 const departments = [
   ...new Set(positions.map((position) => position.department)),
 ];
+
 const employmentTypes = [
   ...new Set(positions.map((position) => position.employmentType)),
 ];
+
 const competencies = [
   "Strategy & Direction Setting",
   "Embracing Team Power",
   "Effective Communication",
+
   "Business Development",
   "Result Orientation",
   "Creativity & Entrepreneurship",
+
   "Self & Team Development",
   "Adaptability & Change Agility",
   "Customer Sensitivity",
 ];
+
 const educationLevels = [
   "High School",
   "Associate Degree",
@@ -168,6 +189,7 @@ const educationLevels = [
   "Master",
   "PhD",
 ];
+
 const experienceLevels = [
   "0–1 Year",
   "1–3 Years",
@@ -175,16 +197,19 @@ const experienceLevels = [
   "5–10 Years",
   "10+ Years",
 ];
+
 const privacyHref = menuItems
   .flatMap((item) => item.children ?? [])
   .find(
     (item) => item.label === "Law on the Protection of Personal Data",
   )?.href;
+
 const inputStyle =
   "min-h-11 w-full min-w-0 rounded-lg border border-[#d3e3f2] bg-white px-3.5 py-2.5 text-[12px]! leading-[1.2]! text-[#27272a]! outline-none placeholder:text-[#9eb7d0] shadow-[0_2px_4px_#0d579205] transition-[border-color,box-shadow] duration-250 focus:border-[#005eff] focus:ring-2 focus:ring-[#005eff]/15 aria-invalid:border-red-500 md:min-h-[38px] md:py-2 motion-reduce:transition-none";
-// Kapalı alanlar formdaki diğer inputlarla AYNI. Yalnızca açılan liste özeldir.
+
 const formDropdownStyle =
-  "flex min-h-11 w-full min-w-0 cursor-pointer items-center justify-between gap-3 rounded-lg border border-[#d3e3f2] bg-white px-3.5 py-2.5 text-left text-[12px]! leading-[1.2]! text-[#27272a]! shadow-[0_2px_4px_#0d579205] outline-none transition-[border-color,box-shadow] duration-250 hover:border-[#b7d5ed] focus-visible:border-[#005eff] focus-visible:ring-2 focus-visible:ring-[#005eff]/15 aria-invalid:border-red-500 md:min-h-[38px] md:py-2 motion-reduce:transition-none";
+  "flex min-h-[44px] w-full min-w-0 cursor-pointer items-center justify-between gap-3 rounded-[12px] border border-[#bdd5e8]/90 bg-[linear-gradient(160deg,rgba(255,255,255,.96),rgba(239,248,255,.82))] px-3.5 py-2.5 text-left text-[12px] leading-[1.2] text-[#27272a] shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_3px_14px_rgba(0,94,255,.055)] outline-none transition-[border-color,box-shadow,background-color] duration-300 hover:border-[#8dbbe3] hover:bg-white focus-visible:border-[#005eff] focus-visible:ring-2 focus-visible:ring-[#005eff]/15";
+
 // Custom accessible listbox: unlike native <select>, the expanded menu is fully
 // stylable and stays consistent on Chrome, Safari, Windows and mobile.
 type DropdownOption = { label: string; value: string };
@@ -200,6 +225,7 @@ type CareerDropdownProps = {
   describedBy?: string;
   align?: "left" | "right";
 };
+
 function CareerDropdown({
   id,
   name,
@@ -221,6 +247,7 @@ function CareerDropdown({
   const listId = `career-options-${generatedId}`;
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selected = options[selectedIndex] ?? options[0];
+
   useEffect(() => {
     if (!open) return;
     function onPointerDown(event: PointerEvent) {
@@ -244,6 +271,7 @@ function CareerDropdown({
       document.removeEventListener("keydown", onEscape);
     };
   }, [open]);
+
   useEffect(() => {
     if (!open || !menuRef.current) return;
     const item = menuRef.current.children[activeIndex] as
@@ -259,6 +287,7 @@ function CareerDropdown({
       menu.scrollTop = item.offsetTop + item.offsetHeight - menu.clientHeight;
     }
   }, [activeIndex, open]);
+
   function choose(index: number) {
     const option = options[index];
     if (!option) return;
@@ -267,10 +296,12 @@ function CareerDropdown({
     setOpen(false);
     triggerRef.current?.focus();
   }
+
   function toggle() {
     if (!open) setActiveIndex(Math.max(0, selectedIndex));
     setOpen((previous) => !previous);
   }
+
   function handleKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
     if (
       ["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(event.key)
@@ -294,6 +325,7 @@ function CareerDropdown({
       setOpen(false);
     }
   }
+
   return (
     <div
       ref={rootRef}
@@ -318,25 +350,12 @@ function CareerDropdown({
         onKeyDown={handleKeyDown}
         className={
           variant === "filter"
-            ? "group/filter flex h-[35px] max-[639px]:h-[42px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[8px] bg-transparent px-2 text-left leading-none text-[#27272a] outline-none transition-colors duration-200 hover:bg-white/35 focus-visible:bg-white/45 focus-visible:ring-2 focus-visible:ring-[#005eff]/25"
+            ? "group/filter flex h-[27px] max-[639px]:h-[38px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[8px] bg-transparent px-2 text-left text-[11px] font-[410] leading-none text-[#27272a] outline-none transition-colors duration-200 hover:bg-white/35 focus-visible:bg-white/45 focus-visible:ring-2 focus-visible:ring-[#005eff]/25"
             : formDropdownStyle
-        }
-        style={
-          variant === "filter"
-            ? {
-                // SF Pro'nun sayfa genelindeki wdth:125 ayarını bu küçük çubukta ez.
-                fontFamily: "var(--font-sf-pro), sans-serif",
-                fontSize: "11px",
-                fontWeight: 410,
-                fontVariationSettings: '"wght" 410, "wdth" 95',
-                letterSpacing: "-0.03em",
-                lineHeight: 1,
-              }
-            : undefined
         }
       >
         <span
-          className={`min-w-0 flex-1 whitespace-nowrap ${variant === "filter" ? "overflow-hidden text-ellipsis" : "truncate"} ${variant === "form" && !value ? "text-[#9eb7d0]" : ""}`}
+          className={`min-w-0 flex-1 truncate ${variant === "form" && !value ? "text-[#91aec8]" : ""}`}
         >
           {selected?.label ?? label}
         </span>
@@ -347,12 +366,17 @@ function CareerDropdown({
             strokeWidth={2.2}
           />
         ) : (
-          <FiChevronDown
+          <span
             aria-hidden="true"
-            className={`size-4 shrink-0 text-[#9eb7d0] transition-transform duration-300 ${open ? "rotate-180" : ""}`}
-          />
+            className="grid size-7 shrink-0 place-items-center rounded-[8px] border border-white/85 bg-white/65 text-[#005eff] shadow-[0_2px_8px_rgba(0,94,255,.08)]"
+          >
+            <FiChevronDown
+              className={`size-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+            />
+          </span>
         )}
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
@@ -402,8 +426,11 @@ function CareerDropdown({
     </div>
   );
 }
+
 const sectionStyle = "min-w-0 border-b border-[#9eb7d0]/10 pb-6";
+
 const legendStyle = "mb-3 text-[12px] leading-[1.2] font-[540] text-[#27272a]";
+
 const initialDetails = {
   fullName: "",
   phone: "",
@@ -415,21 +442,29 @@ const initialDetails = {
   portfolio: "",
   coverLetter: "",
 };
+
 type ApplicationDetails = typeof initialDetails;
+
 type ApplicationErrorKey =
   | keyof ApplicationDetails
   | "targetPosition"
   | "resume"
   | "privacy";
+
 type FormErrors = Partial<Record<ApplicationErrorKey, string>>;
+
 const maxFileBytes = 10 * 1024 * 1024;
+
 const allowedMimeTypes: Record<string, string[]> = {
   pdf: ["application/pdf"],
+
   doc: ["application/msword"],
+
   docx: [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ],
 };
+
 function RequiredMark() {
   return (
     <span className="text-red-500" aria-hidden="true">
@@ -437,6 +472,7 @@ function RequiredMark() {
     </span>
   );
 }
+
 function FormField({
   name,
   label,
@@ -445,9 +481,13 @@ function FormField({
   children,
 }: {
   name: string;
+
   label: string;
+
   required?: boolean;
+
   error?: string;
+
   children: ReactNode;
 }) {
   return (
@@ -458,7 +498,9 @@ function FormField({
       >
         {label} {required && <RequiredMark />}
       </label>
+
       {children}
+
       {error && (
         <p
           id={`career-${name}-error`}
@@ -476,47 +518,70 @@ function CareerApplicationForm({
   onTargetPositionChange,
 }: {
   targetPosition: string;
+
   onTargetPositionChange: (id: string) => void;
 }) {
   const [details, setDetails] = useState<ApplicationDetails>(initialDetails);
+
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>(
     [],
   );
+
   const [competencyMessage, setCompetencyMessage] = useState("");
+
   const [resume, setResume] = useState<File | null>(null);
+
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+
   const [dragging, setDragging] = useState(false);
+
   const [errors, setErrors] = useState<FormErrors>({});
+
   const [feedback, setFeedback] = useState("");
+
   const fileInput = useRef<HTMLInputElement>(null);
+
   const form = useRef<HTMLFormElement>(null);
+
   function changeDetail(name: keyof ApplicationDetails, value: string) {
     setDetails((previous) => ({ ...previous, [name]: value }));
+
     setErrors((previous) => ({ ...previous, [name]: undefined }));
+
     setFeedback("");
   }
+
   function toggleCompetency(value: string) {
     if (selectedCompetencies.includes(value)) {
       setSelectedCompetencies((previous) =>
         previous.filter((item) => item !== value),
       );
+
       setCompetencyMessage("");
     } else if (selectedCompetencies.length < 3) {
       setSelectedCompetencies((previous) => [...previous, value]);
+
       setCompetencyMessage("");
     } else {
       setCompetencyMessage(
         "You can select up to 3 competencies. Remove a selection to choose another.",
       );
     }
+
     setFeedback("");
   }
+
   function selectResume(files: FileList | File[]) {
     setFeedback("");
+
     if (files.length === 0) return;
+
     let error: string | undefined;
+
     const file = files[0];
+
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+
     if (files.length !== 1) error = "Please select one resume file.";
     else if (
       !allowedMimeTypes[extension] ||
@@ -527,33 +592,45 @@ function CareerApplicationForm({
       error = "This file is empty. Please choose your resume again.";
     else if (file.size > maxFileBytes)
       error = "Your resume must be 10 MB or smaller.";
+
     if (!error) setResume(file);
+
     setErrors((previous) => ({ ...previous, resume: error }));
+
     if (fileInput.current) fileInput.current.value = "";
   }
+
   function submitApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const nextErrors: FormErrors = {};
+
     if (
       !positions.some((position) => position.id === targetPosition) &&
       targetPosition !== "general-talent"
     )
       nextErrors.targetPosition =
         "Please select a position or the General Talent Database.";
+
     if (details.fullName.trim().length < 2)
       nextErrors.fullName = "Please enter your full name.";
+
     const digits = details.phone.replace(/\D/g, "");
+
     if (
       !/^\+?[\d\s().-]+$/.test(details.phone.trim()) ||
       digits.length < 10 ||
       digits.length > 15
     )
       nextErrors.phone = "Please enter a valid phone number with 10–15 digits.";
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim()))
       nextErrors.email = "Please enter a valid email address.";
+
     if (details.portfolio.trim()) {
       try {
         const url = new URL(details.portfolio.trim());
+
         if (!["https:", "http:"].includes(url.protocol))
           nextErrors.portfolio = "Please enter an http:// or https:// URL.";
       } catch {
@@ -561,49 +638,62 @@ function CareerApplicationForm({
           "Please enter a complete URL, including https://.";
       }
     }
+
     if (!resume) nextErrors.resume = "Please upload your resume.";
     else if (errors.resume) nextErrors.resume = errors.resume;
+
     if (!privacyAccepted)
       nextErrors.privacy =
         "Please agree to the Privacy Policy before continuing.";
+
     setErrors(nextErrors);
+
     if (Object.keys(nextErrors).length > 0) {
       setFeedback(
         "Please check the highlighted fields. Your application has not been sent.",
       );
+
       form.current
         ?.querySelector<HTMLElement>(`[name="${Object.keys(nextErrors)[0]}"]`)
         ?.focus();
+
       return;
     }
+
     // Future API integration receives { targetPosition, ...details, competencies: selectedCompetencies, resume, privacyAccepted } here.
     // Keep all draft fields intact until a real backend confirms receipt.
     setFeedback(
       "Your profile is ready. Online application submission is not enabled yet; no information or file has been sent or saved.",
     );
   }
+
   function fieldProps(name: keyof ApplicationDetails) {
     return {
       id: `career-${name}`,
       name,
       value: details[name],
+
       onChange: (
         event: ChangeEvent<
           HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
         >,
       ) => changeDetail(name, event.target.value),
+
       "aria-invalid": Boolean(errors[name]),
+
       "aria-describedby": errors[name] ? `career-${name}-error` : undefined,
+
       className: inputStyle,
     };
   }
+
   return (
     <form
       ref={form}
       noValidate
       onSubmit={submitApplication}
       aria-label="Career application"
-      className="min-w-0 space-y-7 rounded-[15px] border border-white/90 bg-[radial-gradient(ellipse_320px_190px_at_0%_0%,rgba(255,255,255,.19),transparent_100%),linear-gradient(to_bottom,rgba(255,255,255,.32),rgba(255,255,255,.80)_43%,#ffffff_100%)] p-5 shadow-[0_12px_50px_#0d579209] backdrop-blur-[20px] max-md:rounded-none max-md:border-0 max-md:bg-none max-md:p-0 max-md:shadow-none max-md:backdrop-blur-none md:p-9"
+      className="min-w-0 space-y-7 rounded-[24px] border border-white/85 bg-[linear-gradient(145deg,rgba(255,255,255,.78),rgba(244,250,255,.85))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_20px_60px_rgba(13,87,146,.09)] backdrop-blur-[22px] max-md:rounded-[18px] max-md:p-5 md:p-9"
     >
       <fieldset className={sectionStyle}>
         <legend className={`${legendStyle} w-full`}>
@@ -616,9 +706,11 @@ function CareerApplicationForm({
             </span>
           </span>
         </legend>
+
         <label htmlFor="career-target-position" className="sr-only">
           Target Position
         </label>
+
         <CareerDropdown
           id="career-target-position"
           name="targetPosition"
@@ -645,6 +737,16 @@ function CareerApplicationForm({
             errors.targetPosition ? "career-targetPosition-error" : undefined
           }
         />
+        {targetPosition && (
+          <p className="mt-2 text-[11px] leading-[1.35] text-[#597c9c]">
+            Selected position:{" "}
+            <span className="font-[540] text-[#0d5792]">
+              {positions.find((position) => position.id === targetPosition)
+                ?.title ?? "General Talent Database"}
+            </span>
+          </p>
+        )}
+
         {!targetPosition && errors.targetPosition && (
           <p
             id="career-targetPosition-error"
@@ -654,10 +756,12 @@ function CareerApplicationForm({
           </p>
         )}
       </fieldset>
+
       <fieldset className={sectionStyle}>
         <legend className={legendStyle}>
           2. PERSONAL & CONTACT DETAILS <RequiredMark />
         </legend>
+
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             name="fullName"
@@ -673,6 +777,7 @@ function CareerApplicationForm({
               maxLength={160}
             />
           </FormField>
+
           <FormField
             name="email"
             label="Email Address"
@@ -688,6 +793,7 @@ function CareerApplicationForm({
               maxLength={254}
             />
           </FormField>
+
           <FormField
             name="phone"
             label="Phone Number"
@@ -703,6 +809,7 @@ function CareerApplicationForm({
               maxLength={30}
             />
           </FormField>
+
           <FormField name="city" label="Current City">
             <input
               {...fieldProps("city")}
@@ -713,8 +820,10 @@ function CareerApplicationForm({
           </FormField>
         </div>
       </fieldset>
+
       <fieldset className={sectionStyle}>
         <legend className={legendStyle}>3. EDUCATION & EXPERIENCE</legend>
+
         <div className="grid gap-4 md:grid-cols-3">
           <FormField name="education" label="Education Level">
             <CareerDropdown
@@ -732,6 +841,7 @@ function CareerApplicationForm({
               onChange={(value) => changeDetail("education", value)}
             />
           </FormField>
+
           <FormField name="school" label="University / School">
             <input
               {...fieldProps("school")}
@@ -739,6 +849,7 @@ function CareerApplicationForm({
               maxLength={200}
             />
           </FormField>
+
           <FormField name="experience" label="Experience Years">
             <CareerDropdown
               id="career-experience"
@@ -755,6 +866,7 @@ function CareerApplicationForm({
               onChange={(value) => changeDetail("experience", value)}
             />
           </FormField>
+
           <div className="md:col-span-3">
             <FormField
               name="portfolio"
@@ -778,6 +890,7 @@ function CareerApplicationForm({
           </div>
         </div>
       </fieldset>
+
       <fieldset
         className={sectionStyle}
         aria-describedby="career-competency-help"
@@ -790,6 +903,7 @@ function CareerApplicationForm({
             </span>
           </span>
         </legend>
+
         <div className="grid gap-4 md:grid-cols-2 md:gap-2.5 lg:grid-cols-3">
           {competencies.map((value) => (
             <label
@@ -797,6 +911,7 @@ function CareerApplicationForm({
               className={`flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 text-[11px] leading-[1.2] transition-colors duration-250 md:min-h-10 ${selectedCompetencies.includes(value) ? "border-[#005eff]/40 bg-[#005eff]/8 text-[#0d5792]" : "border-[#d3e3f2]/70 bg-white/70 text-[#597c9c] hover:bg-white"}`}
             >
               <span>{value}</span>
+
               <input
                 type="checkbox"
                 name="competencies"
@@ -808,6 +923,7 @@ function CareerApplicationForm({
             </label>
           ))}
         </div>
+
         <p
           id="career-competency-help"
           role="status"
@@ -821,10 +937,12 @@ function CareerApplicationForm({
             `${selectedCompetencies.length}/3 competencies selected.`}
         </p>
       </fieldset>
+
       <fieldset className={sectionStyle}>
         <legend className={legendStyle}>
           5. UPLOAD RESUME / CV <RequiredMark />
         </legend>
+
         <div
           onDragOver={(event) => {
             event.preventDefault();
@@ -853,15 +971,18 @@ function CareerApplicationForm({
                 className="h-5 w-5 text-[#597c9c]"
               />
             </span>
+
             <span className="text-[#27272a]">
               Click to upload your CV or drag and drop here
             </span>
+
             <span
               id="career-resume-help"
               className="text-[11px] text-[#9eb7d0]"
             >
               PDF preferred · DOC / DOCX accepted · Maximum 10 MB
             </span>
+
             <input
               ref={fileInput}
               id="career-resume"
@@ -878,9 +999,11 @@ function CareerApplicationForm({
             />
           </label>
         </div>
+
         {resume && (
           <div className="mt-3 flex items-center gap-3 rounded-lg bg-white/80 p-3 text-[12px] leading-[1.3] text-[#0d5792]">
             <FiFileText aria-hidden="true" className="h-5 w-5 shrink-0" />
+
             <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
               {resume.name}
               <span className="mt-1 block text-[11px] text-[#9eb7d0]">
@@ -889,6 +1012,7 @@ function CareerApplicationForm({
                   : `${(resume.size / (1024 * 1024)).toFixed(1)} MB`}
               </span>
             </span>
+
             <button
               type="button"
               aria-label="Remove resume"
@@ -904,6 +1028,7 @@ function CareerApplicationForm({
             </button>
           </div>
         )}
+
         {errors.resume && (
           <p
             id="career-resume-error"
@@ -913,13 +1038,16 @@ function CareerApplicationForm({
           </p>
         )}
       </fieldset>
+
       <fieldset className="min-w-0">
         <legend className={legendStyle}>
           6. BRIEF COVER LETTER / YOUR AMBITIONS
         </legend>
+
         <label htmlFor="career-coverLetter" className="sr-only">
           Brief Cover Letter
         </label>
+
         <textarea
           {...fieldProps("coverLetter")}
           placeholder="Share your motivations, technical interests, and why you wish to contribute to Sempa..."
@@ -928,6 +1056,7 @@ function CareerApplicationForm({
           className={`${inputStyle} min-h-[110px]! resize-y`}
         />
       </fieldset>
+
       <div>
         <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[12px] leading-[1.4] text-[#597c9c]">
           <input
@@ -944,8 +1073,9 @@ function CareerApplicationForm({
             aria-describedby={
               errors.privacy ? "career-privacy-error" : undefined
             }
-            className="h-4 w-4 shrink-0 accent-[#005eff]"
+            className="h-4 w-4 shrink-0 cursor-pointer accent-[#005eff]"
           />
+
           <span>
             I have read the{" "}
             {privacyHref ? (
@@ -964,6 +1094,7 @@ function CareerApplicationForm({
             recruitment evaluations.
           </span>
         </label>
+
         {errors.privacy && (
           <p
             id="career-privacy-error"
@@ -972,6 +1103,7 @@ function CareerApplicationForm({
             {errors.privacy}
           </p>
         )}
+
         <div className="mt-7 flex flex-col items-center justify-between gap-5 border-t border-[#9eb7d0]/15 pt-6 sm:flex-row sm:items-center">
           <a
             href="mailto:insankaynaklari@sempapompa.com"
@@ -980,13 +1112,20 @@ function CareerApplicationForm({
             <FiMail className="h-4 w-4 shrink-0" aria-hidden="true" />{" "}
             insankaynaklari@sempapompa.com
           </a>
+
           <button
             type="submit"
-            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-lg bg-[#005eff] px-7 py-3 text-[12px]! leading-[1.2]! text-white! shadow-[0_5px_20px_#005eff25] transition-[filter,box-shadow] duration-300 hover:brightness-110 hover:shadow-[0_5px_25px_#005eff40] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#005eff] motion-reduce:transition-none"
+            disabled={!privacyAccepted}
+            className="group/submit inline-flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-lg border border-[#005eff] bg-[#005eff] px-7 py-3 text-[12px]! leading-[1.2]! text-white! shadow-[0_5px_20px_#005eff25] transition-[background-color,border-color,color,box-shadow,transform] duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-transparent hover:bg-[#f7f7f7] hover:text-[#005eff]! hover:shadow-[0_9px_25px_rgba(0,94,255,0.17)] active:translate-y-0 focus-visible:border-transparent focus-visible:bg-[#f7f7f7] focus-visible:text-[#005eff]! focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#005eff] disabled:pointer-events-none disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none"
           >
-            <FiSend aria-hidden="true" className="h-4 w-4" /> Submit Application
+            <FiSend
+              aria-hidden="true"
+              className="h-4 w-4 transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/submit:translate-x-0.5 group-hover/submit:-translate-y-0.5 motion-reduce:transition-none"
+            />{" "}
+            Submit Application
           </button>
         </div>
+
         <p
           role="status"
           aria-live="polite"
@@ -1017,15 +1156,19 @@ const roleDescriptions: Record<string, string> = {
   "engineering-intern":
     "Gain practical experience by supporting engineering research, technical analysis and development projects alongside the team.",
 };
+
 const searchInputStyle =
-  "h-[35px] w-full min-w-0 appearance-none rounded-[8px] border border-white/85 bg-white/95 py-0 pl-[30px] pr-2.5 text-[#31577b] shadow-[0_3px_13px_rgba(0,94,255,.14)] outline-none transition-[box-shadow,border-color] duration-300 placeholder:text-[#99b9d5] placeholder:opacity-100 focus:border-[#8cc2ff] focus:shadow-[0_3px_16px_rgba(0,94,255,.22)] max-[639px]:h-[42px]";
+  "h-[25px] w-full min-w-0 appearance-none rounded-[7px] border border-white/85 bg-white/95 py-0 pl-[29px] pr-2 text-[10px] min-[640px]:text-[9px] tracking-[-0.025em] leading-none text-[#31577b] shadow-[0_3px_13px_rgba(0,94,255,.14)] outline-none transition-[box-shadow,border-color] duration-300 placeholder:text-[#99b9d5] focus:border-[#8cc2ff] focus:shadow-[0_3px_16px_rgba(0,94,255,.22)] max-[639px]:h-[38px] max-[639px]:text-[12px]";
+
 const blueOrb =
   "grid size-8 shrink-0 place-items-center rounded-full bg-[linear-gradient(155deg,#0877ff_0%,#005eff_54%,#001ba8_100%)] text-white shadow-[0_0_18px_rgba(0,94,255,.36),0_5px_15px_rgba(0,42,155,.14)]";
+
 const careerTitle = [
   "Our Strength is People,",
   "Our Horizon the World:",
   "Shape Your Career at Sempa",
 ];
+
 function JobRow({
   position,
   expanded,
@@ -1050,6 +1193,7 @@ function JobRow({
     position.department === "Engineering & R&D" && position.location === "Konya"
       ? "Konya / HQ R&D Center"
       : `${position.location} / Sempa`;
+
   return (
     <motion.li
       layout="position"
@@ -1098,6 +1242,7 @@ function JobRow({
             />
           )}
         </button>
+
         <AnimatePresence initial={false}>
           {expanded && (
             <motion.div
@@ -1131,20 +1276,18 @@ function JobRow({
                 <button
                   type="button"
                   onClick={() => onApply(position.id)}
-                  className="group/apply relative inline-flex h-[43px] w-[138px] shrink-0 cursor-pointer items-center overflow-hidden rounded-[19px] border border-[#a7c5e2]/70 bg-white/55 text-left text-[15px] text-[#27272a] shadow-[0_4px_17px_rgba(0,94,255,.10)] backdrop-blur-[12px] transition-[background-color,box-shadow] duration-[350ms] hover:bg-white hover:shadow-[0_6px_22px_rgba(0,94,255,.17)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#005eff]"
+                  className="group/apply inline-flex min-h-[43px] cursor-pointer items-center gap-2 rounded-full border border-[#a7c5e2]/70 bg-white/55 py-1 pr-5 pl-1 text-[15px] leading-none text-[#27272a] shadow-[0_4px_17px_rgba(0,94,255,.10)] backdrop-blur-[12px] transition-[background-color,box-shadow] duration-[350ms] hover:bg-white hover:shadow-[0_6px_22px_rgba(0,94,255,.17)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#005eff]"
                 >
-                  <span className="absolute left-[15px] top-1/2 z-[2] -translate-y-1/2 whitespace-nowrap transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/apply:translate-x-[36px] group-focus-visible/apply:translate-x-[36px] motion-reduce:transition-none">
-                    Apply
-                  </span>
                   <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-[calc(100%_-_38px)] top-1/2 z-[3] flex size-[33px] -translate-y-1/2 items-center justify-center rounded-full bg-[linear-gradient(180deg,#005eff_0%,#001ea2_100%)] shadow-[0_0_16px_#005eff73,0_5px_20px_#005eff33] transition-[left] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/apply:left-[5px] group-focus-visible/apply:left-[5px] motion-reduce:transition-none"
+                    className={`${blueOrb} transition-transform duration-500 group-hover/apply:rotate-45`}
                   >
                     <FiArrowUpRight
-                      className="size-5 scale-[0.8] text-white opacity-0 transition-[opacity,transform] duration-[350ms] group-hover/apply:scale-100 group-hover/apply:opacity-100 group-focus-visible/apply:scale-100 group-focus-visible/apply:opacity-100 motion-reduce:transition-none"
+                      className="size-5"
                       strokeWidth={2.7}
+                      aria-hidden="true"
                     />
                   </span>
+                  <span>Apply</span>
                 </button>
               </div>
             </motion.div>
@@ -1154,6 +1297,7 @@ function JobRow({
     </motion.li>
   );
 }
+
 export default function CareerPage() {
   const heading = useRepeatingTitle(1100);
   const reduced = useReducedMotion() ?? false;
@@ -1165,6 +1309,7 @@ export default function CareerPage() {
     "hydraulic-design",
   );
   const application = useRef<HTMLElement>(null);
+
   const search = query.trim().toLocaleLowerCase("en");
   const matchingPositions = positions.filter(
     (position) =>
@@ -1181,6 +1326,7 @@ export default function CareerPage() {
           .toLocaleLowerCase("en")
           .includes(search)),
   );
+
   function applyFor(id: string) {
     setTargetPosition(id);
     const isReduced = window.matchMedia(
@@ -1195,6 +1341,7 @@ export default function CareerPage() {
       .getElementById("career-target-position")
       ?.focus({ preventScroll: true });
   }
+
   return (
     <main
       data-header-underlay
@@ -1214,6 +1361,7 @@ export default function CareerPage() {
             Sempa Career
           </p>
         </motion.header>
+
         <section
           aria-labelledby="career-heading"
           className="grid items-start gap-0 md:grid-cols-2 md:gap-8 min-[75rem]:grid-cols-[minmax(0,390fr)_minmax(0,290fr)_minmax(0,520fr)] min-[75rem]:gap-0"
@@ -1260,12 +1408,13 @@ export default function CareerPage() {
             `}</style>
             <motion.p
               {...reveal("up", 0.19, reduced, 0.15)}
-              className="mx-auto mt-6 max-w-[340px] text-[16px] leading-[1.12] font-[350] text-[#9eb7d0] [font-variation-settings:'wght'_350,'wdth'_125] md:mx-0 md:max-w-[390px] md:text-[20px]"
+              className="mx-auto mt-6 max-w-[340px] text-[16px] leading-[1.07] text-[#9eb7d0] md:mx-0 md:max-w-[390px] md:text-[20px]"
             >
               Browse current opportunities at our Konya 4th OIZ complex,
               certified R&amp;D Center, and regional export offices.
             </motion.p>
           </motion.div>
+
           <motion.div
             {...reveal("up", 0.08, reduced, 0.12)}
             className="relative mx-auto mt-12 h-[380px] w-full max-w-[360px] md:mt-0 md:h-[500px] md:max-w-[400px] min-[75rem]:mx-0 min-[75rem]:w-[calc(100%+90px)]"
@@ -1279,11 +1428,12 @@ export default function CareerPage() {
               className="object-contain object-top"
             />
           </motion.div>
+
           <div className="relative z-10 min-w-0 md:col-span-2 min-[75rem]:col-span-1">
             <motion.div
               {...reveal("right", 0.08, reduced, 0.15)}
               data-career-filters
-              className="relative z-[100] mx-auto grid w-full max-w-[580px] grid-cols-1 items-center gap-2 rounded-[15px] border border-white/70 bg-[#f7f7f7]/95 px-[11px] py-[9px] shadow-[0_8px_25px_rgba(0,94,255,.045)] backdrop-blur-[15px] min-[640px]:max-w-none min-[640px]:grid-cols-[minmax(0,1.85fr)_minmax(0,1.05fr)_minmax(0,1.16fr)] min-[640px]:gap-2.5 min-[75rem]:w-[calc(100%+64px)] min-[75rem]:-ml-[24px]"
+              className="relative mx-auto grid w-full max-w-[520px] grid-cols-1 items-center gap-1.5 rounded-[12px] border border-white/70 bg-[#f7f7f7]/95 px-[9px] py-[7px] shadow-[0_8px_25px_rgba(0,94,255,.045)] backdrop-blur-[15px] min-[640px]:max-w-none min-[640px]:grid-cols-[minmax(0,1.55fr)_minmax(0,.86fr)_minmax(0,1.03fr)] min-[640px]:gap-2 min-[640px]:py-[7px]"
             >
               <label className="relative block min-w-0">
                 <span className="sr-only">Search positions</span>
@@ -1297,15 +1447,7 @@ export default function CareerPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   aria-controls="career-vacancies"
-                  className={`${searchInputStyle} [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden`}
-                  style={{
-                    fontFamily: "var(--font-sf-pro), sans-serif",
-                    fontSize: "10.5px",
-                    fontWeight: 400,
-                    fontVariationSettings: '"wght" 400, "wdth" 95',
-                    letterSpacing: "-0.03em",
-                    lineHeight: 1,
-                  }}
+                  className={`${searchInputStyle} [font-family:var(--font-sf-pro),sans-serif] [font-variation-settings:'wght'_400,'wdth'_100] placeholder:opacity-100 [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden`}
                 />
               </label>
               <CareerDropdown
@@ -1330,17 +1472,19 @@ export default function CareerPage() {
                 onChange={setEmploymentType}
               />
             </motion.div>
+
             <motion.p
               {...reveal("up", 0.12, reduced, 0.1)}
               role="status"
               aria-live="polite"
-              className="relative z-0 mt-4 mb-6 text-center text-[11px] leading-none text-[#86a9c5] md:mt-3 md:mb-5 md:text-right"
+              className="mt-4 mb-6 text-center text-[11px] leading-none text-[#86a9c5] md:mt-3 md:mb-5 md:text-right"
             >
               Listing {matchingPositions.length} Open Positions
             </motion.p>
+
             <motion.div
               {...reveal("up", 0.13, reduced, 0.15)}
-              className="relative z-0 mb-3 flex min-h-[64px] items-center justify-between gap-5 rounded-[13px] border border-white/60 bg-[linear-gradient(110deg,rgba(137,192,252,.38),rgba(148,196,254,.52))] px-5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.6),0_8px_22px_rgba(0,94,255,.08)] backdrop-blur-[22px]"
+              className="mb-3 flex min-h-[64px] items-center justify-between gap-5 rounded-[13px] border border-white/60 bg-[linear-gradient(110deg,rgba(137,192,252,.38),rgba(148,196,254,.52))] px-5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.6),0_8px_22px_rgba(0,94,255,.08)] backdrop-blur-[22px]"
             >
               <h2 className="text-[17px] leading-[1.1] font-[560] text-[#005eff] [font-variation-settings:'wght'_560,'wdth'_125]">
                 Our Relevant Departments
@@ -1352,7 +1496,8 @@ export default function CareerPage() {
                 <FiArrowUpRight className="size-[18px]" strokeWidth={2.7} />
               </span>
             </motion.div>
-            <ul id="career-vacancies" className="relative z-0 space-y-2.5">
+
+            <ul id="career-vacancies" className="space-y-2.5">
               {matchingPositions.map((position, index) => (
                 <JobRow
                   key={position.id}
@@ -1377,6 +1522,7 @@ export default function CareerPage() {
             )}
           </div>
         </section>
+
         <section
           ref={application}
           id="career-application"
@@ -1408,7 +1554,7 @@ export default function CareerPage() {
                 <br className="hidden min-[75rem]:block" /> Profile to the Sempa
                 Family
               </h2>
-              <p className="mx-auto mt-5 max-w-[340px] text-[15px] leading-[1.12] font-[350] text-[#9eb7d0] [font-variation-settings:'wght'_350,'wdth'_125] md:mx-0 md:mt-6 md:max-w-[510px]">
+              <p className="mx-auto mt-5 max-w-[340px] text-[15px] leading-[1.07] text-[#9eb7d0] md:mx-0 md:mt-6 md:max-w-[510px]">
                 Select an open vacancy or register in our General Talent
                 Database. You can prepare your application here; online
                 submission will be available once the recruitment system is
@@ -1418,7 +1564,7 @@ export default function CareerPage() {
           </div>
           <motion.div
             {...reveal("up", 0, reduced, 0.07)}
-            className="relative z-10 -mt-4 md:-mt-8"
+            className="relative z-10"
           >
             <CareerApplicationForm
               targetPosition={targetPosition}
@@ -1426,6 +1572,7 @@ export default function CareerPage() {
             />
           </motion.div>
         </section>
+
         <motion.div
           {...reveal("up", 0, reduced, 0.09)}
           className="mt-24 [--newsletter-spacing-unit:1.5px] md:mt-28"
