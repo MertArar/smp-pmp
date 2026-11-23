@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import Header from "@/components/layout/Header/Header";
 import Footer from "@/components/layout/Footer/Footer";
 import SmoothScrollProvider from "@/components/providers/SmoothScrollProvider";
+import StartupScreen from "@/components/layout/StartupScreen";
 
 import "./globals.css";
 import "lenis/dist/lenis.css";
@@ -41,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={sfPro.variable}>
+        <StartupScreen />
         <SmoothScrollProvider>
           <Header />
           {children}

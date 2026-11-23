@@ -2,6 +2,7 @@
 
 import {
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -10,8 +11,10 @@ import {
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEnvironment, useGLTF } from "@react-three/drei";
+import { gsap } from "@/lib/gsap";
 import * as THREE from "three";
 import { buildScatterPaths } from "./heroScatterMotion";
+import { createPumpMaterialAdapter } from "./pumpMaterials";
 import { HOME_PUMPS } from "../product/homePumpCatalog";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -40,9 +43,7 @@ function resolveModelUrl(url: string) {
     : url;
 }
 
-const MODEL_URLS = [
-  ...HOME_PUMPS.map((pump) => pump.modelUrl),
-] as const;
+const MODEL_URLS = [...HOME_PUMPS.map((pump) => pump.modelUrl)] as const;
 
 const PRODUCT02_PART_GROUPS = {
   ALT: ["ALT"],
@@ -111,6 +112,8 @@ const LEGACY_SEED_BY_NAME: Readonly<Record<string, number>> = {
 };
 
 const PUMP_MODEL_SELECT_EVENT = "sempa:pump-model-select";
+const HERO_RETURN_EVENT = "sempa:hero-return-default";
+const HERO_RETURN_COMPLETE_EVENT = "sempa:hero-return-complete";
 const PUMP_ROTATE_START_EVENT = "sempa:pump-rotate-start";
 const PUMP_ROTATE_DELTA_EVENT = "sempa:pump-rotate-delta";
 const PUMP_ROTATE_END_EVENT = "sempa:pump-rotate-end";
@@ -132,11 +135,18 @@ type Hero3DProps = {
   scrollExplosionRef: MutableRef<number>;
   productReturnExplosionRef: MutableRef<number>;
   journeyProgressRef: MutableRef<number>;
+  returningToHeroRef: MutableRef<boolean>;
+  selectionReadyRef: MutableRef<boolean>;
 };
 
 type ExplodableProductProps = Hero3DProps & {
   modelUrl: string;
   renderProgressRef: MutableRef<number>;
+  introPlayedRef: MutableRef<boolean>;
+  morphProgressRef: MutableRef<{ progress: number }>;
+  transitionRole: "main" | "incoming" | "outgoing";
+  onModelReady?: () => void;
+  active?: boolean;
 };
 
 type ExplodablePart = {
@@ -293,12 +303,37 @@ function HeroRenderBudget({ qualityRef }: { qualityRef: MutableRef<boolean> }) {
   return null;
 }
 
+function HeroStartupWarmup() {
+  const { gl, scene, camera } = useThree();
+  const compiled = useRef(false);
+  const frames = useRef(0);
+  const signaled = useRef(false);
+  useEffect(() => {
+    let disposed = false;
+    // Prepare GPU programs while the lightweight startup screen is visible.
+    void gl.compileAsync(scene, camera).catch(() => {}).finally(() => {
+      if (!disposed) compiled.current = true;
+    });
+    return () => { disposed = true; };
+  }, [gl, scene, camera]);
+  useFrame(() => {
+    if (signaled.current || !compiled.current) return;
+    if (++frames.current < 2) return;
+    signaled.current = true;
+    document.documentElement.dataset.heroReady = "true";
+    window.dispatchEvent(new Event("sempa:hero-ready"));
+  }, 2);
+  return null;
+}
+
 function SceContactShadows({
   progressRef,
   qualityRef,
+  enabled = true,
 }: {
   progressRef: MutableRef<number>;
   qualityRef: MutableRef<boolean>;
+  enabled?: boolean;
 }) {
   const { gl, scene, camera, size, viewport } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
@@ -368,7 +403,7 @@ function SceContactShadows({
       gtao.blendIntensity = 0.85 * (1 - smoothstep(progressRef.current / 0.28));
       // Separated parts have no contact surfaces. Skip the entire normal/AO/
       // denoise pipeline during flight, retaining the original studio materials.
-      gtao.enabled = qualityRef.current && gtao.blendIntensity > 0.005;
+      gtao.enabled = enabled && qualityRef.current && gtao.blendIntensity > 0.005;
     }
     if (composerRef.current) composerRef.current.render(delta);
     else gl.render(scene, camera);
@@ -384,17 +419,44 @@ function ExplodableProduct({
   scrollExplosionRef,
   productReturnExplosionRef,
   journeyProgressRef,
+  returningToHeroRef,
+  selectionReadyRef,
   renderProgressRef,
+  introPlayedRef,
+  morphProgressRef,
+  transitionRole,
+  onModelReady,
+  active = true,
 }: ExplodableProductProps) {
   const { scene } = useGLTF(modelUrl);
+  const { scene: heroMaterialSource } = useGLTF(DEFAULT_MODEL_URL);
   const { viewport, size, gl, camera } = useThree();
 
   const isGroupedPump = modelUrl === NEW_SCE_URL;
+  const isOutgoing = transitionRole === "outgoing";
+  const initialAssemblyEligibleRef = useRef(
+    isGroupedPump &&
+      transitionRole === "main" &&
+      !introPlayedRef.current &&
+      typeof window !== "undefined" &&
+      window.scrollY < window.innerHeight * 0.3 &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const initialAssemblyTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (isGroupedPump && transitionRole === "main")
+      introPlayedRef.current = true;
+  }, [isGroupedPump, introPlayedRef, transitionRole]);
+
+  useEffect(() => {
+    onModelReady?.();
+  }, [onModelReady]);
 
   const rootRef = useRef<THREE.Group | null>(null);
   const shadowRootRef = useRef<THREE.Group | null>(null);
 
-  const blastProgress = useRef(0);
+  const blastProgress = useRef(initialAssemblyEligibleRef.current ? 1 : 0);
   const manualBlastProgress = useRef(0);
   const lastPartsPose = useRef({
     parts: null as ExplodablePart[] | null,
@@ -407,11 +469,19 @@ function ExplodableProduct({
   const scatterViewRotation = useMemo(() => new THREE.Matrix3(), []);
   const scatterParentRotation = useMemo(() => new THREE.Matrix3(), []);
   const scatterRootMatrix = useMemo(() => new THREE.Matrix4(), []);
-  const scatterReferenceMatrix = useMemo(() => new THREE.Matrix3().setFromMatrix4(
-    new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(
-      THREE.MathUtils.degToRad(8), THREE.MathUtils.degToRad(-30), THREE.MathUtils.degToRad(-3),
-    )),
-  ), []);
+  const scatterReferenceMatrix = useMemo(
+    () =>
+      new THREE.Matrix3().setFromMatrix4(
+        new THREE.Matrix4().makeRotationFromEuler(
+          new THREE.Euler(
+            THREE.MathUtils.degToRad(8),
+            THREE.MathUtils.degToRad(-30),
+            THREE.MathUtils.degToRad(-3),
+          ),
+        ),
+      ),
+    [],
+  );
   const pointerYawRef = useRef(0);
   const previousScrollYRef = useRef<number | null>(null);
   const scrollSpinRef = useRef(0);
@@ -434,8 +504,9 @@ function ExplodableProduct({
   const BLAST_OPEN_SPEED = 1.25;
   const BLAST_CLOSE_SPEED = 3.8;
   const SCROLL_BLAST_SPEED = 4.8;
-  // Keep the exploded assembly rotating at a calm, constant pace.
-  const EXPLODED_ROTATION_MULTIPLIER = 1.7;
+  // Exploded pieces and their assembly rotate faster after the release.
+  const EXPLODED_ROTATION_MULTIPLIER = 3.4;
+  const RETURN_BLAST_SPEED = 1.5;
   const POINTER_TILT_FADE = 0.25;
 
   const MANUAL_ROTATION_SENSITIVITY = 0.014;
@@ -460,12 +531,14 @@ function ExplodableProduct({
 
   const model = useMemo(() => {
     const clonedModel = scene.clone(true);
+    const adapter = modelUrl.startsWith("/3d/pumps/") ? createPumpMaterialAdapter(heroMaterialSource) : null;
+    clonedModel.userData.disposePumpTextures = adapter?.dispose;
 
     const materials = new Map<THREE.Material, THREE.Material>();
     const cloneOriginalMaterial = (material: THREE.Material) => {
       let clone = materials.get(material);
       if (!clone) {
-        clone = material.clone();
+        clone = adapter ? adapter.adapt(material) : material.clone();
         // The seven CAD exports mark painted/metal body materials as BLEND.
         // GLTFLoader consequently disables depth writes and sorts whole mesh
         // objects as transparent surfaces, exposing internals and triangular
@@ -498,7 +571,7 @@ function ExplodableProduct({
     });
 
     return clonedModel;
-  }, [scene, modelUrl]);
+  }, [scene, modelUrl, heroMaterialSource]);
 
   useEffect(
     () => () => {
@@ -513,6 +586,7 @@ function ExplodableProduct({
         }
       });
       materials.forEach((material) => material.dispose());
+      model.userData.disposePumpTextures?.();
     },
     [model],
   );
@@ -1035,8 +1109,12 @@ function ExplodableProduct({
           launchPower,
           rotationLag,
           flightPath: null,
-          parentAxes: new THREE.Matrix3().setFromMatrix4(parentRestInverse.clone().invert()),
-          inverseParentAxes: new THREE.Matrix3().setFromMatrix4(parentRestInverse),
+          parentAxes: new THREE.Matrix3().setFromMatrix4(
+            parentRestInverse.clone().invert(),
+          ),
+          inverseParentAxes: new THREE.Matrix3().setFromMatrix4(
+            parentRestInverse,
+          ),
         });
       },
     );
@@ -1239,7 +1317,19 @@ function ExplodableProduct({
   const modelEase = (t: number) =>
     t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
+  const initialJourney = smoothstep(clamp01(journeyProgressRef.current));
+  const initialPositionX =
+    THREE.MathUtils.lerp(heroPositionX, productModelX, initialJourney) +
+    (transitionRole === "incoming" ? -viewport.width * 0.72 : 0);
+  const initialPositionY =
+    THREE.MathUtils.lerp(heroPositionY, productModelY, initialJourney) -
+    Math.sin(initialJourney * Math.PI) * JOURNEY_DROP;
+  const initialScale =
+    THREE.MathUtils.lerp(introModelScale, productModelScale, initialJourney) *
+    modelData.fitScale;
+
   useFrame((_, delta) => {
+    if (!active) return;
     delta = Math.min(delta, 0.05);
     const manualBlast = blastRef.current;
 
@@ -1262,35 +1352,66 @@ function ExplodableProduct({
       journeyProgressRef.current < 0.999
         ? clamp01(scrollExplosionRef.current)
         : 0;
-
     const returningBlast = clamp01(productReturnExplosionRef.current);
 
-    const blastTarget = manualBlast ? 1 : Math.max(scrollBlast, returningBlast);
+    // Only the original Hero GLB can ever scatter. Every other product is
+    // rigid, even while the user moves through the explosion scroll ranges.
+    const startupVisible = document.documentElement.dataset.startupReady !== "true";
+    if (initialAssemblyEligibleRef.current && !startupVisible) {
+      initialAssemblyTimeRef.current += delta;
+      if (initialAssemblyTimeRef.current >= 1.9) {
+        initialAssemblyEligibleRef.current = false;
+      }
+    }
+    const initialAssembly = initialAssemblyEligibleRef.current
+      ? Math.pow(1 - clamp01(initialAssemblyTimeRef.current / 1.9), 2)
+      : 0;
+    const morphIsReady =
+      transitionRole !== "incoming" ||
+      morphProgressRef.current.progress >= 0.72;
+    const blastTarget =
+      isGroupedPump && !isOutgoing
+        ? Math.max(
+            initialAssembly,
+            morphIsReady
+              ? manualBlast
+                ? 1
+                : Math.max(scrollBlast, returningBlast)
+              : 0,
+          )
+        : 0;
 
-    const blastSpeed = manualBlast
-      ? BLAST_OPEN_SPEED
-      : blastTarget > blastProgress.current
-        ? SCROLL_BLAST_SPEED
-        : BLAST_CLOSE_SPEED;
+    const blastSpeed =
+      manualBlast && isGroupedPump
+        ? BLAST_OPEN_SPEED
+        : blastTarget > blastProgress.current
+          ? returningToHeroRef.current
+            ? RETURN_BLAST_SPEED
+            : SCROLL_BLAST_SPEED
+          : BLAST_CLOSE_SPEED;
 
-    blastProgress.current = THREE.MathUtils.damp(
-      blastProgress.current,
-      blastTarget,
-      blastSpeed,
-      delta,
-    );
+    if (initialAssemblyEligibleRef.current && !manualBlast && scrollBlast === 0) {
+      blastProgress.current = initialAssembly;
+    } else {
+      blastProgress.current = THREE.MathUtils.damp(blastProgress.current, blastTarget, blastSpeed, delta);
+    }
 
     if (Math.abs(blastProgress.current - blastTarget) < 0.0001)
       blastProgress.current = blastTarget;
     const globalProgress = smoothstep(blastProgress.current);
     renderProgressRef.current = globalProgress;
+    // Read the rendered pose, rather than waiting for the scroll journey to end.
+    selectionReadyRef.current = globalProgress < 0.001 && !manualBlast;
 
     // Keep the authored hero flight facing the camera at any product yaw.
     // Only displacement is reoriented; assembled geometry and its own spin
     // retain their exact model-space transforms.
     if (rootRef.current) {
       scatterRootMatrix.makeRotationFromQuaternion(rootRef.current.quaternion);
-      scatterViewRotation.setFromMatrix4(scatterRootMatrix).invert().multiply(scatterReferenceMatrix);
+      scatterViewRotation
+        .setFromMatrix4(scatterRootMatrix)
+        .invert()
+        .multiply(scatterReferenceMatrix);
     }
 
     // Assembled pumps only rotate as a group; do not rewrite every part each frame.
@@ -1346,8 +1467,10 @@ function ExplodableProduct({
           }
 
           tempPivot.copy(part.object.position).sub(part.originalPosition);
-          scatterParentRotation.copy(part.inverseParentAxes)
-            .multiply(scatterViewRotation).multiply(part.parentAxes);
+          scatterParentRotation
+            .copy(part.inverseParentAxes)
+            .multiply(scatterViewRotation)
+            .multiply(part.parentAxes);
           tempPivot.applyMatrix3(scatterParentRotation);
           part.object.position.copy(part.originalPosition).add(tempPivot);
 
@@ -1392,14 +1515,30 @@ function ExplodableProduct({
     if (!root) return;
 
     const journey = smoothstep(clamp01(journeyProgressRef.current));
-
-    const targetX = THREE.MathUtils.lerp(heroPositionX, productModelX, journey);
+    const morph = smootherstep(morphProgressRef.current.progress);
+    const isIncoming = transitionRole === "incoming";
+    // Cinematic 3D turntable: both pumps stay at their real size. The outgoing
+    // pump turns and travels off the right edge while Hero rotates in from
+    // the left, following a shallow depth arc instead of scaling away.
+    const slide = isOutgoing ? morph : isIncoming ? morph - 1 : 0;
+    const turn = isOutgoing
+      ? -morph * Math.PI * 0.78
+      : isIncoming
+        ? (1 - morph) * Math.PI * 0.78
+        : 0;
+    const arc = isOutgoing || isIncoming ? Math.sin(morph * Math.PI) : 0;
+    const targetX =
+      THREE.MathUtils.lerp(heroPositionX, productModelX, journey) +
+      slide * viewport.width * 0.72;
 
     const baseY = THREE.MathUtils.lerp(heroPositionY, productModelY, journey);
 
     const downSweep = Math.sin(journey * Math.PI) * JOURNEY_DROP;
 
-    const targetY = baseY - downSweep;
+    const targetY =
+      baseY -
+      downSweep +
+      (isOutgoing ? -1 : isIncoming ? 1 : 0) * arc * viewport.height * 0.075;
 
     modelEntryRef.current = Math.min(
       1,
@@ -1416,11 +1555,16 @@ function ExplodableProduct({
       modelData.fitScale *
       entryScale;
 
-    root.position.x = THREE.MathUtils.damp(root.position.x, targetX, 8, delta);
+    root.position.x = THREE.MathUtils.damp(root.position.x, targetX, 12, delta);
 
-    root.position.y = THREE.MathUtils.damp(root.position.y, targetY, 8, delta);
+    root.position.y = THREE.MathUtils.damp(root.position.y, targetY, 12, delta);
 
-    root.position.z = 0;
+    root.position.z = THREE.MathUtils.damp(
+      root.position.z,
+      -arc * 0.3,
+      12,
+      delta,
+    );
 
     const nextScale = THREE.MathUtils.damp(root.scale.x, targetScale, 8, delta);
 
@@ -1429,7 +1573,7 @@ function ExplodableProduct({
     // Check the actual pump meshes' cached local bounds instead of treating
     // the whole hero as a hover target. This never raycasts 300k triangles.
     let hoveringPump = false;
-    if (pointerRef.current.active && globalProgress < 0.08) {
+    if (!isOutgoing && pointerRef.current.active && globalProgress < 0.08) {
       hoverProbe.pointer.set(
         pointerRef.current.x * 2,
         -pointerRef.current.y * 2,
@@ -1454,9 +1598,14 @@ function ExplodableProduct({
     // Lenis already drives journey progress. Add rotation while it advances,
     // then let that extra momentum decay smoothly when scrolling stops.
     const scrollY = window.scrollY;
-    const scrollDistance = Math.abs(scrollY - (previousScrollYRef.current ?? scrollY));
+    const scrollDistance = Math.abs(
+      scrollY - (previousScrollYRef.current ?? scrollY),
+    );
     previousScrollYRef.current = scrollY;
-    const scrollDelta = Math.min(scrollDistance / Math.max(window.innerHeight, 1), 0.04);
+    const scrollDelta = Math.min(
+      scrollDistance / Math.max(window.innerHeight, 1),
+      0.04,
+    );
     const scrollActivity = clamp01((scrollDelta / Math.max(delta, 0.001)) * 3);
     scrollSpinRef.current = THREE.MathUtils.damp(
       scrollSpinRef.current,
@@ -1467,14 +1616,15 @@ function ExplodableProduct({
     const assemblyRotationMultiplier = THREE.MathUtils.lerp(
       1,
       EXPLODED_ROTATION_MULTIPLIER,
-      smootherstep(globalProgress),
+      smootherstep((globalProgress - 0.55) / 0.45),
     );
-    const targetRotationSpeed = manualDraggingRef.current
-      ? 0
-      : AUTO_ROTATION_SPEED *
-        assemblyRotationMultiplier *
-        (1 + scrollSpinRef.current * 2.2) *
-        (hoveringPump ? HOVER_ROTATION_MULTIPLIER : 1);
+    const targetRotationSpeed =
+      manualDraggingRef.current && !isOutgoing
+        ? 0
+        : AUTO_ROTATION_SPEED *
+          assemblyRotationMultiplier *
+          (1 + scrollSpinRef.current * 2.2) *
+          (hoveringPump ? HOVER_ROTATION_MULTIPLIER : 1);
 
     currentRotationSpeedRef.current = THREE.MathUtils.damp(
       currentRotationSpeedRef.current,
@@ -1484,7 +1634,8 @@ function ExplodableProduct({
     );
 
     if (!manualDraggingRef.current) {
-      autoRotationRef.current += currentRotationSpeedRef.current * delta + scrollDelta * 0.75;
+      autoRotationRef.current +=
+        currentRotationSpeedRef.current * delta + scrollDelta * 0.75;
     }
 
     const pointerStrength =
@@ -1495,7 +1646,7 @@ function ExplodableProduct({
       5,
       delta,
     );
-    root.rotation.y = autoRotationRef.current + pointerYawRef.current;
+    root.rotation.y = autoRotationRef.current + pointerYawRef.current + turn;
 
     const baseRotationX = THREE.MathUtils.degToRad(8);
 
@@ -1515,7 +1666,9 @@ function ExplodableProduct({
 
     root.rotation.z = THREE.MathUtils.damp(
       root.rotation.z,
-      baseRotationZ + pointerX * -0.035 * pointerStrength,
+      baseRotationZ +
+        pointerX * -0.035 * pointerStrength +
+        (isOutgoing ? -1 : isIncoming ? 1 : 0) * arc * 0.065,
       4,
       delta,
     );
@@ -1531,11 +1684,12 @@ function ExplodableProduct({
     <>
       <group
         ref={rootRef}
-        position={[heroPositionX, heroPositionY, 0]}
-        scale={introModelScale * modelData.fitScale}
+        position={[initialPositionX, initialPositionY, 0]}
+        scale={initialScale}
         rotation={[
           THREE.MathUtils.degToRad(8),
-          THREE.MathUtils.degToRad(-30),
+          THREE.MathUtils.degToRad(-30) +
+            (transitionRole === "incoming" ? Math.PI * 0.78 : 0),
           THREE.MathUtils.degToRad(-3),
         ]}
       >
@@ -1553,8 +1707,8 @@ function ExplodableProduct({
       {detachedShadow && (
         <group
           ref={shadowRootRef}
-          position={[heroPositionX, heroPositionY, 0]}
-          scale={introModelScale * modelData.fitScale}
+          position={[initialPositionX, initialPositionY, 0]}
+          scale={initialScale}
         >
           <group
             position={[
@@ -1578,19 +1732,47 @@ export function Hero3D({
   scrollExplosionRef,
   productReturnExplosionRef,
   journeyProgressRef,
+  returningToHeroRef,
+  selectionReadyRef,
 }: Hero3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [renderActive, setRenderActive] = useState(true);
   const [selectedModelUrl, setSelectedModelUrl] = useState(DEFAULT_MODEL_URL);
+  const [outgoingModelUrl, setOutgoingModelUrl] = useState<string | null>(null);
   const [, startModelTransition] = useTransition();
 
   const selectedUrlRef = useRef(DEFAULT_MODEL_URL);
+  const introPlayedRef = useRef(false);
+  const morphProgressRef = useRef({ progress: 1 });
+  const returnPendingRef = useRef(false);
+  const morphFinishedRef = useRef(false);
+  const heroModelReadyRef = useRef(false);
   const renderProgressRef = useRef(0);
   const contactQualityRef = useRef(true);
 
   const activeModelUrl = resolveModelUrl(selectedModelUrl);
 
   const isSceSelected = activeModelUrl === NEW_SCE_URL;
+
+  const finishHeroReturn = useCallback(() => {
+    if (
+      !returnPendingRef.current ||
+      !morphFinishedRef.current ||
+      !heroModelReadyRef.current
+    )
+      return;
+    returnPendingRef.current = false;
+    setOutgoingModelUrl(null);
+    // Unlock after React has removed the outgoing mesh from the scene.
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event(HERO_RETURN_COMPLETE_EVENT));
+    });
+  }, []);
+
+  const handleHeroModelReady = useCallback(() => {
+    heroModelReadyRef.current = true;
+    finishHeroReturn();
+  }, [finishHeroReturn]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -1623,6 +1805,9 @@ export function Hero3D({
       const nextModelUrl = detail?.modelUrl;
 
       if (!nextModelUrl) return;
+      if (returningToHeroRef.current && nextModelUrl === DEFAULT_MODEL_URL) return;
+      // Product's reset event must not bypass the short return transition.
+      if (returnPendingRef.current && nextModelUrl === DEFAULT_MODEL_URL) return;
 
       if (!MODEL_URLS.includes(nextModelUrl as (typeof MODEL_URLS)[number])) {
         return;
@@ -1633,6 +1818,18 @@ export function Hero3D({
       }
 
       selectedUrlRef.current = nextModelUrl;
+      if (hostRef.current) {
+        gsap.killTweensOf(hostRef.current);
+        gsap.set(hostRef.current, { clearProps: "opacity,transform" });
+      }
+      if (returnPendingRef.current) window.dispatchEvent(new Event(HERO_RETURN_COMPLETE_EVENT));
+
+      // An explicit product selection cancels a return animation in flight.
+      returnPendingRef.current = false;
+      morphFinishedRef.current = false;
+      gsap.killTweensOf(morphProgressRef.current);
+      morphProgressRef.current.progress = 1;
+      setOutgoingModelUrl(null);
 
       useGLTF.preload(resolveModelUrl(nextModelUrl));
       // Keep the current pump visible until the requested model finishes decoding.
@@ -1641,10 +1838,49 @@ export function Hero3D({
 
     window.addEventListener(PUMP_MODEL_SELECT_EVENT, handleModelSelect);
 
+    const handleHeroReturn = () => {
+      if (returnPendingRef.current) return;
+      const host = hostRef.current;
+      if (!host || selectedUrlRef.current === DEFAULT_MODEL_URL || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        selectedUrlRef.current = DEFAULT_MODEL_URL;
+        setSelectedModelUrl(DEFAULT_MODEL_URL);
+        window.dispatchEvent(new Event(HERO_RETURN_COMPLETE_EVENT));
+        return;
+      }
+      gsap.killTweensOf(morphProgressRef.current);
+      morphProgressRef.current.progress = 1;
+      returnPendingRef.current = true;
+      gsap.killTweensOf(host);
+      // Animate the composited canvas, never hundreds of material opacities.
+      // Only one pump is rendered, and the hero is already decoded/mounted.
+      gsap.to(host, { x: 36, opacity: 0, duration: 0.24, ease: "power2.in", onComplete: () => {
+        selectedUrlRef.current = DEFAULT_MODEL_URL;
+        setOutgoingModelUrl(null);
+        setSelectedModelUrl(DEFAULT_MODEL_URL);
+        requestAnimationFrame(() => {
+          if (!returnPendingRef.current) return;
+          gsap.fromTo(host, { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.38, ease: "power2.out", onComplete: () => {
+            returnPendingRef.current = false;
+            gsap.set(host, { clearProps: "opacity,transform" });
+            window.dispatchEvent(new Event(HERO_RETURN_COMPLETE_EVENT));
+          } });
+        });
+      } });
+    };
+    window.addEventListener(HERO_RETURN_EVENT, handleHeroReturn);
+
     return () => {
       window.removeEventListener(PUMP_MODEL_SELECT_EVENT, handleModelSelect);
+      window.removeEventListener(HERO_RETURN_EVENT, handleHeroReturn);
+      returnPendingRef.current = false;
+      gsap.killTweensOf(morphProgressRef.current);
+      if (hostRef.current) {
+        gsap.killTweensOf(hostRef.current);
+        gsap.set(hostRef.current, { clearProps: "opacity,transform" });
+      }
+      window.dispatchEvent(new Event(HERO_RETURN_COMPLETE_EVENT));
     };
-  }, [startModelTransition]);
+  }, [startModelTransition, finishHeroReturn]);
 
   return (
     <div
@@ -1682,24 +1918,56 @@ export function Hero3D({
         <Suspense fallback={null}>
           <PumpStudioEnvironment />
 
+          {!isSceSelected && (
+            <Suspense fallback={null}>
+            <ExplodableProduct
+              selectionReadyRef={selectionReadyRef}
+              key={activeModelUrl}
+              modelUrl={activeModelUrl}
+              blastRef={blastRef}
+              explosionProgressRef={explosionProgressRef}
+              pointerRef={pointerRef}
+              scrollExplosionRef={scrollExplosionRef}
+              productReturnExplosionRef={productReturnExplosionRef}
+              journeyProgressRef={journeyProgressRef}
+              returningToHeroRef={returningToHeroRef}
+              renderProgressRef={renderProgressRef}
+              introPlayedRef={introPlayedRef}
+              morphProgressRef={morphProgressRef}
+              transitionRole="main"
+            />
+            </Suspense>
+          )}
+
+          <group visible={isSceSelected}>
           <ExplodableProduct
-            key={activeModelUrl}
-            modelUrl={activeModelUrl}
+            selectionReadyRef={selectionReadyRef}
+            key={DEFAULT_MODEL_URL}
+            modelUrl={DEFAULT_MODEL_URL}
+            active={isSceSelected}
             blastRef={blastRef}
             explosionProgressRef={explosionProgressRef}
             pointerRef={pointerRef}
             scrollExplosionRef={scrollExplosionRef}
             productReturnExplosionRef={productReturnExplosionRef}
             journeyProgressRef={journeyProgressRef}
+            returningToHeroRef={returningToHeroRef}
             renderProgressRef={renderProgressRef}
+            introPlayedRef={introPlayedRef}
+            morphProgressRef={morphProgressRef}
+            transitionRole="main"
+            onModelReady={handleHeroModelReady}
           />
+          </group>
 
-          {isSceSelected && ENABLE_SCE_GTAO && (
+          {ENABLE_SCE_GTAO && (
             <SceContactShadows
               progressRef={renderProgressRef}
               qualityRef={contactQualityRef}
+              enabled
             />
           )}
+          <HeroStartupWarmup />
         </Suspense>
       </Canvas>
     </div>

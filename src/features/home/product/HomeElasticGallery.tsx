@@ -38,9 +38,11 @@ export default function HomeElasticGallery({
   const reduced = useRef(false);
   const animate = useRef<() => void>(() => {});
   const onChangeRef = useRef(onChange);
+  const userDriven = useRef(false);
   onChangeRef.current = onChange;
 
   useEffect(() => {
+    userDriven.current = false;
     const snapped = Math.round(value);
     target.current = snapped;
     selection.current = snapped;
@@ -74,7 +76,7 @@ export default function HomeElasticGallery({
       const x = 48 + (current.current - windowStart) * 54;
       // The strip consumes this same smoothed clock instead of raw pointer
       // events. Parent React rendering is bypassed during thumb dragging.
-      onChangeRef.current(current.current);
+      if (userDriven.current) onChangeRef.current(current.current);
       // A separate spring lets the rope stretch during a pull and relax after
       // release. Keep its crest just above the ball so they read as contact.
       const tension = ropeTension.current;
@@ -133,6 +135,7 @@ export default function HomeElasticGallery({
   }, [count]);
 
   function setStop(index: number) {
+    userDriven.current = true;
     const stop = Math.max(0, Math.min(count - 1, index));
     target.current = stop;
     selection.current = stop;

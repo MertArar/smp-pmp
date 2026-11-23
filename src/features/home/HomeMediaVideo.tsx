@@ -32,6 +32,7 @@ export default function HomeMediaVideo({
     let internalPause = false;
     let pending = false;
     let disposed = false;
+    let startupReady = location.pathname !== "/" || document.documentElement.dataset.startupReady === "true";
     const suspend = () => {
       if (!video.paused) {
         internalPause = true;
@@ -40,7 +41,7 @@ export default function HomeMediaVideo({
     };
     const sync = () => {
       if (disposed) return;
-      if (!visible || document.hidden || (autoPlay && preference.matches)) {
+      if (!startupReady || !visible || document.hidden || (autoPlay && preference.matches)) {
         suspend();
         return;
       }
@@ -53,7 +54,7 @@ export default function HomeMediaVideo({
             pending = false;
             if (
               disposed ||
-              !visible ||
+              !startupReady || !visible ||
               document.hidden ||
               (autoPlay && preference.matches)
             )
@@ -71,7 +72,7 @@ export default function HomeMediaVideo({
     };
     const near = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
+        if (startupReady && entries.some((entry) => entry.isIntersecting)) {
           video.preload = "auto";
           near.disconnect();
         }
@@ -87,8 +88,15 @@ export default function HomeMediaVideo({
     );
     const rect = video.getBoundingClientRect();
     visible = rect.bottom > -200 && rect.top < innerHeight + 200;
-    if (rect.bottom > -800 && rect.top < innerHeight + 800)
+    if (startupReady && rect.bottom > -800 && rect.top < innerHeight + 800)
       video.preload = "auto";
+    const reveal = () => {
+      startupReady = true;
+      const bounds = video.getBoundingClientRect();
+      if (bounds.bottom > -800 && bounds.top < innerHeight + 800) video.preload = "auto";
+      sync();
+    };
+    window.addEventListener("sempa:startup-reveal", reveal, { once: true });
     near.observe(video);
     visibility.observe(video);
     video.addEventListener("loadeddata", sync);
@@ -100,6 +108,7 @@ export default function HomeMediaVideo({
     sync();
     return () => {
       disposed = true;
+      window.removeEventListener("sempa:startup-reveal", reveal);
       near.disconnect();
       visibility.disconnect();
       video.removeEventListener("loadeddata", sync);
