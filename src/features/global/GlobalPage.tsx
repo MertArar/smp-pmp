@@ -13,6 +13,12 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 type EntranceDirection = "up" | "left" | "right";
 
 const entranceEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+// One horizontal gradient keeps the color at every section boundary identical,
+// regardless of section height or responsive layout.
+const globalLightBackground =
+  "linear-gradient(90deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)";
+
 const entranceVariants: Variants = {
   hidden: ({
     direction = "up",
@@ -183,18 +189,16 @@ function GlobalRouteHeading({
           );
           particle.setAttribute("cx", String(point.x));
           particle.setAttribute("cy", String(point.y));
-          timeline!
-            .to(particle, { opacity: 0.6, duration: 0.1 }, 2.35)
-            .to(
-              particle,
-              {
-                opacity: 0,
-                y: -5 - (index % 3) * 3,
-                x: index % 2 ? 4 : -4,
-                duration: 0.45,
-              },
-              2.45,
-            );
+          timeline!.to(particle, { opacity: 0.6, duration: 0.1 }, 2.35).to(
+            particle,
+            {
+              opacity: 0,
+              y: -5 - (index % 3) * 3,
+              x: index % 2 ? 4 : -4,
+              duration: 0.45,
+            },
+            2.45,
+          );
         });
         timeline
           .to(route, { opacity: 0, duration: 0.45 }, 2.4)
@@ -1131,10 +1135,9 @@ function GlobalPartnershipSection() {
     <section
       id="global-partnership"
       aria-labelledby="global-partnership-heading"
-      className="relative w-full overflow-hidden px-6 pt-[40px] pb-[90px] lg:px-0 lg:pt-[6.5svh] xl:pb-[30px] max-xl:px-6! max-xl:pt-8! max-xl:pb-0! max-sm:px-[7.2vw]! max-sm:pt-7! max-xl:bg-[linear-gradient(105deg,#d8ecff_0%,#d2e9ff_65%,#e6f3ff_100%)]!"
+      className="relative w-full overflow-hidden px-6 pt-[40px] pb-[90px] lg:px-0 lg:pt-[6.5svh] xl:pb-[30px] max-xl:px-6! max-xl:pt-8! max-xl:pb-0! max-sm:px-[7.2vw]! max-sm:pt-7!"
       style={{
-        backgroundImage:
-          "radial-gradient(ellipse 78% 95% at 0% 58%,rgba(255,255,255,0.98) 0%,rgba(255,255,255,0.85) 30%,rgba(255,255,255,0) 85%),linear-gradient(105deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)",
+        backgroundImage: globalLightBackground,
       }}
     >
       {/* SECTION TITLE */}
@@ -1487,8 +1490,7 @@ function StrategicExportCorridorsSection() {
         xl:px-0 xl:pt-[calc(110px+6.5svh)] xl:pb-[130px]
        max-xl:px-3! max-xl:pt-16! max-xl:pb-12!"
       style={{
-        backgroundImage:
-          "radial-gradient(ellipse 78% 95% at 0% 58%,rgba(255,255,255,0.98) 0%,rgba(255,255,255,0.85) 30%,rgba(255,255,255,0) 85%),linear-gradient(105deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)",
+        backgroundImage: globalLightBackground,
       }}
     >
       {/* ==================================================
@@ -1794,8 +1796,7 @@ const inquiryHeadingSizes = {
 const inquiryHeadingFontSize = `clamp(${inquiryHeadingSizes.min}px,${inquiryHeadingSizes.viewport}vw,${inquiryHeadingSizes.max}px)`;
 const inquiryBodyFontSize = `clamp(${inquiryHeadingSizes.min * inquiryHeadingSizes.bodyRatio}px,${inquiryHeadingSizes.viewport * inquiryHeadingSizes.bodyRatio}vw,${inquiryHeadingSizes.max * inquiryHeadingSizes.bodyRatio}px)`;
 
-const inquirySeamlessBackground =
-  "linear-gradient(90deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)";
+const inquirySeamlessBackground = globalLightBackground;
 
 const inquiryGradientTextStyle = {
   backgroundImage: "linear-gradient(130deg,#005EFF 0%,#001EA2 100%)",
@@ -1884,7 +1885,7 @@ function GlobalPartnershipInquirySection() {
     <section
       id="global-partnership-desk"
       aria-labelledby="global-partnership-desk-heading"
-      className="relative isolate w-full overflow-hidden px-6 py-[85px] lg:px-0 lg:py-[clamp(96px,6.6667vw,128px)] max-xl:px-[10px]! max-xl:pt-8! max-xl:pb-14! max-xl:bg-[linear-gradient(100deg,#cee7ff_0%,#fff_75%,#f3f5f6_100%)]! sm:max-xl:px-8!"
+      className="relative isolate w-full overflow-hidden px-6 py-[85px] lg:px-0 lg:py-[clamp(96px,6.6667vw,128px)] max-xl:px-[10px]! max-xl:pt-8! max-xl:pb-14! sm:max-xl:px-8!"
       style={{
         // Same horizontal gradient used by the crossfade above.
         backgroundImage: inquirySeamlessBackground,
@@ -2219,7 +2220,8 @@ function CompactGlobalImpact() {
   return (
     <section
       aria-labelledby="compact-global-impact-title"
-      className="bg-[linear-gradient(105deg,#cce7ff_0%,#e9f5ff_62%,#fff_100%)] px-3 pt-2 pb-5 xl:hidden sm:px-8 sm:pt-8"
+      className="px-3 pt-2 pb-5 xl:hidden sm:px-8 sm:pt-8"
+      style={{ backgroundImage: globalLightBackground }}
     >
       <h2
         id="compact-global-impact-title"
@@ -2452,10 +2454,9 @@ export default function GlobalPage() {
           INTERNATIONAL CASE STUDIES
       ===================================================== */}
       <section
-        className="relative isolate min-h-[100svh] w-full max-xl:bg-[linear-gradient(105deg,#d9efff,#cce6ff)]!"
+        className="relative isolate min-h-[100svh] w-full"
         style={{
-          backgroundImage:
-            "radial-gradient(ellipse 90% 110% at 0% 100%, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 75%), linear-gradient(112deg, #DAE9F3 0%, #D2E4F2 54%, #D0E8FF 100%)",
+          backgroundImage: globalLightBackground,
         }}
         aria-labelledby="international-case-studies-title"
       >
@@ -2612,19 +2613,6 @@ export default function GlobalPage() {
 
           <CaseStudiesGrid />
         </div>
-
-        {/* SECTION GRADIENT TRANSITION */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[220px]"
-          style={{
-            backgroundImage:
-              "radial-gradient(ellipse 78% 95% at 0% 58%,rgba(255,255,255,0.98) 0%,rgba(255,255,255,0.85) 30%,rgba(255,255,255,0) 85%),linear-gradient(105deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)",
-            maskImage: "linear-gradient(to bottom,transparent 0%,black 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom,transparent 0%,black 100%)",
-          }}
-        />
       </section>
 
       <GlobalPartnershipSection />
@@ -2649,8 +2637,7 @@ export default function GlobalPage() {
           aria-hidden="true"
           className="hidden xl:block pointer-events-none absolute inset-x-0 top-[-120px] z-20 h-[300px]"
           style={{
-            backgroundImage:
-              "radial-gradient(ellipse 78% 95% at 0% 58%,rgba(255,255,255,0.98) 0%,rgba(255,255,255,0.85) 30%,rgba(255,255,255,0) 85%),linear-gradient(105deg,#EDF7FF 0%,#D9ECFD 54%,#CEE6FC 100%)",
+            backgroundImage: globalLightBackground,
             maskImage:
               "linear-gradient(to bottom,transparent 0%,rgba(0,0,0,0.45) 13%,black 31%,black 47%,rgba(0,0,0,0.55) 72%,transparent 100%)",
             WebkitMaskImage:
