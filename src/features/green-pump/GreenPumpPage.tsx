@@ -59,8 +59,65 @@ import {
   useScroll,
   useTransform,
   type MotionValue,
+  type Variants,
 } from "framer-motion";
 import { Fragment, useRef } from "react";
+
+// About Us-inspired entrances: viewport-local, replayable and layout-safe.
+type GreenRevealDirection = "up" | "left" | "right";
+const greenMotionEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+const greenRevealVariants: Variants = {
+  hidden: ({
+    direction,
+    reduced,
+  }: {
+    direction: GreenRevealDirection;
+    reduced: boolean;
+  }) => ({
+    opacity: reduced ? 1 : 0,
+    x: reduced
+      ? 0
+      : direction === "left"
+        ? -32
+        : direction === "right"
+          ? 32
+          : 0,
+    y: reduced ? 0 : direction === "up" ? 32 : 0,
+  }),
+  visible: { opacity: 1, x: 0, y: 0 },
+};
+
+function greenReveal(
+  direction: GreenRevealDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.18,
+) {
+  return {
+    variants: greenRevealVariants,
+    custom: { direction, reduced },
+    initial: reduced ? (false as const) : ("hidden" as const),
+    whileInView: "visible" as const,
+    viewport: { once: false, amount, margin: "0px 0px -10% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.85,
+      delay: reduced ? 0 : delay,
+      ease: greenMotionEase,
+    },
+  };
+}
+
+function greenHeroEnter(reduced: boolean, delay: number, y = 24) {
+  return {
+    initial: reduced ? false : { opacity: 0, y, filter: "blur(7px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 0.95,
+      delay: reduced ? 0 : delay,
+      ease: greenMotionEase,
+    },
+  };
+}
 
 // Her 3-4 harf, kaydırma ilerledikçe açık griden özgün rengine döner.
 // Sözcüklerin doğal satır kırılımını bozmamak için gruplar kelime içinde oluşturulur.
@@ -316,6 +373,7 @@ function GreenLeafWords({
 
 function GreenPumpHerotsx_GreenPumpHero() {
   const title = useRepeatingTitle(2900);
+  const reduced = useReducedMotion() ?? false;
 
   const video = useGreenPumpHerotsx_Ref<HTMLVideoElement>(null);
 
@@ -349,7 +407,8 @@ function GreenPumpHerotsx_GreenPumpHero() {
         </video>
       </div>
 
-      <h1
+      <motion.h1
+        {...greenHeroEnter(reduced, 0.12, 18)}
         ref={title}
         aria-label="A MORE EFFICIENT PUMP, A MORE SUSTAINABLE FUTURE"
         id="green-pump-title"
@@ -395,7 +454,7 @@ function GreenPumpHerotsx_GreenPumpHero() {
             </svg>
           ))}
         </span>
-      </h1>
+      </motion.h1>
 
       <style>{`
 
@@ -443,14 +502,19 @@ function GreenPumpHerotsx_GreenPumpHero() {
 
       {/* The film contains the leaf sculpture; the supplied SVG supplies the Green Pump wordmark. */}
 
-      <GreenPumpHerotsx_Image
-        src="/green-pump/green-pump-icon.svg"
-        alt="Green Pump by Sempa"
-        width={1541}
-        height={842}
-        sizes="(min-width: 768px) 344px, 200px"
-        className="relative z-10 mx-auto mt-[clamp(230px,65vw,330px)] h-auto w-[min(95%,360px)] md:absolute md:top-[48%] md:left-1/2 md:mt-0 md:w-[344px] md:-translate-x-1/2"
-      />
+      <motion.div
+        {...greenHeroEnter(reduced, 0.45, 28)}
+        className="relative z-10 mx-auto mt-[clamp(230px,65vw,330px)] w-[min(95%,360px)] md:absolute md:top-[48%] md:left-1/2 md:mt-0 md:w-[344px] md:-translate-x-1/2"
+      >
+        <GreenPumpHerotsx_Image
+          src="/green-pump/green-pump-icon.svg"
+          alt="Green Pump by Sempa"
+          width={1541}
+          height={842}
+          sizes="(min-width: 768px) 344px, 200px"
+          className="h-auto w-full object-contain"
+        />
+      </motion.div>
 
       <div
         aria-hidden="true"
@@ -466,14 +530,12 @@ function GreenPumpHerotsx_GreenPumpHero() {
         aria-label="Our green approaches"
         className="relative z-20 mx-auto mt-6 grid max-w-[380px] gap-3 px-5 md:static md:mt-0 md:max-w-none md:px-0"
       >
-        {GreenPumpHerotsx_approaches.map(({ label, icon, position, delay }) => (
+        {GreenPumpHerotsx_approaches.map(({ label, icon, position }, index) => (
           <li
             key={label}
             className={`z-20 min-w-0 md:absolute md:w-[min(30vw,344px)] ${position}`}
           >
-            <div
-              className={`animate-news-card-reveal [animation-duration:500ms] [animation-fill-mode:backwards] motion-reduce:animate-none ${delay}`}
-            >
+            <motion.div {...greenHeroEnter(reduced, 0.7 + index * 0.14, 22)}>
               <div
                 data-green-approach-card
                 className="flex min-h-[76px] items-center justify-between gap-4 rounded-[25px] border-[0.5px] md:rounded-[30px] border-[#f7f7f7]/65 bg-[#a5c843]/10 px-5 py-4 text-[15px] leading-[1.12] text-[#27272a] md:bg-white/8 md:text-[#f7f7f7] shadow-[0_7px_25px_#2c7e4e0c] backdrop-blur-[8px] md:backdrop-blur-[10px] transition-[translate,background-color,box-shadow] duration-[350ms] hover:-translate-y-1 hover:bg-white/14 hover:shadow-[0_10px_30px_#2c7e4e18] motion-reduce:translate-none! motion-reduce:transform-none motion-reduce:transition-none md:min-h-[95px] md:px-[25px] md:text-[15px]"
@@ -497,7 +559,7 @@ function GreenPumpHerotsx_GreenPumpHero() {
                   />
                 </span>
               </div>
-            </div>
+            </motion.div>
           </li>
         ))}
       </ul>
@@ -906,6 +968,7 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
   const [expanded, setExpanded] = useCarbonFootprintSectiontsx_State<
     Record<string, boolean>
   >({});
+  const reduced = useReducedMotion() ?? false;
   const toggle = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -916,7 +979,8 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
     >
       <div className="mx-auto grid max-w-[1200px] items-stretch gap-4 lg:grid-cols-[minmax(0,563fr)_minmax(0,621fr)]">
         {/* Left information panel: spacing follows the supplied reference screenshot. */}
-        <article
+        <motion.article
+          {...greenReveal("left", 0, reduced, 0.12)}
           aria-labelledby="carbon-footprint-title"
           className="flex min-h-[780px] min-w-0 flex-col rounded-[27px] bg-[#a5c843] p-6 text-[#27272a] md:min-h-[703px]"
         >
@@ -970,7 +1034,8 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
             <ol className="mt-[10px] grid max-w-[436px] grid-cols-1 gap-[10px] sm:grid-cols-3">
               {["WE MEASURE", "WE MONITOR", "WE IMPROVE"].map(
                 (mantra, index) => (
-                  <li
+                  <motion.li
+                    {...greenReveal("up", 0.1 + index * 0.08, reduced, 0.2)}
                     key={mantra}
                     className="flex min-h-[63px] flex-col justify-between gap-2 rounded-[15px] border border-white/60 bg-[#f7f7f7] p-[8px]"
                   >
@@ -986,7 +1051,7 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
                       />
                     </div>
                     <p className="text-[14px] leading-[1.12]">{mantra}</p>
-                  </li>
+                  </motion.li>
                 ),
               )}
             </ol>
@@ -1019,7 +1084,7 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
               </p>
             </div>
           </div>
-        </article>
+        </motion.article>
 
         {/* Right cards: two compact vertical cards, then two flatter horizontal cards. */}
         <MobileSnapRailtsx_MobileSnapRail
@@ -1027,7 +1092,7 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
           count={4}
           desktopClassName="[--rail-card-width:min(80vw,330px)] md:grid md:grid-cols-2 md:gap-[14px] lg:grid-rows-[271px_202px_201px]"
         >
-          {CarbonFootprintSectiontsx_cards.map((card) => {
+          {CarbonFootprintSectiontsx_cards.map((card, index) => {
             const dark = card.kind === "resources";
             const wide = card.kind === "improvement" || card.kind === "future";
             const panelId = `green-${card.id}-details`;
@@ -1048,7 +1113,13 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
             );
 
             return (
-              <article
+              <motion.article
+                {...greenReveal(
+                  index % 2 ? "right" : "up",
+                  0.08 + index * 0.07,
+                  reduced,
+                  0.12,
+                )}
                 key={card.id}
                 aria-labelledby={`green-${card.id}-title`}
                 className={`${CarbonFootprintSectiontsx_cardStyle} w-[min(80vw,330px)] shrink-0 snap-start px-[25px] py-[26px] md:w-auto md:px-[26px] ${wide ? "min-h-[201px] md:col-span-2 md:min-h-0" : "min-h-[270px] md:min-h-0"} ${dark ? "border-[#2c7e4e] bg-[#2c7e4e] text-white hover:bg-[#2e8050]" : "bg-white/25 text-[#27272a] backdrop-blur-xl hover:bg-white/35"}`}
@@ -1129,7 +1200,7 @@ function CarbonFootprintSectiontsx_CarbonFootprintSection() {
                     {card.details}
                   </div>
                 </div>
-              </article>
+              </motion.article>
             );
           })}
         </MobileSnapRailtsx_MobileSnapRail>
@@ -1180,6 +1251,7 @@ const SustainableManufacturingtsx_metrics = [
 
 function SustainableManufacturingtsx_SustainableManufacturing() {
   const section = useSustainableManufacturingtsx_Ref<HTMLElement>(null);
+  const reduced = useReducedMotion() ?? false;
 
   const video = useSustainableManufacturingtsx_Ref<HTMLVideoElement>(null);
 
@@ -1262,7 +1334,10 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
       aria-labelledby="sustainable-manufacturing-title"
       className="bg-[radial-gradient(ellipse_at_50%_65%,#bee6a533_0%,#ebfae11a_50%,transparent_75%),linear-gradient(to_bottom,#fff,#fafff6)] px-5 pt-10 pb-10 md:px-8 md:pt-20 md:pb-10"
     >
-      <header className="sr-only text-center md:not-sr-only md:mx-auto md:max-w-[900px]">
+      <motion.header
+        {...greenReveal("up", 0, reduced, 0.16)}
+        className="sr-only text-center md:not-sr-only md:mx-auto md:max-w-[900px]"
+      >
         <h2
           id="sustainable-manufacturing-title"
           className="text-[clamp(30px,4vw,50px)] leading-none font-[410] text-[#2c7e4e]"
@@ -1276,10 +1351,13 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
           efficient utilization of resources in production and the continuous
           development of processes.
         </p>
-      </header>
+      </motion.header>
 
       <div className="relative mx-auto max-w-[1000px] md:mt-14">
-        <div className="relative mx-auto mt-8 aspect-square w-full max-w-[662px] md:mt-0 overflow-hidden rounded-[24px] bg-[radial-gradient(ellipse_at_center,#e2f3d6aa,transparent_72%)]">
+        <motion.div
+          {...greenReveal("up", 0.1, reduced, 0.16)}
+          className="relative mx-auto mt-8 aspect-square w-full max-w-[662px] md:mt-0 overflow-hidden rounded-[24px] bg-[radial-gradient(ellipse_at_center,#e2f3d6aa,transparent_72%)]"
+        >
           <div
             role="img"
             aria-label="97 percent recyclability"
@@ -1311,23 +1389,32 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
               type="video/webm"
             />
           </video>
-        </div>
+        </motion.div>
 
         <ul
           aria-label="Sustainable manufacturing metrics"
           className="absolute inset-0"
         >
           {SustainableManufacturingtsx_metrics.map(
-            ({
-              label,
-              value,
-              icon,
-              iconWidth,
-              iconHeight,
-              displayWidth,
-              position,
-            }) => (
-              <li
+            (
+              {
+                label,
+                value,
+                icon,
+                iconWidth,
+                iconHeight,
+                displayWidth,
+                position,
+              },
+              index,
+            ) => (
+              <motion.li
+                {...greenReveal(
+                  index % 2 ? "right" : "left",
+                  0.15 + index * 0.1,
+                  reduced,
+                  0.13,
+                )}
                 key={label}
                 className={`absolute w-[min(72%,300px)] min-w-0 md:w-[220px] md:first:w-[262px] ${position}`}
               >
@@ -1354,7 +1441,7 @@ function SustainableManufacturingtsx_SustainableManufacturing() {
                     </p>
                   </div>
                 </div>
-              </li>
+              </motion.li>
             ),
           )}
         </ul>
@@ -1429,6 +1516,7 @@ const ManufacturingBenefitsCarouseltsx_wrap = (index: number) =>
   ManufacturingBenefitsCarouseltsx_count;
 
 function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
+  const reduced = useReducedMotion() ?? false;
   const [position, setPosition] = useManufacturingBenefitsCarouseltsx_State(
     ManufacturingBenefitsCarouseltsx_count + 1,
   );
@@ -1561,7 +1649,8 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
         explore the manufacturing benefits.
       </p>
 
-      <div
+      <motion.div
+        {...greenReveal("up", 0.04, reduced, 0.12)}
         ref={region}
         role="region"
         aria-roledescription="carousel"
@@ -1712,7 +1801,7 @@ function ManufacturingBenefitsCarouseltsx_ManufacturingBenefitsCarousel() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 right-0 w-5 bg-linear-to-l from-[#f8fff2] to-transparent md:w-12"
         />
-      </div>
+      </motion.div>
 
       <p className="sr-only" role="status" aria-live="polite">
         {active.title}. {ManufacturingBenefitsCarouseltsx_wrap(position) + 1} of{" "}
@@ -1828,6 +1917,7 @@ function CarbonReportingRing() {
 }
 
 function ApproachAndProductstsx_ApproachAndProducts() {
+  const reduced = useReducedMotion() ?? false;
   const pump = useApproachAndProductstsx_Ref<HTMLVideoElement>(null);
 
   const forest = useApproachAndProductstsx_Ref<HTMLVideoElement>(null);
@@ -1872,7 +1962,10 @@ function ApproachAndProductstsx_ApproachAndProducts() {
         />
 
         <div className="relative mx-auto flex min-h-[500px] max-w-[1264px] flex-col px-5 pt-12 pb-0 md:px-8 md:pt-24 md:pb-0">
-          <header className="text-center">
+          <motion.header
+            {...greenReveal("up", 0, reduced, 0.2)}
+            className="text-center"
+          >
             <h2
               id="lasting-products-title"
               className="mx-auto max-w-[900px] text-[clamp(30px,4vw,50px)] leading-none"
@@ -1886,12 +1979,13 @@ function ApproachAndProductstsx_ApproachAndProducts() {
               directly to reducing the need for new equipment and replacement
               parts.
             </p>
-          </header>
+          </motion.header>
 
           <ul className="mt-12 grid grid-cols-1 gap-3 md:mt-14 md:grid-cols-2 lg:mt-auto lg:-mb-3 lg:grid-cols-4">
             {ApproachAndProductstsx_productCards.map(
-              ({ title, description }) => (
-                <li
+              ({ title, description }, index) => (
+                <motion.li
+                  {...greenReveal("up", index * 0.09, reduced, 0.16)}
                   key={title}
                   className="relative isolate min-w-0 rounded-[15px] border-[0.5px] border-white/75 bg-[#232323]/50 p-5 text-[#f7f7f7] shadow-[0_8px_25px_#0000001f] backdrop-blur-[28px] transition-[translate,backdrop-filter,background-color,color,border-color,box-shadow] duration-300 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:hidden after:rounded-[inherit] after:bg-[linear-gradient(to_bottom,transparent_60%,#9da395_96%,#9da395_100%)] after:transition-opacity after:duration-300 hover:-translate-y-[5px] hover:border-white hover:bg-[#d0f053] hover:text-[#27272a] hover:shadow-[0_8px_25px_#d0f05340] hover:backdrop-blur-[22px] hover:after:opacity-0 motion-reduce:translate-none! motion-reduce:transition-none motion-reduce:after:transition-none md:bg-[#232323]/30 md:hover:bg-[#d0f053] lg:min-h-[130px] lg:after:block"
                 >
@@ -1900,7 +1994,7 @@ function ApproachAndProductstsx_ApproachAndProducts() {
                   <p className="mt-3 text-[12px] leading-[1.12]">
                     {description}
                   </p>
-                </li>
+                </motion.li>
               ),
             )}
           </ul>
@@ -1918,34 +2012,47 @@ function ApproachAndProductstsx_ApproachAndProducts() {
       >
         <div className="mx-auto grid max-w-[1200px] items-center gap-8 lg:items-start lg:gap-0 lg:pl-[10px] lg:grid-cols-[minmax(0,714fr)_minmax(0,480fr)]">
           <div className="order-2 min-w-0 md:order-1">
-            <h2
+            <motion.h2
+              {...greenReveal("left", 0, reduced, 0.2)}
               id="green-approach-title"
               className="max-w-[300px] text-[clamp(36px,12vw,50px)] md:max-w-[520px] md:text-[clamp(36px,4vw,50px)] leading-none text-[#2c7e4e]"
             >
               Our Green Pump
               <br />
               Approach
-            </h2>
+            </motion.h2>
 
-            <p className="mt-8 max-w-[640px] text-[14px] leading-[1.12] md:mt-[44px] md:text-[15px]">
+            <motion.p
+              {...greenReveal("left", 0.12, reduced, 0.2)}
+              className="mt-8 max-w-[640px] text-[14px] leading-[1.12] md:mt-[44px] md:text-[15px]"
+            >
               SEMPA Pump&apos;s “Green Pump” approach represents a philosophy
               that considers not merely the manufacturing phase, but the
               complete product lifecycle extending from initial design through
               to end-of-life.
-            </p>
+            </motion.p>
 
             <ul className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-2 md:mt-[46px] md:gap-4">
               {ApproachAndProductstsx_approachCards.map(
-                ({
-                  title,
-                  description,
-                  icon,
-                  iconWidth,
-                  iconHeight,
-                  displayWidth,
-                  iconLeft,
-                }) => (
-                  <li
+                (
+                  {
+                    title,
+                    description,
+                    icon,
+                    iconWidth,
+                    iconHeight,
+                    displayWidth,
+                    iconLeft,
+                  },
+                  index,
+                ) => (
+                  <motion.li
+                    {...greenReveal(
+                      index % 2 ? "right" : "up",
+                      0.06 + index * 0.07,
+                      reduced,
+                      0.15,
+                    )}
                     key={title}
                     className="group min-h-[150px] min-w-0 rounded-[15px] border border-[#9eb7d0]/25 bg-white/80 p-5 transition-[translate,border-color,background-color,box-shadow] duration-300 ease-in-out hover:-translate-y-1 hover:border-[#2c7e4e]/50 hover:bg-[#f7fff2] hover:shadow-[0_10px_25px_#2c7e4e12] motion-reduce:translate-none! motion-reduce:transition-none md:min-h-[159px] md:p-[22px] lg:h-[159px]"
                   >
@@ -1974,14 +2081,17 @@ function ApproachAndProductstsx_ApproachAndProducts() {
                     <p className="mt-3 text-[12px] leading-[1.12]">
                       {description}
                     </p>
-                  </li>
+                  </motion.li>
                 ),
               )}
             </ul>
           </div>
 
           {/* The pump area is intentionally wider and taller on desktop, matching the reference. */}
-          <div className="relative order-1 mx-auto w-full min-w-0 max-w-[650px] md:order-2 lg:mx-0 lg:max-w-none lg:self-start">
+          <motion.div
+            {...greenReveal("right", 0.06, reduced, 0.17)}
+            className="relative order-1 mx-auto w-full min-w-0 max-w-[650px] md:order-2 lg:mx-0 lg:max-w-none lg:self-start"
+          >
             <div
               data-green-pump-visual
               className="relative aspect-[0.85] w-full bg-transparent md:aspect-square lg:aspect-auto lg:h-[620px]"
@@ -2048,7 +2158,7 @@ function ApproachAndProductstsx_ApproachAndProducts() {
                 emissions to ensure data-driven decarbonization.
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <GreenPumpOutroText />
@@ -2098,6 +2208,7 @@ const advantages = [
 ];
 
 export default function GreenPumpPage() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <main
       data-header-underlay
@@ -2133,7 +2244,10 @@ export default function GreenPumpPage() {
           className="relative bg-[linear-gradient(to_bottom,#fff_0%,transparent_160px)] px-5 pt-12 pb-10 md:px-8 md:pt-10 md:pb-10"
         >
           <div className="mx-auto grid max-w-[1200px] items-center gap-x-6 gap-y-10 md:grid-cols-2 min-[75rem]:grid-cols-[minmax(0,289fr)_minmax(0,594fr)_minmax(0,251fr)]">
-            <div className="order-3 min-w-0 md:order-none">
+            <motion.div
+              {...greenReveal("left", 0.03, reduced, 0.16)}
+              className="order-3 min-w-0 md:order-none"
+            >
               <h2
                 id="green-technology-title"
                 className="max-w-[329px] text-[25px] leading-[1.12] [font-weight:540] [font-variation-settings:'wght'_540,'wdth'_125]"
@@ -2165,9 +2279,12 @@ export default function GreenPumpPage() {
                   Request Efficiency Analysis
                 </GreenPumpLinktsx_GreenPumpLink>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="relative order-1 min-w-0 md:order-none md:col-span-2 md:row-start-2 min-[75rem]:col-span-1 min-[75rem]:row-start-auto">
+            <motion.div
+              {...greenReveal("up", 0.12, reduced, 0.17)}
+              className="relative order-1 min-w-0 md:order-none md:col-span-2 md:row-start-2 min-[75rem]:col-span-1 min-[75rem]:row-start-auto"
+            >
               <Image
                 src="/green-pump/01.jpg"
                 alt="Metallic Sempa symbol with solar panels"
@@ -2176,9 +2293,12 @@ export default function GreenPumpPage() {
                 sizes="(min-width: 1200px) 604px, (min-width: 768px) 90vw, 100vw"
                 className="h-auto w-full object-contain mix-blend-multiply [mask-image:linear-gradient(to_right,transparent,#000_4%,#000_96%,transparent),linear-gradient(to_bottom,transparent,#000_8%,#000_94%,transparent)] [mask-composite:intersect]"
               />
-            </div>
+            </motion.div>
 
-            <div className="order-2 min-w-0 md:order-none md:col-start-2 md:row-start-1 min-[75rem]:col-start-3 min-[75rem]:row-start-auto">
+            <motion.div
+              {...greenReveal("right", 0.08, reduced, 0.16)}
+              className="order-2 min-w-0 md:order-none md:col-start-2 md:row-start-1 min-[75rem]:col-start-3 min-[75rem]:row-start-auto"
+            >
               <h2 className="max-w-[300px] text-[25px] leading-[1.12] [font-weight:540] [font-variation-settings:'wght'_540,'wdth'_125] text-[#a5c843]">
                 2MW Solar Plant Provides 40% of Energy
               </h2>
@@ -2197,7 +2317,7 @@ export default function GreenPumpPage() {
                   Discover Sustainability
                 </GreenPumpLinktsx_GreenPumpLink>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -2227,8 +2347,9 @@ export default function GreenPumpPage() {
               count={4}
               desktopClassName="[--rail-card-width:min(72vw,280px)] md:grid md:grid-cols-2 md:gap-[22px] min-[75rem]:grid-cols-4"
             >
-              {advantages.map((advantage) => (
-                <article
+              {advantages.map((advantage, index) => (
+                <motion.article
+                  {...greenReveal("up", 0.05 + index * 0.09, reduced, 0.15)}
                   key={advantage.title}
                   className={`flex w-[min(72vw,280px)] shrink-0 snap-start min-h-[195px] md:w-auto flex-col items-center rounded-[30px] border-[0.2px] px-[14px] pt-9 pb-[23px] text-center transition-[translate,box-shadow,background-color] duration-[350ms] hover:-translate-y-[5px] hover:shadow-[0_12px_30px_#2c7e4e20] motion-reduce:translate-none! motion-reduce:transform-none motion-reduce:transition-none min-[75rem]:min-h-[195px] min-[75rem]:pt-[42px] ${advantage.surface}`}
                 >
@@ -2239,7 +2360,7 @@ export default function GreenPumpPage() {
                   <p className="mt-4 max-w-[205px] text-[13px] leading-[1.12]">
                     {advantage.description}
                   </p>
-                </article>
+                </motion.article>
               ))}
             </MobileSnapRailtsx_MobileSnapRail>
           </div>

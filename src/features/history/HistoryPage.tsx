@@ -8,6 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
+import { FiArrowLeft } from "react-icons/fi";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
@@ -238,6 +239,34 @@ function timelineStops(total: number, first: number, windowSize: number) {
   return stops;
 }
 
+function HistoryAllMilestonesLink({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link
+      href="/history"
+      className={`group relative inline-flex w-fit items-center gap-2.5 text-[#9eb7d0] transition-colors duration-300 hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#9eb7d0] ${compact ? "mt-5 text-xs md:text-sm" : "text-xs md:text-base lg:text-[clamp(18px,1.4vw,28px)]"}`}
+      style={{
+        fontFamily: "var(--font-sf-pro), sans-serif",
+        fontWeight: 410,
+        fontVariationSettings: '"wght" 410, "wdth" 125',
+        letterSpacing: "-0.04em",
+      }}
+    >
+      <FiArrowLeft
+        aria-hidden="true"
+        className="size-[1.05em] shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-1 motion-reduce:transition-none"
+        strokeWidth={1.9}
+      />
+      <span className="relative inline-block pb-1">
+        All Milestones
+        <span
+          aria-hidden="true"
+          className="absolute right-0 bottom-0 h-px w-0 bg-current transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full motion-reduce:transition-none"
+        />
+      </span>
+    </Link>
+  );
+}
+
 function HistoryTimeline({ targetYear }: { targetYear: number }) {
   if (historyStartIndex(targetYear) < 0) {
     return (
@@ -246,12 +275,7 @@ function HistoryTimeline({ targetYear }: { targetYear: number }) {
         aria-label="Historical milestones timeline"
       >
         <p>No milestones are available from {targetYear} onward.</p>
-        <Link
-          href="/history"
-          className="mt-5 inline-block text-[#9eb7d0] underline"
-        >
-          All milestones
-        </Link>
+        <HistoryAllMilestonesLink compact />
       </section>
     );
   }
@@ -680,12 +704,7 @@ function HistoryTimelineScene({ targetYear }: { targetYear: number }) {
       }}
     >
       <div className="relative flex min-h-10 items-center justify-between gap-4 text-[#9EB7D0] lg:min-h-12 lg:pr-[8vw]">
-        <Link
-          href="/history"
-          className="text-xs underline-offset-4 hover:text-white hover:underline focus-visible:outline-2 md:text-base lg:text-[clamp(18px,1.4vw,28px)]"
-        >
-          All milestones
-        </Link>
+        <HistoryAllMilestonesLink />
         <div className="absolute left-1/2 flex -translate-x-1/2 gap-4 lg:left-[42%] lg:gap-4">
           {[-1, 1].map((direction) => (
             <button

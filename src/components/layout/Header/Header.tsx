@@ -247,6 +247,10 @@ const blueLogoFilter =
   "brightness(0) saturate(100%) invert(25%) sepia(85%) saturate(1015%) hue-rotate(169deg) brightness(91%) contrast(94%)";
 const blueOrb = "linear-gradient(135deg,#005eff,#001ea2)";
 const blueOrbShadow = "0 0 12px #005eff61,0 5px 14px #001ea247";
+const greenHeaderAccent = "#16b85c";
+const greenHeaderOrb =
+  "linear-gradient(135deg,#34de7c 0%,#16b85c 54%,#087c40 100%)";
+const greenHeaderOrbShadow = "0 0 18px #16b85c78,0 6px 16px #087c4052";
 const glass = "linear-gradient(130deg,#ffffff26,#ffffff12)";
 function themeTokens(values: Record<string, string>): CSSProperties {
   return values as CSSProperties;
@@ -794,12 +798,20 @@ export default function Header(options: HeaderOptions = {}) {
                   "0 0 20px #78e98a66,0 6px 18px #e30a172b",
               })
             : {}),
+          ...(isGreenPumpPage
+            ? themeTokens({
+                "--header-orb": greenHeaderOrb,
+                "--header-orb-shadow": greenHeaderOrbShadow,
+              })
+            : {}),
           ...themeTokens({
             "--header-selection-text": appearance.textColors.pumpSelection,
             "--header-contact-text": appearance.textColors.contactUs,
-            "--header-menu-text": isScrolled
-              ? "#0D5792"
-              : appearance.textColors.menu,
+            "--header-menu-text": isGreenPumpPage
+              ? greenHeaderAccent
+              : isScrolled
+                ? "#0D5792"
+                : appearance.textColors.menu,
             "--header-language-text": isScrolled
               ? "#27272A"
               : appearance.textColors.language,
@@ -1117,6 +1129,17 @@ export default function Header(options: HeaderOptions = {}) {
         }
         .site-header[data-header-scrolled="true"] .site-header__scrolled-logo {
           opacity: 1;
+        }
+
+        /* Green Pump retains the same page-specific logo on scroll,
+           including its green icon, instead of changing to the blue logo. */
+        .site-header[data-header-green-pump="true"]
+          .site-header__original-logo {
+          opacity: 1;
+        }
+        .site-header[data-header-green-pump="true"]
+          .site-header__scrolled-logo {
+          opacity: 0;
         }
 
         /* MENU and language labels follow the scroll state on every route.
@@ -1546,6 +1569,14 @@ export default function Header(options: HeaderOptions = {}) {
             padding: 0 !important;
             justify-content: center !important;
             border-color: #ffffffcc !important;
+          }
+          /* On mobile the MENU label is hidden; match its icon to the
+             Green Pump accent in both regular and scrolled headers. */
+          .site-header.site-header[data-header-green-pump="true"]
+            [data-header-action="menu"]
+            > span:last-child
+            > span {
+            background: #16b85c !important;
           }
         }
         /* Scroll spacing must override the older mobile/tablet padding rules. */

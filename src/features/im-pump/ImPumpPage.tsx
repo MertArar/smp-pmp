@@ -21,6 +21,65 @@ import {
   FiShield,
 } from "react-icons/fi";
 import { IoDiamondOutline, IoFingerPrintOutline } from "react-icons/io5";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
+
+const imMotionEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+type ImRevealDirection = "up" | "left" | "right";
+const imRevealVariants: Variants = {
+  hidden: ({
+    direction,
+    reduced,
+  }: {
+    direction: ImRevealDirection;
+    reduced: boolean;
+  }) => ({
+    opacity: reduced ? 1 : 0,
+    x: reduced
+      ? 0
+      : direction === "left"
+        ? -32
+        : direction === "right"
+          ? 32
+          : 0,
+    y: reduced ? 0 : direction === "up" ? 32 : 0,
+  }),
+  visible: { opacity: 1, x: 0, y: 0 },
+};
+function imReveal(
+  direction: ImRevealDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.18,
+) {
+  return {
+    variants: imRevealVariants,
+    custom: { direction, reduced },
+    initial: reduced ? (false as const) : ("hidden" as const),
+    whileInView: "visible" as const,
+    viewport: { once: false, amount, margin: "0px 0px -10% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.86,
+      delay: reduced ? 0 : delay,
+      ease: imMotionEase,
+    },
+  };
+}
+function imHeroEnter(reduced: boolean, delay: number, y = 22) {
+  return {
+    initial: reduced ? false : { opacity: 0, y, filter: "blur(7px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 0.92,
+      delay: reduced ? 0 : delay,
+      ease: imMotionEase,
+    },
+  };
+}
 // The neon title and water ring are part of the supplied video artwork.
 const HERO_VIDEO = "/im-pump/im-pump-hero.webm";
 const SCROLL_VIDEO = "/im-pump/scroll-down.webm";
@@ -213,6 +272,7 @@ function HeroScrollIndicator() {
   );
 }
 function ImPumpHero() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <section
       aria-labelledby="im-pump-heading"
@@ -223,8 +283,18 @@ function ImPumpHero() {
         className="im-pump-lower pointer-events-none absolute inset-x-0 bottom-0 [.im-pump-page_&]:[height:calc(318_*_var(--im-pump-unit))] [.im-pump-page_&]:[background:radial-gradient(ellipse_at_50%_0%,_#377ac882_0%,_#26397570_28%,_transparent_66%),_radial-gradient(ellipse_at_50%_60%,_#272e5870,_transparent_70%),_linear-gradient(#202233,_#1c1d28)] max-[768px]:[.im-pump-page_&]:[top:clamp(400px,_104vw,_750px)] max-[768px]:[.im-pump-page_&]:[height:auto]"
         aria-hidden="true"
       />
-      <HeroPhilosophyBadge />
-      <HeroIntroduction />
+      <motion.div
+        {...imHeroEnter(reduced, 0.42, 18)}
+        className="pointer-events-none absolute inset-0 z-10"
+      >
+        <HeroPhilosophyBadge />
+      </motion.div>
+      <motion.div
+        {...imHeroEnter(reduced, 0.13, 24)}
+        className="pointer-events-none absolute inset-0 z-10"
+      >
+        <HeroIntroduction />
+      </motion.div>
       <HeroScrollIndicator />
     </section>
   );
@@ -332,10 +402,16 @@ function PhilosophyCard({ card }: { card: PhilosophyCardData }) {
   );
 }
 function PhilosophyCards() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <div className="philosophy-cards [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:repeat(3,_minmax(0,_1fr))] [.im-pump-page_&]:[gap:calc(19_*_var(--philosophy-unit))] [.im-pump-page_&]:[margin-top:calc(57_*_var(--philosophy-unit))] max-[1200px]:[.im-pump-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[768px]:[.im-pump-page_&]:[grid-template-columns:1fr] max-[768px]:[.im-pump-page_&]:[margin-top:36px] max-[768px]:[.im-pump-page_&]:[gap:18px]">
-      {philosophyCards.map((card) => (
-        <PhilosophyCard key={card.word} card={card} />
+      {philosophyCards.map((card, index) => (
+        <motion.div
+          key={card.word}
+          {...imReveal("up", 0.07 + index * 0.1, reduced, 0.15)}
+        >
+          <PhilosophyCard card={card} />
+        </motion.div>
       ))}
     </div>
   );
@@ -384,15 +460,20 @@ function EngineeringProofPanel() {
   );
 }
 function EngineeringPhilosophySection() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <section
       className="engineering-philosophy [.im-pump-page_&]:[--philosophy-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [.im-pump-page_&]:[padding-top:calc(115_*_var(--philosophy-unit))] [.im-pump-page_&]:[padding-right:24px] [.im-pump-page_&]:[padding-bottom:calc(115_*_var(--philosophy-unit))] [.im-pump-page_&]:[padding-left:24px] [.im-pump-page_&]:[background:linear-gradient(110deg,_#eef7fb_0%,_#e4f2fa_48%,_#cde7f8_100%)] [.im-pump-page_&]:[color:#0d5792]! [.im-pump-page_&]:[letter-spacing:-0.04em] max-[1200px]:[.im-pump-page_&]:[--philosophy-unit:1px] max-[1200px]:[.im-pump-page_&]:[padding-top:80px] max-[1200px]:[.im-pump-page_&]:[padding-bottom:80px] max-[768px]:[.im-pump-page_&]:[padding-top:64px] max-[768px]:[.im-pump-page_&]:[padding-right:20px] max-[768px]:[.im-pump-page_&]:[padding-bottom:80px] max-[768px]:[.im-pump-page_&]:[padding-left:20px] [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]"
       aria-labelledby="engineering-philosophy-title"
     >
       <div className="engineering-philosophy-inner [.im-pump-page_&]:[width:100%] [.im-pump-page_&]:[max-width:calc(1202_*_var(--philosophy-unit))] [.im-pump-page_&]:[margin-left:auto] [.im-pump-page_&]:[margin-right:auto]">
-        <EngineeringPhilosophyHeading />
+        <motion.div {...imReveal("left", 0, reduced, 0.2)}>
+          <EngineeringPhilosophyHeading />
+        </motion.div>
         <PhilosophyCards />
-        <EngineeringProofPanel />
+        <motion.div {...imReveal("up", 0.12, reduced, 0.12)}>
+          <EngineeringProofPanel />
+        </motion.div>
       </div>
     </section>
   );
@@ -513,22 +594,31 @@ function EngineeringPromiseCard({ promise }: { promise: EngineeringPromise }) {
   );
 }
 function EngineeringPromisesGrid() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <div className="engineering-promises-grid [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:repeat(4,_minmax(0,_1fr))] [.im-pump-page_&]:[gap:calc(13_*_var(--promise-unit))] [.im-pump-page_&]:[max-width:calc(1199_*_var(--promise-unit))] [.im-pump-page_&]:[margin-top:calc(60_*_var(--promise-unit))] max-[1200px]:[.im-pump-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[1200px]:[.im-pump-page_&]:[gap:20px] max-[768px]:[.im-pump-page_&]:[grid-template-columns:1fr] max-[768px]:[.im-pump-page_&]:[margin-top:60px] max-[768px]:[.im-pump-page_&]:[gap:18px]">
-      {engineeringPromises.map((promise) => (
-        <EngineeringPromiseCard key={promise.title} promise={promise} />
+      {engineeringPromises.map((promise, index) => (
+        <motion.div
+          key={promise.title}
+          {...imReveal("up", 0.05 + index * 0.08, reduced, 0.13)}
+        >
+          <EngineeringPromiseCard promise={promise} />
+        </motion.div>
       ))}
     </div>
   );
 }
 function EngineeringPromisesSection() {
+  const reduced = useReducedMotion() ?? false;
   return (
     <section
       className="engineering-promises [.im-pump-page_&]:[--promise-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [.im-pump-page_&]:[padding-top:calc(115_*_var(--promise-unit))] [.im-pump-page_&]:[padding-right:24px] [.im-pump-page_&]:[padding-bottom:calc(115_*_var(--promise-unit))] [.im-pump-page_&]:[padding-left:24px] [.im-pump-page_&]:[background:#9eb7d0] [.im-pump-page_&]:[color:#0d5792]! [.im-pump-page_&]:[letter-spacing:-0.04em] max-[1200px]:[.im-pump-page_&]:[--promise-unit:1px] max-[1200px]:[.im-pump-page_&]:[padding-top:80px] max-[1200px]:[.im-pump-page_&]:[padding-bottom:80px] max-[768px]:[.im-pump-page_&]:[padding-top:64px] max-[768px]:[.im-pump-page_&]:[padding-right:20px] max-[768px]:[.im-pump-page_&]:[padding-bottom:80px] max-[768px]:[.im-pump-page_&]:[padding-left:20px] [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]"
       aria-labelledby="engineering-promises-title"
     >
       <div className="engineering-promises-inner [.im-pump-page_&]:[width:100%] [.im-pump-page_&]:[max-width:calc(1204_*_var(--promise-unit))] [.im-pump-page_&]:[margin-left:auto] [.im-pump-page_&]:[margin-right:auto]">
-        <EngineeringPromisesHeader />
+        <motion.div {...imReveal("left", 0, reduced, 0.18)}>
+          <EngineeringPromisesHeader />
+        </motion.div>
         <EngineeringPromisesGrid />
       </div>
     </section>
@@ -676,13 +766,19 @@ function StandardCard({ standard }: { standard: Standard }) {
   );
 }
 function StandardsGrid({ visibleStandards }: { visibleStandards: Standard[] }) {
+  const reduced = useReducedMotion() ?? false;
   return (
     <div
       id="standards-grid"
       className="standards-grid [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] [.im-pump-page_&]:[align-content:start] [.im-pump-page_&]:[gap:calc(20_*_var(--standard-unit))_calc(26_*_var(--standard-unit))] [.im-pump-page_&]:[min-height:calc(496_*_var(--standard-unit))] [.im-pump-page_&]:[margin-top:calc(47_*_var(--standard-unit))] max-[1200px]:[.im-pump-page_&]:[gap:20px] max-[768px]:[.im-pump-page_&]:[grid-template-columns:1fr] max-[768px]:[.im-pump-page_&]:[min-height:0] max-[768px]:[.im-pump-page_&]:[margin-top:36px]"
     >
-      {visibleStandards.map((standard) => (
-        <StandardCard key={standard.id} standard={standard} />
+      {visibleStandards.map((standard, index) => (
+        <motion.div
+          key={standard.id}
+          {...imReveal("up", 0.04 + index * 0.07, reduced, 0.13)}
+        >
+          <StandardCard standard={standard} />
+        </motion.div>
       ))}
     </div>
   );
@@ -925,11 +1021,21 @@ function LifecycleEdgeBlur() {
     </div>
   );
 }
+
+// Both directions transition the complete track, including its images and copy.
+// Old and new slides share a physical path and crossfade as a single scene.
+type LifecycleSlide = { direction: number; distance: number };
+const lifecycleSlideTransition = {
+  duration: 0.7,
+  ease: imMotionEase,
+};
+
 function EngineeringLifecycleCarousel({
   steps = lifecycleStages,
 }: {
   steps?: LifecycleStepData[];
 }) {
+  const reduced = useReducedMotion() ?? false;
   const [selectedIndex, setSelectedIndex] = useState(() =>
     Math.min(2, Math.max(steps.length - 1, 0)),
   );
@@ -940,18 +1046,22 @@ function EngineeringLifecycleCarousel({
     y: number;
   } | null>(null);
   const trackRef = useRef<HTMLOListElement>(null);
+  const strideRef = useRef(0);
+  const slideRef = useRef<LifecycleSlide>({ direction: 1, distance: 0 });
+  // Both the entering and the exiting track read the *current* navigation
+  // direction. This does not depend on Framer passing a custom argument.
+  const trackVariants = useRef<Variants>({
+    enter: () => ({
+      x: slideRef.current.direction * slideRef.current.distance,
+      opacity: 0,
+    }),
+    center: { x: 0, opacity: 1 },
+    exit: () => ({
+      x: -slideRef.current.direction * slideRef.current.distance,
+      opacity: 0,
+    }),
+  }).current;
   const navigationRef = useRef<HTMLDivElement>(null);
-  const previousRotation = useRef(selectedIndex);
-  const previousPositions = useRef(
-    new Map<
-      string,
-      {
-        left: number;
-        width: number;
-        snapshot: HTMLElement;
-      }
-    >(),
-  );
   // Keep an unbounded rotation counter so physical direction survives wraparound.
   const activeIndex = steps.length
     ? ((selectedIndex % steps.length) + steps.length) % steps.length
@@ -977,99 +1087,21 @@ function EngineeringLifecycleCarousel({
   useLayoutEffect(() => {
     const track = trackRef.current;
     if (!track) return;
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const viewport = track.parentElement!;
-    const rotation = selectedIndex - previousRotation.current;
-    const nextPositions = new Map<
-      string,
-      {
-        left: number;
-        width: number;
-        snapshot: HTMLElement;
-      }
-    >();
-    const items = Array.from(
-      track.querySelectorAll<HTMLElement>("[data-lifecycle-id]"),
-    );
-    const stride =
-      items.length > 1
-        ? items[1].offsetLeft - items[0].offsetLeft
-        : track.clientWidth;
-    const cycleWidth = stride * steps.length;
-    viewport
-      .querySelectorAll(".lifecycle-exit-ghost")
-      .forEach((ghost) => ghost.remove());
-    items.forEach((item) => {
-      const id = item.dataset.lifecycleId!;
-      const left = item.offsetLeft;
-      const previous = previousPositions.current.get(id);
-      const translation = new DOMMatrixReadOnly(
-        getComputedStyle(item).transform,
-      ).m41;
-      item.getAnimations().forEach((animation) => animation.cancel());
-      if (!reducedMotion && rotation && previousPositions.current.size) {
-        let from = previous
-          ? previous.left - left + translation
-          : rotation * stride;
-        // Wrapped cards enter from the edge, never fly across the other cards.
-        if (rotation > 0 && from < 0) from += cycleWidth;
-        if (rotation < 0 && from > 0) from -= cycleWidth;
-        item.animate(
-          [
-            { transform: `translateX(${from}px)` },
-            { transform: "translateX(0)" },
-          ],
-          { duration: 350, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-        );
-      }
-      nextPositions.set(id, {
-        left,
-        width: item.offsetWidth,
-        snapshot: item.cloneNode(true) as HTMLElement,
-      });
-    });
-    if (!reducedMotion && rotation) {
-      previousPositions.current.forEach((previous, id) => {
-        const next = nextPositions.get(id);
-        const wrapped =
-          next &&
-          (rotation > 0
-            ? next.left > previous.left
-            : next.left < previous.left);
-        if (next && !wrapped) return;
-        // Visual-only outgoing snapshot completes the seamless edge crossing.
-        // The actual keyed React card keeps its identity at the entering edge.
-        const ghost = previous.snapshot;
-        ghost.classList.remove("lifecycle-step--active");
-        ghost.classList.add("lifecycle-exit-ghost");
-        ghost.removeAttribute("data-lifecycle-id");
-        ghost.removeAttribute("data-step-index");
-        ghost.setAttribute("aria-hidden", "true");
-        ghost.inert = true;
-        Object.assign(ghost.style, {
-          position: "absolute",
-          top: "0",
-          left: `${previous.left + track.offsetLeft}px`,
-          width: `${previous.width}px`,
-          margin: "0",
-          pointerEvents: "none",
-          listStyle: "none",
-        });
-        viewport.appendChild(ghost);
-        const animation = ghost.animate(
-          [
-            { transform: "translateX(0)" },
-            { transform: `translateX(${-rotation * stride}px)` },
-          ],
-          { duration: 350, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-        );
-        animation.onfinish = () => ghost.remove();
-      });
-    }
-    previousPositions.current = nextPositions;
-    previousRotation.current = selectedIndex;
+    const measure = () => {
+      const cards = track.querySelectorAll<HTMLElement>("[data-lifecycle-id]");
+      strideRef.current =
+        cards.length > 1
+          ? cards[1].offsetLeft - cards[0].offsetLeft
+          : track.clientWidth;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [selectedIndex, visibleCount, compact, steps]);
   useLayoutEffect(() => {
     const track = trackRef.current;
@@ -1096,8 +1128,13 @@ function EngineeringLifecycleCarousel({
     observer.observe(content);
     return () => observer.disconnect();
   }, [selectedIndex, visibleCount, compact, steps]);
-  const navigate = (direction: -1 | 1) => {
-    setSelectedIndex((current) => current + direction);
+  const navigate = (delta: number) => {
+    if (!delta) return;
+    slideRef.current = {
+      direction: Math.sign(delta),
+      distance: Math.abs(delta) * strideRef.current,
+    };
+    setSelectedIndex((current) => current + delta);
   };
   if (!steps.length) return null;
   return (
@@ -1143,31 +1180,54 @@ function EngineeringLifecycleCarousel({
             navigate(dx < 0 ? 1 : -1);
         }}
       >
-        <ol
-          className="lifecycle-track [.im-pump-page_&]:[position:relative] [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:repeat(var(--lifecycle-visible-count),_minmax(0,_1fr))] [.im-pump-page_&]:[gap:calc(51_*_var(--standard-unit))] [.im-pump-page_&]:[margin-top:0] [.im-pump-page_&]:[margin-right:0] [.im-pump-page_&]:[margin-bottom:0] [.im-pump-page_&]:[margin-left:0] [.im-pump-page_&]:[padding-top:0] [.im-pump-page_&]:[padding-right:0] [.im-pump-page_&]:[padding-bottom:0] [.im-pump-page_&]:[padding-left:0] [.im-pump-page_&]:[list-style:none] [.im-pump-page_&]:[align-items:start] max-[1200px]:[.im-pump-page_&]:[gap:70px] max-[1200px]:[.im-pump-page_&]:[grid-template-columns:repeat(var(--lifecycle-visible-count),_160px)] max-[1200px]:[.im-pump-page_&]:[width:620px] max-[1200px]:[.im-pump-page_&]:[left:calc(50%_-_310px)]"
-          ref={trackRef}
-        >
-          {visibleIndices.map((index) => {
-            const step = steps[index];
-            return (
-              <LifecycleStep
-                key={step.id}
-                step={step}
-                active={index === activeIndex}
-                index={index}
-                onSelect={() =>
-                  setSelectedIndex(
-                    (current) =>
-                      current +
-                      getLifecycleRotation(current, index, steps.length),
-                  )
+        <div className="relative grid w-full">
+          <AnimatePresence initial={false}>
+            <motion.ol
+              key={selectedIndex}
+              data-lifecycle-track-key={selectedIndex}
+              variants={trackVariants}
+              initial={reduced ? false : "enter"}
+              animate="center"
+              exit={reduced ? undefined : "exit"}
+              transition={reduced ? { duration: 0 } : lifecycleSlideTransition}
+              style={{ gridArea: "1 / 1" }}
+              className="lifecycle-track [.im-pump-page_&]:[position:relative] [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:repeat(var(--lifecycle-visible-count),_minmax(0,_1fr))] [.im-pump-page_&]:[gap:calc(51_*_var(--standard-unit))] [.im-pump-page_&]:[margin-top:0] [.im-pump-page_&]:[margin-right:0] [.im-pump-page_&]:[margin-bottom:0] [.im-pump-page_&]:[margin-left:0] [.im-pump-page_&]:[padding-top:0] [.im-pump-page_&]:[padding-right:0] [.im-pump-page_&]:[padding-bottom:0] [.im-pump-page_&]:[padding-left:0] [.im-pump-page_&]:[list-style:none] [.im-pump-page_&]:[align-items:start] max-[1200px]:[.im-pump-page_&]:[gap:70px] max-[1200px]:[.im-pump-page_&]:[grid-template-columns:repeat(var(--lifecycle-visible-count),_160px)] max-[1200px]:[.im-pump-page_&]:[width:620px] max-[1200px]:[.im-pump-page_&]:[left:calc(50%_-_310px)]"
+              ref={(node) => {
+                if (node) {
+                  trackRef.current = node;
+                } else if (
+                  trackRef.current?.dataset.lifecycleTrackKey ===
+                  String(selectedIndex)
+                ) {
+                  trackRef.current = null;
                 }
-              />
-            );
-          })}
-        </ol>
+              }}
+            >
+              {visibleIndices.map((index) => {
+                const step = steps[index];
+                return (
+                  <LifecycleStep
+                    key={step.id}
+                    step={step}
+                    active={index === activeIndex}
+                    index={index}
+                    onSelect={() =>
+                      navigate(
+                        getLifecycleRotation(
+                          selectedIndex,
+                          index,
+                          steps.length,
+                        ),
+                      )
+                    }
+                  />
+                );
+              })}
+            </motion.ol>
+          </AnimatePresence>
+        </div>
         <div
-          className="lifecycle-navigation-fixed [.im-pump-page_&]:[position:absolute] [.im-pump-page_&]:[z-index:3]"
+          className="lifecycle-navigation-fixed transition-[left,top,width] duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none [.im-pump-page_&]:[position:absolute] [.im-pump-page_&]:[z-index:3]"
           ref={navigationRef}
         >
           <LifecycleNavigation
@@ -1189,10 +1249,7 @@ function EngineeringLifecycleCarousel({
             aria-label={`Show ${step.title}`}
             aria-pressed={index === activeIndex}
             onClick={() =>
-              setSelectedIndex(
-                (current) =>
-                  current + getLifecycleRotation(current, index, steps.length),
-              )
+              navigate(getLifecycleRotation(selectedIndex, index, steps.length))
             }
           />
         ))}
@@ -1201,6 +1258,7 @@ function EngineeringLifecycleCarousel({
   );
 }
 function StandardsSection() {
+  const reduced = useReducedMotion() ?? false;
   const [activeCategory, setActiveCategory] = useState<StandardCategory>("all");
   const filteredStandards =
     activeCategory === "all"
@@ -1221,12 +1279,16 @@ function StandardsSection() {
     >
       <div className="standards-inner [.im-pump-page_&]:[width:100%] [.im-pump-page_&]:[max-width:calc(1204_*_var(--standard-unit))] [.im-pump-page_&]:[margin-left:auto] [.im-pump-page_&]:[margin-right:auto]">
         <div className="standards-header [.im-pump-page_&]:[display:grid]! [.im-pump-page_&]:[grid-template-columns:minmax(0,_650fr)_minmax(0,_509fr)] [.im-pump-page_&]:[gap:calc(40_*_var(--standard-unit))] [.im-pump-page_&]:[min-height:calc(130_*_var(--standard-unit))] [.im-pump-page_&]:[padding-right:calc(5_*_var(--standard-unit))] [.im-pump-page_&]:[align-items:start] max-[1200px]:[.im-pump-page_&]:[grid-template-columns:1fr] max-[1200px]:[.im-pump-page_&]:[gap:32px] max-[1200px]:[.im-pump-page_&]:[padding-right:0] max-[768px]:[.im-pump-page_&]:[gap:40px]">
-          <StandardsHeading />
-          <StandardsFilter
-            activeCategory={activeCategory}
-            onSelect={setActiveCategory}
-            onNext={selectNextCategory}
-          />
+          <motion.div {...imReveal("left", 0, reduced, 0.18)}>
+            <StandardsHeading />
+          </motion.div>
+          <motion.div {...imReveal("right", 0.09, reduced, 0.18)}>
+            <StandardsFilter
+              activeCategory={activeCategory}
+              onSelect={setActiveCategory}
+              onNext={selectNextCategory}
+            />
+          </motion.div>
         </div>
         <p
           className="sr-only"
@@ -1241,9 +1303,13 @@ function StandardsSection() {
           : {filteredStandards.length} standards shown.
         </p>
         <StandardsGrid visibleStandards={filteredStandards} />
-        <EngineeringLifecycleHeading />
+        <motion.div {...imReveal("up", 0.04, reduced, 0.2)}>
+          <EngineeringLifecycleHeading />
+        </motion.div>
         <EngineeringLifecycleCarousel />
-        <NewsletterSubscription />
+        <motion.div {...imReveal("up", 0, reduced, 0.1)}>
+          <NewsletterSubscription />
+        </motion.div>
       </div>
     </section>
   );
@@ -1283,6 +1349,48 @@ export default function ImPumpPage() {
       <EngineeringPhilosophySection />
       <EngineeringPromisesSection />
       <StandardsSection />
+      <style jsx global>{`
+        /*
+         * Connected section endpoints prevent visible color seams.
+         * The palette stays within the existing navy / ice-blue tones.
+         */
+        .im-pump-page .engineering-philosophy {
+          background: linear-gradient(
+            180deg,
+            #eef7fb 0%,
+            #e4f2fa 40%,
+            #cde7f8 72%,
+            #9eb7d0 100%
+          ) !important;
+        }
+        .im-pump-page .engineering-promises {
+          background: linear-gradient(
+            180deg,
+            #9eb7d0 0%,
+            #a9c4da 55%,
+            #bdd8e8 100%
+          ) !important;
+        }
+        .im-pump-page .standards-section {
+          background: linear-gradient(
+            180deg,
+            #bdd8e8 0%,
+            #d5eaf8 22%,
+            #e8f4fb 58%,
+            #f5fafc 100%
+          ) !important;
+        }
+        /*
+         * Only wide, 16:9-class desktop viewports receive the badge offset.
+         * The original position remains untouched on mobile, tablet,
+         * portrait and ultrawide displays.
+         */
+        @media (min-width: 1600px) and (min-height: 800px) and (min-aspect-ratio: 17/10) and (max-aspect-ratio: 21/10) {
+          .im-pump-page .im-pump-badge {
+            margin-top: calc(80 * var(--im-pump-unit));
+          }
+        }
+      `}</style>
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { useId, useMemo, useState } from "react";
 import { FiArrowRight, FiX } from "react-icons/fi";
 import {
@@ -11,7 +12,54 @@ import {
 import SeriesMarquee from "@/components/catalog/SeriesMarquee";
 import SmartPumpAssistant from "@/components/smart-pump/SmartPumpAssistant";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
-import useScrollReveal from "@/components/ui/useScrollReveal";
+const seriesEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+type SeriesRevealDirection = "up" | "left" | "right";
+const seriesRevealVariants: Variants = {
+  hidden: ({
+    direction,
+    reduced,
+  }: {
+    direction: SeriesRevealDirection;
+    reduced: boolean;
+  }) => ({
+    opacity: reduced ? 1 : 0,
+    x: reduced
+      ? 0
+      : direction === "left"
+        ? -34
+        : direction === "right"
+          ? 34
+          : 0,
+    y: reduced ? 0 : direction === "up" ? 32 : 0,
+  }),
+  visible: { opacity: 1, x: 0, y: 0 },
+};
+function seriesReveal(
+  direction: SeriesRevealDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.15,
+) {
+  return {
+    variants: seriesRevealVariants,
+    custom: { direction, reduced },
+    initial: reduced ? (false as const) : ("hidden" as const),
+    whileInView: "visible" as const,
+    viewport: { once: false, amount, margin: "0px 0px -8% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.85,
+      delay: reduced ? 0 : delay,
+      ease: seriesEase,
+    },
+  };
+}
+function seriesHeroEnter(reduced: boolean, delay = 0, y = 24) {
+  return {
+    initial: reduced ? false : { opacity: 0, y, filter: "blur(5px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: { duration: reduced ? 0 : 0.95, delay, ease: seriesEase },
+  };
+}
 
 const FAMILIES = [
   {
@@ -98,9 +146,7 @@ export default function PumpSeriesPage({
 }: {
   artwork: Record<string, string>;
 }) {
-  const pageRef = useScrollReveal(
-    "[data-series-heading], [data-series-card], [data-series-empty], section[aria-label='Join Sempa Global'] h2, section[aria-label='Join Sempa Global'] p, #catalog-solutions-title, #catalog-solutions-title + p, [data-selection-copy] > h2, [data-selection-copy] > p, [data-assistant-long-card] h3, [data-selection-art], [data-series-newsletter]",
-  );
+  const reduced = useReducedMotion() ?? false;
   const [query, setQuery] = useState("");
   const searchId = useId();
   const families = useMemo(
@@ -114,7 +160,6 @@ export default function PumpSeriesPage({
   );
   return (
     <main
-      ref={pageRef}
       data-pump-series-page
       data-header-underlay
       className="-mt-[var(--site-header-height,97px)] isolate w-full overflow-x-clip motion-reduce:[&_.ps-card_*]:transition-none! bg-[#d1e8f3] text-[#0d5792] [font-family:var(--font-sf-pro),sans-serif] [font-variation-settings:'wdth'_125,'wght'_410]"
@@ -128,16 +173,24 @@ export default function PumpSeriesPage({
           data-series-heading
           className="flex flex-wrap items-center gap-x-8 gap-y-5"
         >
-          <h1
+          <motion.h1
+            {...seriesHeroEnter(reduced, 0.08)}
             id="pump-series-title"
             className="text-[25px] font-[650] tracking-[-.035em]"
           >
             Product Series
-          </h1>
-          <nav aria-label="Breadcrumb" className="text-[11px] text-[#9eb7d0]">
+          </motion.h1>
+          <motion.nav
+            {...seriesHeroEnter(reduced, 0.18, 16)}
+            aria-label="Breadcrumb"
+            className="text-[11px] text-[#9eb7d0]"
+          >
             <Link href="/">Home</Link> &gt; Products
-          </nav>
-          <div className="relative w-full md:ml-auto md:w-[250px]">
+          </motion.nav>
+          <motion.div
+            {...seriesHeroEnter(reduced, 0.28, 18)}
+            className="relative w-full md:ml-auto md:w-[250px]"
+          >
             <label className="sr-only" htmlFor={searchId}>
               Search product series
             </label>
@@ -165,7 +218,7 @@ export default function PumpSeriesPage({
                 className="pointer-events-none absolute top-1/2 right-4 size-7 -translate-y-1/2 object-contain"
               />
             )}
-          </div>
+          </motion.div>
         </div>
         <p aria-live="polite" className="sr-only">
           {families.length} product families
@@ -187,66 +240,80 @@ export default function PumpSeriesPage({
               artwork["pump-series-black"] ??
               artwork["pump-series-dark"];
             return (
-              <Link
+              <motion.div
                 key={item.slug}
-                href={`/all-products?series=${encodeURIComponent(item.title)}`}
-                data-series-card
-                data-series-slug={item.slug}
-                className="ps-card group block min-w-0 rounded-[25px] outline-none focus-visible:ring-2 focus-visible:ring-[#005eff] focus-visible:ring-offset-4"
+                {...seriesReveal("up", (index % 2) * 0.12, reduced, 0.11)}
+                className="min-w-0"
               >
-                <div className="relative aspect-[585/329] overflow-hidden rounded-[25px] bg-[#f1f1f1] shadow-[0_30px_55px_#005eff25]">
-                  <Image
-                    src={image}
-                    alt={item.title}
-                    fill
-                    preload={index < 2}
-                    sizes="(max-width:767px) 90vw, (max-width:1920px) 41vw, 784px"
-                    className={`ps-art transition-opacity duration-500 ${suppliedImage ? "object-cover" : "object-contain p-8"} ${darkImage ? "group-hover:opacity-0 group-focus-visible:opacity-0" : ""}`}
-                  />
-                  {darkImage && (
+                <Link
+                  href={`/all-products?series=${encodeURIComponent(item.title)}`}
+                  data-series-card
+                  data-series-slug={item.slug}
+                  className="ps-card group block min-w-0 rounded-[25px] outline-none focus-visible:ring-2 focus-visible:ring-[#005eff] focus-visible:ring-offset-4"
+                >
+                  <div className="relative aspect-[585/329] overflow-hidden rounded-[25px] bg-[#f1f1f1] shadow-[0_30px_55px_#005eff25]">
                     <Image
-                      src={darkImage}
-                      alt=""
+                      src={image}
+                      alt={item.title}
                       fill
-                      sizes="(max-width:767px) 90vw, 41vw"
-                      className={`${suppliedImage ? "object-cover" : "object-contain p-8"} opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100`}
+                      preload={index < 2}
+                      sizes="(max-width:767px) 90vw, (max-width:1920px) 41vw, 784px"
+                      className={`ps-art transition-opacity duration-500 ${suppliedImage ? "object-cover" : "object-contain p-8"} ${darkImage ? "group-hover:opacity-0 group-focus-visible:opacity-0" : ""}`}
                     />
-                  )}
-                  <SeriesMarquee />
-                </div>
-                <div className="relative -mt-6 h-[130px]">
-                  <div className="ps-caption transition-[min-height,box-shadow] duration-500 ease-out group-hover:min-h-[120px] group-focus-visible:min-h-[120px] group-hover:shadow-[0_20px_35px_#005eff22] group-focus-visible:shadow-[0_20px_35px_#005eff22] max-md:flex-wrap absolute top-0 right-[1%] left-[1%] flex min-h-[100px] items-center gap-3 rounded-[25px] border border-white/60 bg-white/50 px-[6%] py-5 shadow-[0_12px_30px_#005eff0d] backdrop-blur-[15px]">
-                    <span
-                      aria-hidden
-                      className="ps-arrow -mr-3 grid h-8 w-0 -translate-x-2 opacity-0 transition-[width,opacity,margin,transform] duration-400 group-hover:mr-0 group-hover:w-8 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:mr-0 group-focus-visible:w-8 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 shrink-0 place-items-center rounded-full bg-[linear-gradient(145deg,#0877ff,#001ca3)] text-white shadow-[0_0_22px_#005eff66]"
-                    >
-                      <FiArrowRight className="size-6" />
-                    </span>
-                    <h2 className="min-w-0 bg-[linear-gradient(130deg,#005eff,#001ea2)] bg-clip-text text-[clamp(17px,1.7vw,32px)] leading-[1.05] tracking-[-.035em] text-transparent uppercase">
-                      {item.title}
-                    </h2>
-                    <p className="ps-description max-h-0 max-w-0 overflow-hidden opacity-0 transition-[max-width,max-height,opacity] duration-500 group-hover:max-h-[130px] group-hover:max-w-[28%] group-hover:opacity-100 group-focus-visible:max-h-[130px] group-focus-visible:max-w-[28%] group-focus-visible:opacity-100 max-md:group-hover:max-w-full! max-md:group-hover:basis-full max-md:group-focus-visible:max-w-full! max-md:group-focus-visible:basis-full ml-auto shrink-0 text-[clamp(9px,.7vw,12px)] leading-[1.12] text-[#82b7d3]">
-                      {item.description}
-                    </p>
+                    {darkImage && (
+                      <Image
+                        src={darkImage}
+                        alt=""
+                        fill
+                        sizes="(max-width:767px) 90vw, 41vw"
+                        className={`${suppliedImage ? "object-cover" : "object-contain p-8"} opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100`}
+                      />
+                    )}
+                    <SeriesMarquee />
                   </div>
-                </div>
-              </Link>
+                  <div className="relative -mt-6 h-[130px]">
+                    <div className="ps-caption transition-[min-height,box-shadow] duration-500 ease-out group-hover:min-h-[120px] group-focus-visible:min-h-[120px] group-hover:shadow-[0_20px_35px_#005eff22] group-focus-visible:shadow-[0_20px_35px_#005eff22] max-md:flex-wrap absolute top-0 right-[1%] left-[1%] flex min-h-[100px] items-center gap-3 rounded-[25px] border border-white/60 bg-white/50 px-[6%] py-5 shadow-[0_12px_30px_#005eff0d] backdrop-blur-[15px]">
+                      <span
+                        aria-hidden
+                        className="ps-arrow -mr-3 grid h-8 w-0 -translate-x-2 opacity-0 transition-[width,opacity,margin,transform] duration-400 group-hover:mr-0 group-hover:w-8 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:mr-0 group-focus-visible:w-8 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 shrink-0 place-items-center rounded-full bg-[linear-gradient(145deg,#0877ff,#001ca3)] text-white shadow-[0_0_22px_#005eff66]"
+                      >
+                        <FiArrowRight className="size-6" />
+                      </span>
+                      <h2 className="min-w-0 bg-[linear-gradient(130deg,#005eff,#001ea2)] bg-clip-text text-[clamp(17px,1.7vw,32px)] leading-[1.05] tracking-[-.035em] text-transparent uppercase">
+                        {item.title}
+                      </h2>
+                      <p className="ps-description max-h-0 max-w-0 overflow-hidden opacity-0 transition-[max-width,max-height,opacity] duration-500 group-hover:max-h-[130px] group-hover:max-w-[28%] group-hover:opacity-100 group-focus-visible:max-h-[130px] group-focus-visible:max-w-[28%] group-focus-visible:opacity-100 max-md:group-hover:max-w-full! max-md:group-hover:basis-full max-md:group-focus-visible:max-w-full! max-md:group-focus-visible:basis-full ml-auto shrink-0 text-[clamp(9px,.7vw,12px)] leading-[1.12] text-[#82b7d3]">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
             );
           })}
         </div>
         {families.length === 0 && (
-          <div data-series-empty className="py-20 text-center">
+          <motion.div
+            {...seriesReveal("up", 0, reduced, 0.15)}
+            data-series-empty
+            className="py-20 text-center"
+          >
             <p>No product series found.</p>
             <button onClick={() => setQuery("")} className="mt-4 underline">
               Clear search
             </button>
-          </div>
+          </motion.div>
         )}
       </section>
-      <JoinSempaGlobal assetBase="/pump-series" />
-      <CatalogSolutions assetBase="/pump-series" />
+      <motion.div {...seriesReveal("left", 0, reduced, 0.12)}>
+        <JoinSempaGlobal assetBase="/pump-series" />
+      </motion.div>
+      <motion.div {...seriesReveal("up", 0, reduced, 0.1)}>
+        <CatalogSolutions assetBase="/pump-series" />
+      </motion.div>
       <SmartPumpAssistant assetBase="/pump-series" />
-      <div
+      <motion.div
+        {...seriesReveal("up", 0, reduced, 0.1)}
         data-series-newsletter
         className="mx-auto w-full max-w-[1600px] px-5 pt-1 pb-32 md:w-[94%] md:px-8 md:pt-8 lg:w-[90%] lg:px-6 xl:px-10"
       >
@@ -254,7 +321,7 @@ export default function PumpSeriesPage({
           scaled
           className="max-w-none! 2xl:[--mail-unit:1.25px]!"
         />
-      </div>
+      </motion.div>
     </main>
   );
 }
