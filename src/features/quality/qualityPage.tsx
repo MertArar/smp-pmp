@@ -1,126 +1,150 @@
 "use client";
+// Quality page motion is coordinated with the About Us reveal language.
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LuArrowLeft, LuArrowRight, LuShieldCheck } from "react-icons/lu";
 import LoadMoreButton from "@/components/ui/LoadMoreButton";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
-import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
-import { gsap } from "gsap";
-import useScrollReveal from "@/components/ui/useScrollReveal";
 
-function useQualityOrbitTitle() {
-  const ref = useRepeatingTitle(3300);
+type QualityDirection = "up" | "left" | "right";
+const qualityEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+const heroWords = ["Quality", "Management", "Certifications"];
+const certificationSequence = [
+  "Certifications",
+  "ISO 14001",
+  "Certifications",
+  "TSE",
+  "Certifications",
+  "NFPA",
+  "Certifications",
+  "EAC",
+] as const;
+const hackerCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function useCertificationScramble(reduced: boolean) {
+  const [label, setLabel] = useState<string>(certificationSequence[0]);
+  const [scrambling, setScrambling] = useState(false);
+
   useEffect(() => {
-    const title = ref.current;
-    if (!title) return;
-    const letters = Array.from(
-      title.querySelectorAll<HTMLElement>(".quality-orbit-letter"),
-    );
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let animation: gsap.core.Tween | undefined;
-    const reset = () => {
-      animation?.kill();
-      gsap.set(letters, { clearProps: "transform,opacity" });
-    };
-    const play = () => {
-      reset();
-      if (motion.matches || !title.hasAttribute("data-title-revealing")) return;
-      const bounds = title.getBoundingClientRect();
-      const center = { x: bounds.width * 0.5, y: bounds.height * 0.5 };
-      const radius = Math.min(
-        bounds.width * 0.29,
-        Math.max(42, bounds.height * 0.36),
-      );
-      const orbitScale = bounds.width < 350 ? 0.55 : 0.35;
-      const geometry = letters.map((letter) => {
-        const rect = letter.getBoundingClientRect();
-        return {
-          x: rect.left - bounds.left + rect.width / 2,
-          y: rect.top - bounds.top + rect.height / 2,
-        };
-      });
-      const setters = letters.map((letter) => ({
-        x: gsap.quickSetter(letter, "x", "px"),
-        y: gsap.quickSetter(letter, "y", "px"),
-        rotation: gsap.quickSetter(letter, "rotation", "deg"),
-        scaleX: gsap.quickSetter(letter, "scaleX"),
-        scaleY: gsap.quickSetter(letter, "scaleY"),
-        opacity: gsap.quickSetter(letter, "opacity"),
-      }));
-      const clock = { time: 0 };
-      const draw = () =>
-        setters.forEach((set, index) => {
-          const launch = 1.05 + index * 0.037;
-          const progress = Math.max(
-            0,
-            Math.min(1, (clock.time - launch) / 0.8),
+    if (reduced) {
+      setLabel(certificationSequence[0]);
+      setScrambling(false);
+      return;
+    }
+
+    let sequenceIndex = 0;
+    let currentLabel: string = certificationSequence[0];
+    let frameId = 0;
+    let timeoutId = 0;
+    let cancelled = false;
+
+    const transitionToNext = () => {
+      sequenceIndex = (sequenceIndex + 1) % certificationSequence.length;
+      const nextLabel =
+        certificationSequence[sequenceIndex] ?? certificationSequence[0];
+      const previousLabel = currentLabel;
+      const duration = 950;
+      let startTime: number | null = null;
+      let lastPaint = 0;
+      setScrambling(true);
+
+      const draw = (now: number) => {
+        if (cancelled) return;
+        if (startTime === null) startTime = now;
+        const progress = Math.min(1, (now - startTime) / duration);
+
+        // Limit React updates while keeping the scrambling effect fluid.
+        if (now - lastPaint >= 38 || progress === 1) {
+          lastPaint = now;
+          const length = Math.max(
+            nextLabel.length,
+            Math.round(
+              previousLabel.length +
+                (nextLabel.length - previousLabel.length) *
+                  Math.min(1, progress * 1.5),
+            ),
           );
-          const orbitTime = Math.min(clock.time, launch);
-          const angle =
-            (index / letters.length) * Math.PI * 2 -
-            Math.PI / 2 +
-            (orbitTime / 1.05) * Math.PI * 2;
-          const start = {
-            x: center.x + Math.cos(angle) * radius,
-            y: center.y + Math.sin(angle) * radius,
-          };
-          const target = geometry[index];
-          // Leave the circle along its tangent, then arc into the original text slot.
-          const control = {
-            x: start.x - Math.sin(angle) * radius * 0.65,
-            y: start.y + Math.cos(angle) * radius * 0.65,
-          };
-          const t = 1 - Math.pow(1 - progress, 3),
-            inverse = 1 - t;
-          const x =
-            inverse * inverse * start.x +
-            2 * inverse * t * control.x +
-            t * t * target.x;
-          const y =
-            inverse * inverse * start.y +
-            2 * inverse * t * control.y +
-            t * t * target.y;
-          set.x(x - target.x);
-          set.y(y - target.y);
-          set.rotation(Math.sin(angle) * 18 * inverse);
-          set.scaleX(orbitScale + (1 - orbitScale) * t);
-          set.scaleY(orbitScale + (1 - orbitScale) * t);
-          set.opacity(Math.min(1, clock.time / 0.18));
-        });
-      draw();
-      animation = gsap.to(clock, {
-        time: 3.1,
-        duration: 3.1,
-        ease: "none",
-        onUpdate: draw,
-        onComplete: () =>
-          gsap.set(letters, { clearProps: "transform,opacity" }),
-      });
+          const characters = Array.from({ length }, (_, index) => {
+            const targetCharacter = nextLabel[index];
+            const settlePoint = 0.17 + ((index + 1) / nextLabel.length) * 0.77;
+
+            if (targetCharacter && progress >= settlePoint)
+              return targetCharacter;
+            if (progress < 0.11 && index < previousLabel.length)
+              return previousLabel[index];
+            if (targetCharacter === " ") return " ";
+            return hackerCharacters.charAt(
+              Math.floor(Math.random() * hackerCharacters.length),
+            );
+          });
+          setLabel(characters.join(""));
+        }
+
+        if (progress < 1) {
+          frameId = window.requestAnimationFrame(draw);
+        } else {
+          currentLabel = nextLabel;
+          setLabel(nextLabel);
+          setScrambling(false);
+          timeoutId = window.setTimeout(transitionToNext, 1400);
+        }
+      };
+
+      frameId = window.requestAnimationFrame(draw);
     };
-    const observer = new MutationObserver(play);
-    observer.observe(title, {
-      attributes: true,
-      attributeFilter: ["data-title-revealing"],
-    });
-    let size = `${title.offsetWidth}:${title.offsetHeight}`;
-    const resize = new ResizeObserver(() => {
-      const next = `${title.offsetWidth}:${title.offsetHeight}`;
-      if (next !== size) {
-        size = next;
-        play();
-      }
-    });
-    resize.observe(title);
-    motion.addEventListener("change", reset);
-    play();
+
+    // Allow all three original hero lines to finish their opening reveal.
+    timeoutId = window.setTimeout(transitionToNext, 3100);
+
     return () => {
-      observer.disconnect();
-      resize.disconnect();
-      motion.removeEventListener("change", reset);
-      reset();
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(frameId);
     };
-  }, [ref]);
-  return ref;
+  }, [reduced]);
+
+  return { label, scrambling };
+}
+
+function qualityReveal(
+  direction: QualityDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.16,
+) {
+  const offsetX = direction === "left" ? -34 : direction === "right" ? 34 : 0;
+  return {
+    initial: reduced
+      ? (false as const)
+      : {
+          opacity: 0,
+          x: offsetX,
+          y: direction === "up" ? 34 : 0,
+          filter: "blur(6px)",
+        },
+    whileInView: { opacity: 1, x: 0, y: 0, filter: "blur(0px)" },
+    viewport: { once: false, amount, margin: "0px 0px -10% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.92,
+      delay: reduced ? 0 : delay,
+      ease: qualityEase,
+    },
+  };
+}
+
+function qualityHeroEnter(reduced: boolean, delay = 0, y = 16) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : { opacity: 0, y, filter: "blur(6px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 0.95,
+      delay: reduced ? 0 : delay,
+      ease: qualityEase,
+    },
+  };
 }
 
 // Surface centers measured in the original 4168 × 2443 artwork.
@@ -281,12 +305,46 @@ const exampleQualityPolicy = {
   signatoryRole: "Chairman of the Board",
   signatory: "Seyit Mehmet Ferahkaya",
 };
-// The sample policies share identical copy and imagery until real alternatives arrive.
-const qualityPolicies = [1, 2, 3].map((number) => ({
-  ...exampleQualityPolicy,
-  id: `quality-management-${number}`,
-}));
+// Each view has its own editorial perspective. The medal image stays constant.
+const qualityPolicies = [
+  { ...exampleQualityPolicy, id: "quality-management-1" },
+  {
+    ...exampleQualityPolicy,
+    id: "quality-management-2",
+    statements: [
+      "To embed quality into every engineering decision, from initial hydraulic design reviews to the final verification of finished products,",
+      "To strengthen process capability through documented controls, measurable targets, and consistent manufacturing practices,",
+      "To preserve material and component traceability throughout procurement, production, inspection, and delivery,",
+      "To use testing, calibration, and objective performance data as the foundation for reliable technical decisions,",
+      "To examine nonconformities systematically, address their root causes, and prevent recurrence through effective corrective action,",
+      "To connect design, foundry, machining, assembly, and quality teams around shared requirements and clear communication,",
+      "To foster a working environment where safety, accountability, and responsible use of resources are considered at every stage,",
+      "To maintain open, solution-oriented relationships with customers and suppliers while honoring agreed specifications and timelines,",
+      "To make continuous improvement an everyday engineering discipline, delivering dependable and repeatable outcomes for every project.",
+    ],
+    signatoryRole: "Quality & Engineering Perspective",
+    signatory: "Muzaffer Ferahkaya",
+  },
+  {
+    ...exampleQualityPolicy,
+    id: "quality-management-3",
+    statements: [
+      "To listen attentively to customers and translate their expectations into clear, achievable quality objectives across the organization,",
+      "To encourage employees to question established processes, share ideas, and take ownership of meaningful improvements,",
+      "To promote a culture of trust in which accurate documentation, transparent communication, and ethical conduct guide our work,",
+      "To invest in the development of people and the transfer of knowledge between experienced specialists and emerging talent,",
+      "To reduce preventable waste and use energy, materials, and other resources with care throughout the product lifecycle,",
+      "To evaluate feedback and service insights as opportunities to enhance products, processes, and the customer experience,",
+      "To maintain constructive partnerships with suppliers and stakeholders built on mutual respect and long-term reliability,",
+      "To place occupational health, environmental responsibility, and applicable requirements alongside product excellence,",
+      "To carry a shared commitment to quality into the future through learning, collaboration, and lasting value for the communities we serve.",
+    ],
+    signatoryRole: "People & Continuous Improvement Perspective",
+    signatory: "Almila Ferahkaya",
+  },
+];
 function CertificatesSection() {
+  const reduced = useReducedMotion() ?? false;
   const [visibleCount, setVisibleCount] = useState(10);
   const [feedback, setFeedback] = useState("");
   const certificateTrack = useRef<HTMLDivElement>(null);
@@ -323,10 +381,15 @@ function CertificatesSection() {
       aria-labelledby="quality-certificates-title"
     >
       <div className="quality-certificates-heading [.quality-page_&]:[display:flex]! [.quality-page_&]:[align-items:center] [.quality-page_&]:[justify-content:space-between] [.quality-page_&]:[gap:25px] [.quality-page_&]:[margin-bottom:calc(70_*_var(--compliance-unit))] [.quality-page_&_h2]:[margin-top:0] [.quality-page_&_h2]:[margin-right:0] [.quality-page_&_h2]:[margin-bottom:0] [.quality-page_&_h2]:[margin-left:0] [.quality-page_&_h2]:[color:#0d5792]! [.quality-page_&_h2]:[font-size:calc(25_*_var(--compliance-unit))]! [.quality-page_&_h2]:[font-weight:540]! [.quality-page_&_h2]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.quality-page_&_h2]:[line-height:1.12]! [.quality-page_&_h2]:[letter-spacing:0] [.quality-page_&_>_p]:[flex-shrink:0] [.quality-page_&_>_p]:[margin-top:0] [.quality-page_&_>_p]:[margin-right:0] [.quality-page_&_>_p]:[margin-bottom:0] [.quality-page_&_>_p]:[margin-left:0] [.quality-page_&_>_p]:[color:#0d5792]! [.quality-page_&_>_p]:[font-size:calc(12_*_var(--compliance-unit))]! [.quality-page_&_>_p]:[text-align:right] max-md:[.quality-page_&]:[flex-direction:column] max-md:[.quality-page_&]:[align-items:center] max-md:[.quality-page_&]:[gap:16px] max-md:[.quality-page_&_h2]:[font-size:21px]! max-md:[.quality-page_&]:[margin-bottom:36px] max-md:[.quality-page_&]:[text-align:center] max-md:[.quality-page_&_>_p]:[font-size:10px]! max-md:[.quality-page_&_>_p]:[text-align:center]">
-        <h2 id="quality-certificates-title">
+        <motion.h2
+          id="quality-certificates-title"
+          {...qualityReveal("left", 0.02, reduced, 0.18)}
+        >
           Accredited Certificates &amp; Compliance Portfolio
-        </h2>
-        <p>Showing {visibleCertificates.length} Certificates</p>
+        </motion.h2>
+        <motion.p {...qualityReveal("right", 0.12, reduced, 0.18)}>
+          Showing {visibleCertificates.length} Certificates
+        </motion.p>
       </div>
       <div
         className="quality-certificate-grid [.quality-page_&]:[display:grid]! [.quality-page_&]:[grid-template-columns:repeat(5,_minmax(0,_1fr))] [.quality-page_&]:[gap:calc(15_*_var(--compliance-unit))] max-xl:[.quality-page_&]:[grid-template-columns:repeat(3,minmax(0,1fr))] max-md:[.quality-page_&]:[grid-template-columns:repeat(2,minmax(0,1fr))] max-md:[.quality-page_&]:[gap:12px] max-sm:[.quality-page_&]:[grid-template-columns:1fr] max-md:[.quality-page_&]:[position:relative] max-md:[.quality-page_&]:[display:flex]! max-md:[.quality-page_&]:[overflow-x:auto] max-md:[.quality-page_&]:[scroll-snap-type:x_mandatory] max-md:[.quality-page_&]:[scrollbar-width:none] max-md:[.quality-page_&]:[padding-top:4px] max-md:[.quality-page_&]:[padding-right:0] max-md:[.quality-page_&]:[padding-bottom:12px] max-md:[.quality-page_&]:[padding-left:0] max-md:[.quality-page_&::-webkit-scrollbar]:[display:none]!"
@@ -346,7 +409,8 @@ function CertificatesSection() {
         }}
       >
         {visibleCertificates.map((certificate, index) => (
-          <article
+          <motion.article
+            {...qualityReveal("up", (index % 5) * 0.055, reduced, 0.16)}
             className="quality-certificate [.quality-page_&]:[min-width:0] [.quality-page_&]:[min-height:calc(149_*_var(--compliance-unit))] [.quality-page_&]:[padding-top:calc(23_*_var(--compliance-unit))] [.quality-page_&]:[padding-right:calc(25_*_var(--compliance-unit))] [.quality-page_&]:[padding-bottom:calc(23_*_var(--compliance-unit))] [.quality-page_&]:[padding-left:calc(25_*_var(--compliance-unit))] [.quality-page_&]:[border:1px_solid_#9eb7d0] [.quality-page_&]:[border-radius:calc(15_*_var(--compliance-unit))] [.quality-page_&]:[background:#ffffff4d] [.quality-page_&]:[backdrop-filter:blur(30px)] [.quality-page_&]:[transition:transform_300ms_ease,_background-color_300ms_ease,_border-color_300ms_ease,_box-shadow_300ms_ease] [.quality-page_&_h3]:[margin-top:0] [.quality-page_&_h3]:[margin-right:0] [.quality-page_&_h3]:[margin-bottom:0] [.quality-page_&_h3]:[margin-left:0] [.quality-page_&_h3]:[color:#0d5792]! [.quality-page_&_h3]:[font-size:calc(15_*_var(--compliance-unit))]! [.quality-page_&_h3]:[font-weight:410]! [.quality-page_&_h3]:[line-height:1]! [.quality-page_&_h3]:[white-space:pre-line] [.quality-page_&_img]:[flex-shrink:0] [.quality-page_&_img]:[width:calc(30_*_var(--compliance-unit))] [.quality-page_&_img]:[height:calc(30_*_var(--compliance-unit))] [.quality-page_&_img]:[object-fit:contain] [.quality-page_&_>_p]:[margin-top:calc(20_*_var(--compliance-unit))] [.quality-page_&_>_p]:[margin-right:0] [.quality-page_&_>_p]:[margin-bottom:0] [.quality-page_&_>_p]:[margin-left:0] [.quality-page_&_>_p]:[color:#27272a]! [.quality-page_&_>_p]:[font-size:calc(12_*_var(--compliance-unit))]! [.quality-page_&_>_p]:[line-height:1]! [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[background:#ffffff80] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[border-color:#4687b8] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[transform:translateY(-4px)] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[box-shadow:0_8px_24px_#005eff1a] max-md:[.quality-page_&]:[padding-top:20px] max-md:[.quality-page_&]:[padding-right:18px] max-md:[.quality-page_&]:[padding-bottom:20px] max-md:[.quality-page_&]:[padding-left:18px] max-md:[.quality-page_&]:[min-height:145px] max-md:[.quality-page_&_h3]:[flex:1_1_85px]      motion-reduce:[.quality-page_&]:[transition:none] max-md:[.quality-page_&]:[order:var(--mobile-certificate-order)] max-md:[.quality-page_&]:[flex:0_0_66%] max-md:[.quality-page_&]:[scroll-snap-align:start] max-md:[.quality-page_&_h3]:[font-size:13px]! max-md:[.quality-page_&_>_p]:[font-size:11px]! max-md:[.quality-page_&_img]:[width:27px] max-md:[.quality-page_&_img]:[height:27px]"
             key={certificate.title}
             style={
@@ -367,7 +431,7 @@ function CertificatesSection() {
               />
             </div>
             <p>{certificate.description}</p>
-          </article>
+          </motion.article>
         ))}
       </div>
       <nav
@@ -386,7 +450,10 @@ function CertificatesSection() {
           </button>
         ))}
       </nav>
-      <div className="quality-certificate-actions [.quality-page_&]:[position:relative] [.quality-page_&]:[display:flex]! [.quality-page_&]:[justify-content:center] [.quality-page_&]:[margin-top:calc(70_*_var(--compliance-unit))] max-md:[.quality-page_&]:[margin-top:28px]">
+      <motion.div
+        {...qualityReveal("up", 0.06, reduced, 0.3)}
+        className="quality-certificate-actions [.quality-page_&]:[position:relative] [.quality-page_&]:[display:flex]! [.quality-page_&]:[justify-content:center] [.quality-page_&]:[margin-top:calc(70_*_var(--compliance-unit))] max-md:[.quality-page_&]:[margin-top:28px]"
+      >
         <LoadMoreButton onClick={loadMore} />
         <p
           className="quality-certificate-status [.quality-page_&]:[position:absolute] [.quality-page_&]:[top:calc(100%_+_12px)] [.quality-page_&]:[left:0] [.quality-page_&]:[right:0] [.quality-page_&]:[margin-top:0] [.quality-page_&]:[margin-right:0] [.quality-page_&]:[margin-bottom:0] [.quality-page_&]:[margin-left:0] [.quality-page_&]:[color:#0d5792]! [.quality-page_&]:[font-size:12px]! [.quality-page_&]:[text-align:center]"
@@ -394,11 +461,12 @@ function CertificatesSection() {
         >
           {feedback}
         </p>
-      </div>
+      </motion.div>
     </section>
   );
 }
 function QualityPolicySection() {
+  const reduced = useReducedMotion() ?? false;
   const [activePolicy, setActivePolicy] = useState(0);
   const [direction, setDirection] = useState(1);
   const policy = qualityPolicies[activePolicy];
@@ -408,22 +476,21 @@ function QualityPolicySection() {
     setActivePolicy(index);
   };
   return (
-    <section
+    <motion.section
+      {...qualityReveal("up", 0.04, reduced, 0.12)}
       className="quality-policy [.quality-page_&]:[margin-top:calc(100_*_var(--compliance-unit))] max-md:[.quality-page_&]:[margin-top:70px]"
       aria-label="Quality policies"
       aria-roledescription="carousel"
     >
       <div
-        className="quality-policy-slide [.quality-page_&]:[display:grid]! [.quality-page_&]:[grid-template-columns:minmax(0,_372fr)_minmax(0,_750fr)] [.quality-page_&]:[align-items:start] [.quality-page_&]:[gap:calc(68_*_var(--compliance-unit))] [.quality-page_&]:[min-height:calc(450_*_var(--compliance-unit))] [.quality-page_&]:animate-migrated-166b85d89 max-xl:[.quality-page_&]:[grid-template-columns:minmax(0,1fr)_minmax(0,2fr)] max-xl:[.quality-page_&]:[gap:35px] max-md:[.quality-page_&]:[grid-template-columns:1fr] max-md:[.quality-page_&]:[gap:36px] motion-reduce:[.quality-page_&]:[animation:none] md:max-lg:[.quality-page_&]:[grid-template-columns:minmax(0,_1fr)] md:max-lg:[.quality-page_&]:[gap:36px]"
-        key={policy.id}
-        style={{ "--policy-direction": direction } as CSSProperties}
+        className="quality-policy-slide [.quality-page_&]:[display:grid]! [.quality-page_&]:[grid-template-columns:minmax(0,_372fr)_minmax(0,_750fr)] [.quality-page_&]:[align-items:start] [.quality-page_&]:[gap:calc(68_*_var(--compliance-unit))] [.quality-page_&]:[min-height:calc(450_*_var(--compliance-unit))] max-xl:[.quality-page_&]:[grid-template-columns:minmax(0,1fr)_minmax(0,2fr)] max-xl:[.quality-page_&]:[gap:35px] max-md:[.quality-page_&]:[grid-template-columns:1fr] max-md:[.quality-page_&]:[gap:36px] motion-reduce:[.quality-page_&]:[animation:none] md:max-lg:[.quality-page_&]:[grid-template-columns:minmax(0,_1fr)] md:max-lg:[.quality-page_&]:[gap:36px]"
         role="group"
         aria-label={`Quality policy ${activePolicy + 1} of ${qualityPolicies.length}`}
       >
         <div className="quality-policy-image [.quality-page_&]:[position:relative] [.quality-page_&]:[width:100%] [.quality-page_&]:[height:calc(424_*_var(--compliance-unit))] [.quality-page_&]:[margin-top:calc(35_*_var(--compliance-unit))] [.quality-page_&]:[filter:drop-shadow(0_12px_12px_#0d579212)] [.quality-page_&_img]:[object-fit:contain] max-md:[.quality-page_&]:[width:min(420px,_calc(100%_+_40px))] max-md:[.quality-page_&]:[max-width:none] max-md:[.quality-page_&]:[height:auto] max-md:[.quality-page_&]:[margin-top:0] max-md:[.quality-page_&]:[margin-right:auto] max-md:[.quality-page_&]:[margin-bottom:0] max-md:[.quality-page_&]:[margin-left:50%] max-md:[.quality-page_&]:[aspect-ratio:1920_/_2192] max-md:[.quality-page_&]:[transform:translateX(-50%)] md:max-lg:[.quality-page_&]:[width:310px] md:max-lg:[.quality-page_&]:[max-width:100%] md:max-lg:[.quality-page_&]:[height:354px] md:max-lg:[.quality-page_&]:[margin-top:0] md:max-lg:[.quality-page_&]:[margin-right:auto] md:max-lg:[.quality-page_&]:[margin-bottom:0] md:max-lg:[.quality-page_&]:[margin-left:auto]">
           <Image
-            src={policy.image}
-            alt={policy.imageAlt}
+            src={qualityPolicyImage}
+            alt={exampleQualityPolicy.imageAlt}
             fill
             unoptimized
             sizes="(max-width: 1023px) 310px, 26vw"
@@ -463,26 +530,67 @@ function QualityPolicySection() {
                 : ((activePolicy + 1) / qualityPolicies.length) * 100
             }
           >
-            <span
-              style={{
+            <motion.span
+              initial={false}
+              animate={{
                 width: `${qualityPolicies.length === 1 ? policy.progress : ((activePolicy + 1) / qualityPolicies.length) * 100}%`,
               }}
+              transition={{ duration: reduced ? 0 : 0.65, ease: qualityEase }}
             />
           </div>
           <div aria-live="polite" aria-atomic="true">
-            <ul className="quality-policy-statements [.quality-page_&]:[display:grid]! [.quality-page_&]:[gap:calc(2_*_var(--compliance-unit))] [.quality-page_&]:[margin-top:0] [.quality-page_&]:[margin-right:0] [.quality-page_&]:[margin-bottom:0] [.quality-page_&]:[margin-left:0] [.quality-page_&]:[padding-top:0] [.quality-page_&]:[padding-right:0] [.quality-page_&]:[padding-bottom:0] [.quality-page_&]:[padding-left:17px] [.quality-page_&]:[color:#000]! [.quality-page_&]:[font-size:calc(15_*_var(--compliance-unit))]! [.quality-page_&]:[line-height:1]! [.quality-page_&]:[list-style:disc] max-md:[.quality-page_&]:[line-height:1.05]! max-md:[.quality-page_&]:[gap:2px] max-md:[.quality-page_&]:[font-size:14px]! md:max-lg:[.quality-page_&]:[line-height:1.2]! md:max-lg:[.quality-page_&]:[gap:10px]">
-              {policy.statements.map((statement) => (
-                <li key={statement}>{statement}</li>
-              ))}
-            </ul>
-            <div className="quality-policy-signature [.quality-page_&]:[margin-top:20px] [.quality-page_&]:[color:#000]! [.quality-page_&_p]:[margin-top:0] [.quality-page_&_p]:[margin-right:0] [.quality-page_&_p]:[margin-bottom:0] [.quality-page_&_p]:[margin-left:0] [.quality-page_&_p]:[font-size:calc(9_*_var(--compliance-unit))]! [.quality-page_&_p]:[line-height:1.12]! [.quality-page_&_p_+_p]:[margin-top:6px] [.quality-page_&_p_+_p]:[font-size:calc(15_*_var(--compliance-unit))]! [.quality-page_&_p_+_p]:[font-weight:540]! [.quality-page_&_p_+_p]:[font-variation-settings:'wght'_540,_'wdth'_125]! max-md:[.quality-page_&_p_+_p]:[font-size:13px]!">
-              <p>{policy.signatoryRole}</p>
-              <p>{policy.signatory}</p>
-            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={policy.id}
+                initial={
+                  reduced
+                    ? false
+                    : {
+                        opacity: 0,
+                        x: direction * 15,
+                        y: 18,
+                        filter: "blur(8px)",
+                      }
+                }
+                animate={{ opacity: 1, x: 0, y: 0, filter: "blur(0px)" }}
+                exit={
+                  reduced
+                    ? { opacity: 1 }
+                    : {
+                        opacity: 0,
+                        x: -direction * 12,
+                        y: -13,
+                        filter: "blur(6px)",
+                      }
+                }
+                transition={{ duration: reduced ? 0 : 0.42, ease: qualityEase }}
+              >
+                <ul className="quality-policy-statements [.quality-page_&]:[display:grid]! [.quality-page_&]:[gap:calc(2_*_var(--compliance-unit))] [.quality-page_&]:[margin-top:0] [.quality-page_&]:[margin-right:0] [.quality-page_&]:[margin-bottom:0] [.quality-page_&]:[margin-left:0] [.quality-page_&]:[padding-top:0] [.quality-page_&]:[padding-right:0] [.quality-page_&]:[padding-bottom:0] [.quality-page_&]:[padding-left:17px] [.quality-page_&]:[color:#000]! [.quality-page_&]:[font-size:calc(15_*_var(--compliance-unit))]! [.quality-page_&]:[line-height:1]! [.quality-page_&]:[list-style:disc] max-md:[.quality-page_&]:[line-height:1.05]! max-md:[.quality-page_&]:[gap:2px] max-md:[.quality-page_&]:[font-size:14px]! md:max-lg:[.quality-page_&]:[line-height:1.2]! md:max-lg:[.quality-page_&]:[gap:10px]">
+                  {policy.statements.map((statement, index) => (
+                    <motion.li
+                      key={statement}
+                      initial={reduced ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: reduced ? 0 : 0.5,
+                        delay: reduced ? 0 : 0.08 + index * 0.028,
+                        ease: qualityEase,
+                      }}
+                    >
+                      {statement}
+                    </motion.li>
+                  ))}
+                </ul>
+                <div className="quality-policy-signature [.quality-page_&]:[margin-top:20px] [.quality-page_&]:[color:#000]! [.quality-page_&_p]:[margin-top:0] [.quality-page_&_p]:[margin-right:0] [.quality-page_&_p]:[margin-bottom:0] [.quality-page_&_p]:[margin-left:0] [.quality-page_&_p]:[font-size:calc(9_*_var(--compliance-unit))]! [.quality-page_&_p]:[line-height:1.12]! [.quality-page_&_p_+_p]:[margin-top:6px] [.quality-page_&_p_+_p]:[font-size:calc(15_*_var(--compliance-unit))]! [.quality-page_&_p_+_p]:[font-weight:540]! [.quality-page_&_p_+_p]:[font-variation-settings:'wght'_540,_'wdth'_125]! max-md:[.quality-page_&_p_+_p]:[font-size:13px]!">
+                  <p>{policy.signatoryRole}</p>
+                  <p>{policy.signatory}</p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 // Standard Tailwind breakpoints keep the complete hero fitted to the viewport.
@@ -503,10 +611,10 @@ const qualityResponsive = [
 ].join(" ");
 
 export default function QualityPage() {
-  const orbitTitle = useQualityOrbitTitle();
-  const pageRef = useScrollReveal(
-    ".quality-introduction, .quality-scene, .quality-card, .quality-inspection-heading, .quality-inspection-slider, .quality-certificates-heading, .quality-certificate, .quality-certificate-actions, .quality-policy, .quality-newsletter",
-  );
+  const reduced = useReducedMotion() ?? false;
+  const { label: certificationLabel, scrambling: certificationScrambling } =
+    useCertificationScramble(reduced);
+  const pageRef = useRef<HTMLElement>(null);
   const [stageIndex, setStageIndex] = useState(0);
   const [stagePickerOpen, setStagePickerOpen] = useState(false);
   const [stageDirection, setStageDirection] = useState(1);
@@ -596,28 +704,78 @@ export default function QualityPage() {
         </div>
 
         <div className="quality-introduction [.quality-page_&_h1_>_span]:[display:block]! [.quality-page_&]:[position:absolute] [.quality-page_&]:[z-index:2] [.quality-page_&]:[top:calc(190_*_var(--quality-unit))] [.quality-page_&]:[left:calc(120_*_var(--quality-unit))] [.quality-page_&]:[max-width:calc(560_*_var(--quality-unit))] [.quality-page_&_h1]:[margin-top:0] [.quality-page_&_h1]:[margin-right:0] [.quality-page_&_h1]:[margin-bottom:0] [.quality-page_&_h1]:[margin-left:0] [.quality-page_&_h1]:[color:#005eff]! [.quality-page_&_h1]:[font-size:calc(80_*_var(--quality-unit))]! [.quality-page_&_h1]:[font-weight:410]! [.quality-page_&_h1]:[line-height:1]! [.quality-page_&_h1]:[letter-spacing:-0.04em] [.quality-page_&_>_p]:[width:calc(440_*_var(--quality-unit))] [.quality-page_&_>_p]:[max-width:100%] [.quality-page_&_>_p]:[margin-top:calc(30_*_var(--quality-unit))] [.quality-page_&_>_p]:[margin-right:0] [.quality-page_&_>_p]:[margin-bottom:0] [.quality-page_&_>_p]:[margin-left:0] [.quality-page_&_>_p]:[color:#9eb7d0]! [.quality-page_&_>_p]:[font-size:calc(15_*_var(--quality-unit))]! [.quality-page_&_>_p]:[line-height:1]! max-xl:[.quality-page_&]:[top:170px] max-xl:[.quality-page_&]:[left:7%] max-xl:[.quality-page_&]:[max-width:47%] max-xl:[.quality-page_&_h1]:[font-size:clamp(44px,_5.5vw,_66px)]! max-xl:[.quality-page_&_>_p]:[width:360px] max-xl:[.quality-page_&_>_p]:[font-size:14px]! max-xl:[.quality-page_&_>_p]:[line-height:1.2]! max-md:[.quality-page_&]:[top:130px] max-md:[.quality-page_&]:[left:24px] max-md:[.quality-page_&]:[max-width:calc(100%_-_48px)] max-md:[.quality-page_&_h1]:[font-size:clamp(24px,_6.7vw,_36px)]! max-md:[.quality-page_&_>_p]:[width:340px] max-md:[.quality-page_&_>_p]:[margin-top:22px] max-md:[.quality-page_&_>_p]:[font-size:14px]! max-md:[.quality-page_&_h1]:[line-height:1]! max-md:[.quality-page_&_h1_>_span:nth-child(-n+2)]:[display:inline]! max-md:[.quality-page_&_h1_>_span:first-child::after]:[content:'_'] max-md:[.quality-page_&_>_p]:[display:none]!">
-          <h1
-            ref={orbitTitle}
+          <motion.h1
             id="quality-title"
             aria-label="Quality Management Certifications"
+            initial={reduced ? false : "hidden"}
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: {
+                transition: {
+                  delayChildren: reduced ? 0 : 0.18,
+                  staggerChildren: reduced ? 0 : 0.17,
+                },
+              },
+            }}
           >
-            {["Quality", "Management", "Certifications"].map((word) => (
-              <span key={word} aria-hidden="true">
-                {Array.from(word, (letter, index) => (
-                  <span
-                    key={index}
-                    className="quality-orbit-letter relative inline-block"
-                  >
-                    {letter}
-                  </span>
-                ))}
+            {heroWords.map((word) => (
+              <span
+                key={word}
+                aria-hidden="true"
+                className="block overflow-hidden pb-[0.09em] -mb-[0.09em]"
+              >
+                <motion.span
+                  className="block will-change-transform"
+                  variants={{
+                    hidden: reduced
+                      ? { opacity: 1, y: "0%" }
+                      : {
+                          opacity: 0,
+                          y: "108%",
+                          filter: "blur(10px)",
+                          rotateX: -9,
+                        },
+                    visible: {
+                      opacity: 1,
+                      y: "0%",
+                      filter: "blur(0px)",
+                      rotateX: 0,
+                      transition: {
+                        duration: reduced ? 0 : 1.05,
+                        ease: qualityEase,
+                      },
+                    },
+                  }}
+                >
+                  {word === "Certifications" ? (
+                    <span className="relative inline-block whitespace-nowrap align-baseline">
+                      <span className="invisible" aria-hidden="true">
+                        Certifications
+                      </span>
+                      <span
+                        className="absolute inset-0 whitespace-nowrap"
+                        aria-hidden="true"
+                      >
+                        {certificationLabel}
+                        {certificationScrambling && (
+                          <span className="ml-[0.05em] inline-block animate-pulse align-baseline text-[#0d5792]">
+                            _
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  ) : (
+                    word
+                  )}
+                </motion.span>
               </span>
             ))}
-          </h1>
-          <p>
+          </motion.h1>
+          <motion.p {...qualityHeroEnter(reduced, 0.8, 22)}>
             Quality standards verified and audited by international independent
             certification bodies from design to dispatch.
-          </p>
+          </motion.p>
         </div>
 
         <div
@@ -629,7 +787,8 @@ export default function QualityPage() {
           aria-label="Quality standards and certifications"
         >
           {qualityCards.map((card, index) => (
-            <article
+            <motion.article
+              {...qualityReveal("up", index * 0.085, reduced, 0.22)}
               className="quality-card [container-type:inline-size] [.quality-page_&]:[position:relative] [.quality-page_&]:[isolation:isolate] [.quality-page_&]:[min-width:0] [.quality-page_&]:[min-height:calc(185_*_var(--quality-unit))] [.quality-page_&]:[overflow:hidden] [.quality-page_&]:[padding-top:calc(18_*_var(--quality-unit))] [.quality-page_&]:[padding-right:calc(25_*_var(--quality-unit))] [.quality-page_&]:[padding-bottom:calc(18_*_var(--quality-unit))] [.quality-page_&]:[padding-left:calc(25_*_var(--quality-unit))] [.quality-page_&]:[border:0.5px_solid_#f7f7f7] [.quality-page_&]:[border-radius:calc(30_*_var(--quality-unit))] [.quality-page_&]:[background:#ffffff26] [.quality-page_&]:[backdrop-filter:blur(14px)] [.quality-page_&]:[box-shadow:inset_0_1px_15px_#ffffff26,_0_8px_24px_#4274a30a] [.quality-page_&]:[transition:box-shadow_450ms_cubic-bezier(0.22,_1,_0.36,_1),_border-color_450ms_cubic-bezier(0.22,_1,_0.36,_1)] [.quality-page_&::before]:[content:''] [.quality-page_&::before]:[position:absolute] [.quality-page_&::before]:[z-index:-1] [.quality-page_&::before]:[top:0] [.quality-page_&::before]:[right:0] [.quality-page_&::before]:[bottom:0] [.quality-page_&::before]:[left:0] [.quality-page_&::before]:[border-radius:inherit] [.quality-page_&::before]:[background:linear-gradient(180deg,_#ffffff2e_0%,_#a3c8fa73_45%,_#4084ffe6_100%)] [.quality-page_&::before]:[opacity:0] [.quality-page_&::before]:[transition:opacity_450ms_cubic-bezier(0.22,_1,_0.36,_1)] [.quality-page_&_h2]:[margin-top:0] [.quality-page_&_h2]:[margin-right:0] [.quality-page_&_h2]:[margin-bottom:calc(12_*_var(--quality-unit))] [.quality-page_&_h2]:[margin-left:0] [.quality-page_&_h2]:[color:#4687b8]! [.quality-page_&_h2]:[font-size:calc(20_*_var(--quality-unit))]! [.quality-page_&_h2]:[font-weight:410]! [.quality-page_&_h2]:[line-height:1]! [.quality-page_&_h2]:[letter-spacing:-0.04em] [.quality-page_&[data-highlighted='true']::before]:[opacity:1] [.quality-page_&[data-highlighted='true']]:[border-color:#ffffffcc] [.quality-page_&[data-highlighted='true']]:[box-shadow:inset_0_1px_15px_#ffffff26,_0_10px_30px_#005eff26] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover::before]:[opacity:1] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[border-color:#ffffffcc] [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_&:hover]:[box-shadow:inset_0_1px_15px_#ffffff26,_0_10px_30px_#005eff26] max-md:[.quality-page_&]:[min-height:155px] max-md:[.quality-page_&]:[padding-top:20px] max-md:[.quality-page_&]:[padding-right:22px] max-md:[.quality-page_&]:[padding-bottom:20px] max-md:[.quality-page_&]:[padding-left:22px] max-md:[.quality-page_&_h2]:[font-size:17px]! max-md:[.quality-page_&]:[background:#ffffff33] max-md:[.quality-page_&]:[box-shadow:inset_0_0_28px_#ffffff40,_0_10px_25px_#0d579212] max-md:[.quality-page_&:nth-child(1)]:[order:4] max-md:[.quality-page_&_h2]:[margin-bottom:10px] max-md:[.quality-page_&[data-highlighted='true']_h2]:[color:#f7f7f7]! motion-reduce:[.quality-page_&]:[transition:none] motion-reduce:[.quality-page_&::before]:[transition:none]"
               key={card.value}
               aria-labelledby={`quality-card-${index}-title`}
@@ -641,7 +800,7 @@ export default function QualityPage() {
               <p className="quality-card-description [.quality-page_&]:[margin-top:0] [.quality-page_&]:[margin-right:0] [.quality-page_&]:[margin-bottom:0] [.quality-page_&]:[margin-left:0] [.quality-page_&]:[color:#9eb7d0]! [.quality-page_&]:[font-size:calc(12_*_var(--quality-unit))]! [.quality-page_&]:[line-height:1.12]! [.quality-page_&]:[transition:color_450ms_cubic-bezier(0.22,_1,_0.36,_1)] [.quality-page_.quality-card[data-highlighted='true']_&]:[color:#f7fbff]! [@media(hover:_hover)_and_(pointer:_fine)]:[.quality-page_.quality-card:hover_&]:[color:#f7fbff]! max-md:[.quality-page_&]:[font-size:12px]! max-md:[.quality-page_&]:[line-height:1.12]! max-md:[.quality-page_&]:[color:#9eb7d0]! max-md:[.quality-page_.quality-card[data-highlighted='true']_&]:[color:#f7f7f7]! motion-reduce:[.quality-page_&]:[transition:none]">
                 {card.description}
               </p>
-            </article>
+            </motion.article>
           ))}
         </div>
       </section>
@@ -652,13 +811,16 @@ export default function QualityPage() {
       >
         <div className="quality-inspection-container [.quality-page_&]:[width:100%] [.quality-page_&]:[max-width:1200px] [.quality-page_&]:[margin-left:auto] [.quality-page_&]:[margin-right:auto]">
           <div className="quality-inspection-heading [.quality-page_&]:[display:grid]! [.quality-page_&]:[grid-template-columns:minmax(0,_607px)_minmax(0,_349px)] [.quality-page_&]:[justify-content:space-between] [.quality-page_&]:[gap:40px] [.quality-page_&]:[margin-bottom:55px] [.quality-page_&_h2]:[margin-top:0] [.quality-page_&_h2]:[margin-right:0] [.quality-page_&_h2]:[margin-bottom:0] [.quality-page_&_h2]:[margin-left:0] [.quality-page_&_h2]:[font-size:50px]! [.quality-page_&_h2]:[font-weight:410]! [.quality-page_&_h2]:[line-height:1]! [.quality-page_&_h2]:[color:#0d5792]! [.quality-page_&_h2]:[letter-spacing:-0.04em] max-xl:[.quality-page_&]:[grid-template-columns:1.5fr_1fr] max-xl:[.quality-page_&]:[gap:32px] max-xl:[.quality-page_&_h2]:[font-size:40px]! max-md:[.quality-page_&]:[grid-template-columns:1fr] max-md:[.quality-page_&]:[gap:30px] max-md:[.quality-page_&]:[margin-bottom:32px] max-md:[.quality-page_&_h2]:[font-size:clamp(25px,_6.7vw,_36px)]!">
-            <h2 id="quality-inspection-title">
+            <motion.h2
+              id="quality-inspection-title"
+              {...qualityReveal("left", 0.05, reduced, 0.25)}
+            >
               5-Stage Zero-Defect
               <br />
               Quality Inspection &amp;
               <br />
               Verification Journey
-            </h2>
+            </motion.h2>
             <div className="quality-inspection-intro [.quality-page_&]:[padding-top:6px] [.quality-page_&_>_p]:[margin-top:38px] [.quality-page_&_>_p]:[margin-right:0] [.quality-page_&_>_p]:[margin-bottom:0] [.quality-page_&_>_p]:[margin-left:0] [.quality-page_&_>_p]:[color:#000]! [.quality-page_&_>_p]:[font-size:15px]! [.quality-page_&_>_p]:[line-height:1]! max-md:[.quality-page_&_>_p]:[max-width:349px] max-md:[.quality-page_&_>_p]:[margin-top:24px] max-md:[.quality-page_&_>_p]:[line-height:1.2]! max-md:[.quality-page_&_>_p]:[font-size:13px]!">
               <div
                 className="quality-stage-picker [.quality-page_&]:[position:relative] [.quality-page_&]:[z-index:5] [.quality-page_&_>_button]:[width:151px] [.quality-page_&_>_button]:[min-height:24px] [.quality-page_&_>_button]:[padding-top:4px] [.quality-page_&_>_button]:[padding-right:6px] [.quality-page_&_>_button]:[padding-bottom:4px] [.quality-page_&_>_button]:[padding-left:6px] [.quality-page_&_>_button]:[border:0] [.quality-page_&_>_button]:[border-radius:8px] [.quality-page_&_>_button]:[background:#0d5792] [.quality-page_&_>_button]:[color:#fff]! [.quality-page_&_>_button]:[font-style:inherit] [.quality-page_&_>_button]:[font-variant:inherit] [.quality-page_&_>_button]:[font-weight:inherit]! [.quality-page_&_>_button]:[font-stretch:inherit]! [.quality-page_&_>_button]:[font-size:10px]! [.quality-page_&_>_button]:[line-height:inherit]! [.quality-page_&_>_button]:[font-family:inherit]! [.quality-page_&_>_button]:[font-feature-settings:inherit] [.quality-page_&_>_button]:[font-variation-settings:inherit]! [.quality-page_&_>_button]:[cursor:pointer]"
@@ -695,14 +857,15 @@ export default function QualityPage() {
                   </div>
                 )}
               </div>
-              <p>
+              <motion.p {...qualityReveal("right", 0.16, reduced, 0.25)}>
                 Rigorous tolerances and digital verification from ingot
                 spectrometry to dynamic balancing and final test certificates.
-              </p>
+              </motion.p>
             </div>
           </div>
 
-          <div
+          <motion.div
+            {...qualityReveal("up", 0.12, reduced, 0.11)}
             className="quality-inspection-slider [.quality-page_&]:[position:relative] [.quality-page_&]:[height:520px] [.quality-page_&]:[overflow:hidden] [.quality-page_&]:[border-radius:30px] [.quality-page_&]:[background:#222] max-md:[.quality-page_&]:[height:auto] max-md:[.quality-page_&]:[min-height:760px] max-md:[.quality-page_&]:[border-radius:22px] max-md:[.quality-page_&]:[background:#141a20]"
             role="region"
             aria-roledescription="carousel"
@@ -791,7 +954,7 @@ export default function QualityPage() {
                 <LuArrowRight aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -799,9 +962,12 @@ export default function QualityPage() {
         <div className="quality-compliance-container [.quality-page_&]:[max-width:calc(1200_*_var(--compliance-unit))] [.quality-page_&]:[width:100%] [.quality-page_&]:[margin-left:auto] [.quality-page_&]:[margin-right:auto]">
           <CertificatesSection />
           <QualityPolicySection />
-          <div className="quality-newsletter [.quality-page_&]:[margin-top:calc(80_*_var(--compliance-unit))] [.quality-page_&_.newsletter-section]:[--mail-unit:var(--compliance-unit)] [.quality-page_&_.newsletter-section]:[margin-top:0]">
+          <motion.div
+            {...qualityReveal("up", 0, reduced, 0.1)}
+            className="quality-newsletter [.quality-page_&]:[margin-top:calc(80_*_var(--compliance-unit))] [.quality-page_&_.newsletter-section]:[--mail-unit:var(--compliance-unit)] [.quality-page_&_.newsletter-section]:[margin-top:0]"
+          >
             <NewsletterSubscription scaled />
-          </div>
+          </motion.div>
         </div>
       </div>
 

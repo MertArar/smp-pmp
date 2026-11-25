@@ -2,73 +2,147 @@
 import { useId, useRef, useState, type FormEvent } from "react";
 import { FiCheck } from "react-icons/fi";
 
-export default function NewsletterSubscription({ requireValidInput = false, scaled = false }: {
-    requireValidInput?: boolean;
-    scaled?: boolean;
+export default function NewsletterSubscription({
+  requireValidInput = false,
+  className = "",
+}: {
+  requireValidInput?: boolean;
+  /** Kept for older callers; sizing is shared across every page. */
+  scaled?: boolean;
+  className?: string;
 }) {
-    const formId = useId();
-    const titleId = `${formId}-title`;
-    const emailId = `${formId}-email`;
-    const feedbackId = `${formId}-feedback`;
-    const [email, setEmail] = useState("");
-    const [consentAccepted, setConsentAccepted] = useState(false);
-    const [feedback, setFeedback] = useState<{
-        message: string;
-        field?: "email" | "consent";
-    } | null>(null);
-    const emailRef = useRef<HTMLInputElement>(null);
-    const consentRef = useRef<HTMLInputElement>(null);
-    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-    function submitSubscription(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        if (!email.trim()) {
-            setFeedback({ message: "E-posta adresinizi giriniz.", field: "email" });
-            emailRef.current?.focus();
-        }
-        else if (emailRef.current?.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setFeedback({ message: "Geçerli bir e-posta adresi giriniz.", field: "email" });
-            emailRef.current?.focus();
-        }
-        else if (!consentAccepted) {
-            setFeedback({ message: "Devam etmek için aydınlatma ve açık rıza onayını vermelisiniz.", field: "consent" });
-            consentRef.current?.focus();
-        }
-        else {
-            // Frontend preview only: no subscription is stored or sent.
-            setFeedback({ message: "Abonelik başvuru sistemi yakında aktif olacaktır." });
-        }
+  const formId = useId();
+  const titleId = `${formId}-title`;
+  const emailId = `${formId}-email`;
+  const feedbackId = `${formId}-feedback`;
+  const [email, setEmail] = useState("");
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    field?: "email" | "consent";
+  } | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const consentRef = useRef<HTMLInputElement>(null);
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  function submitSubscription(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!email.trim()) {
+      setFeedback({ message: "E-posta adresinizi giriniz.", field: "email" });
+      emailRef.current?.focus();
+    } else if (
+      emailRef.current?.validity.typeMismatch ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    ) {
+      setFeedback({
+        message: "Geçerli bir e-posta adresi giriniz.",
+        field: "email",
+      });
+      emailRef.current?.focus();
+    } else if (!consentAccepted) {
+      setFeedback({
+        message:
+          "Devam etmek için aydınlatma ve açık rıza onayını vermelisiniz.",
+        field: "consent",
+      });
+      consentRef.current?.focus();
+    } else {
+      // Frontend preview only: no subscription is stored or sent.
+      setFeedback({
+        message: "Abonelik başvuru sistemi yakında aktif olacaktır.",
+      });
     }
-    return (<section className={twNewsletterSubscription(`newsletter-section${scaled ? " newsletter-section--scaled" : ""}`) + " min-[768px]:max-[1200px]:[&&&]:mb-[clamp(160px,22svh,280px)]! [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]"} aria-labelledby={titleId}>
-      <form className="newsletter-form [display:grid]! [grid-template-columns:212px_308px_135px_minmax(0,_1fr)] [align-items:center] [gap:29px] [min-height:76px] [padding-top:8px] [padding-right:26px] [padding-bottom:8px] [padding-left:26px] [border-radius:8px] [background:#f7f7f7] [&_h2]:[font-size:30px]! [&_h2]:[font-weight:410]! [&_h2]:[line-height:1]! [&_h2]:[color:#0d5792]! [.newsletter-section--scaled_&&]:[grid-template-columns:calc(212_*_var(--mail-unit))_calc(308_*_var(--mail-unit))_calc(135_*_var(--mail-unit))_minmax(0,_1fr)] [.newsletter-section--scaled_&&]:[gap:calc(29_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[min-height:calc(76_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(26_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(26_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&_h2]:[font-size:calc(30_*_var(--mail-unit))]! max-[1200px]:[.newsletter-section--scaled_&&]:[grid-template-columns:212px_minmax(180px,_308px)_135px] max-[1200px]:[.newsletter-section--scaled_&&]:[gap:20px] max-[1200px]:[grid-template-columns:212px_minmax(180px,_308px)_135px] max-[1200px]:[gap:20px] max-[768px]:[.newsletter-section--scaled_&&]:[grid-template-columns:1fr] max-[768px]:[.newsletter-section--scaled_&&]:[padding-top:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-right:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-bottom:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-left:24px] max-[768px]:[.newsletter-section--scaled_&&_h2]:[font-size:28px]! max-[768px]:[grid-template-columns:1fr] max-[768px]:[padding-top:24px] max-[768px]:[padding-right:24px] max-[768px]:[padding-bottom:24px] max-[768px]:[padding-left:24px] max-[768px]:[gap:20px] max-[768px]:[&_h2]:[font-size:28px]! min-[769px]:max-[1200px]:[&&&]:grid-cols-[212px_minmax(0,1fr)_135px]! min-[769px]:max-[1200px]:[&&&]:gap-5 min-[769px]:max-[1200px]:[&&&]:px-6 min-[769px]:max-[1200px]:[&&&]:py-5 min-[769px]:max-[1200px]:[&&&]:min-w-0" noValidate onSubmit={submitSubscription}>
-        <h2 id={titleId}>Newsletter<br />Subscription</h2>
-        <label className="sr-only" htmlFor={emailId}>E-posta adresi</label>
-        <input ref={emailRef} id={emailId} className="newsletter-email [width:100%] [min-width:0] [height:45px] [padding-top:3px] [padding-right:25px] [padding-bottom:3px] [padding-left:25px] [border:0] [border-radius:8px] [background:#fff] [backdrop-filter:blur(30px)] [color:#0d5792]! [font-style:inherit] [font-variant:inherit] [font-weight:inherit]! [font-stretch:inherit]! [font-size:15px]! [line-height:1]! [font-family:inherit]! [font-feature-settings:inherit] [font-variation-settings:inherit]! [&::placeholder]:[color:#0d5792]! [&::placeholder]:[opacity:1] [&:focus-visible]:[outline:2px_solid_#005eff] [&:focus-visible]:[outline-offset:3px] [.newsletter-section--scaled_&&]:[height:calc(45_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(15_*_var(--mail-unit))]!" type="email" autoComplete="email" placeholder="E-Mail" required value={email} onChange={(event) => { setEmail(event.target.value); setFeedback(null); }} aria-invalid={feedback?.field === "email"} aria-describedby={feedback?.field === "email" ? feedbackId : undefined}/>
-        <button className="newsletter-submit [height:45px] [padding-top:3px] [padding-right:25px] [padding-bottom:3px] [padding-left:25px] [border:0] [border-radius:8px] [background:#005eff] [color:#fff]! [font-style:inherit] [font-variant:inherit] [font-weight:inherit]! [font-stretch:inherit]! [font-size:15px]! [line-height:inherit]! [font-family:inherit]! [font-feature-settings:inherit] [font-variation-settings:inherit]! [cursor:pointer] [&:hover:not(:disabled)]:[background:#004bd1] [&:disabled]:[opacity:0.5] [&:disabled]:[cursor:not-allowed] [&:focus-visible]:[outline:2px_solid_#005eff] [&:focus-visible]:[outline-offset:3px] [.newsletter-section--scaled_&&]:[height:calc(45_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(15_*_var(--mail-unit))]! [.newsletter-section--scaled_&&:disabled]:[opacity:1]" type="submit" disabled={requireValidInput && (!validEmail || !consentAccepted)}>Subscribe</button>
-        <label className="newsletter-consent [display:flex]! [align-items:flex-start] [gap:10px] [min-width:0] [color:#27272a]! [font-size:13px]! [line-height:1.15]! [cursor:pointer] [.newsletter-section--scaled_&&]:[align-items:center] [.newsletter-section--scaled_&&]:[gap:calc(10_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(13_*_var(--mail-unit))]! [.newsletter-section--scaled_&&]:[line-height:1]! max-[1200px]:[grid-column:1_/_-1] max-[768px]:[.newsletter-section--scaled_&&]:[align-items:flex-start] max-[768px]:[.newsletter-section--scaled_&&]:[font-size:13px]! max-[768px]:[.newsletter-section--scaled_&&]:[line-height:1.3]! max-[768px]:[font-size:13px]! max-[768px]:[line-height:1.3]!" lang="tr">
-          <span className="newsletter-checkbox [position:relative] [flex:0_0_18px] [width:18px] [height:18px] [&_input]:[appearance:none] [&_input]:[display:block]! [&_input]:[width:18px] [&_input]:[height:18px] [&_input]:[margin-top:0] [&_input]:[margin-right:0] [&_input]:[margin-bottom:0] [&_input]:[margin-left:0] [&_input]:[border:1px_solid_#9eb7d0] [&_input]:[border-radius:4px] [&_input]:[background:#fff] [&_input]:[cursor:pointer] [&_input:checked]:[background:#005eff] [&_input:checked]:[border-color:#005eff] [&_input:hover]:[border-color:#005eff] [&_input:focus-visible]:[outline:2px_solid_#005eff] [&_input:focus-visible]:[outline-offset:3px] [&_svg]:[display:none]! [&_svg]:[position:absolute] [&_svg]:[top:2px] [&_svg]:[right:2px] [&_svg]:[bottom:2px] [&_svg]:[left:2px] [&_svg]:[width:14px] [&_svg]:[height:14px] [&_svg]:[color:#fff]! [&_svg]:[pointer-events:none] [&_input:checked_+_svg]:[display:block]! [.newsletter-section--scaled_&&]:[flex-basis:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[width:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[height:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&_input]:[width:100%] [.newsletter-section--scaled_&&_input]:[height:100%] [.newsletter-section--scaled_&&_input]:[border-radius:calc(4_*_var(--mail-unit))] [.newsletter-section--scaled_&&_svg]:[top:12%] [.newsletter-section--scaled_&&_svg]:[right:12%] [.newsletter-section--scaled_&&_svg]:[bottom:12%] [.newsletter-section--scaled_&&_svg]:[left:12%] [.newsletter-section--scaled_&&_svg]:[width:76%] [.newsletter-section--scaled_&&_svg]:[height:76%]">
-            <input ref={consentRef} type="checkbox" required checked={consentAccepted} onChange={(event) => { setConsentAccepted(event.target.checked); setFeedback(null); }} aria-invalid={feedback?.field === "consent"} aria-describedby={feedback?.field === "consent" ? feedbackId : undefined}/>
-            <FiCheck aria-hidden="true"/>
+  }
+  return (
+    <section
+      data-newsletter
+      className={`relative left-1/2 mt-[calc(60*var(--newsletter-spacing-unit,var(--standard-unit,1px)))] w-[min(1200px,83.333333vw)] -translate-x-1/2 font-sans tracking-normal [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,'wdth'_125]! ${className}`}
+      aria-labelledby={titleId}
+    >
+      <form
+        data-newsletter-form
+        className="grid! min-h-[76px] grid-cols-1 items-center gap-5 rounded-lg bg-[#f7f7f7] p-6 md:grid-cols-[212px_minmax(0,1fr)_135px] md:py-5 xl:grid-cols-[212px_308px_135px_minmax(0,1fr)] xl:gap-[29px] xl:px-[26px] xl:py-2"
+        noValidate
+        onSubmit={submitSubscription}
+      >
+        <h2
+          id={titleId}
+          className="m-0 text-[28px]! leading-none! font-[410]! text-[#0d5792]! md:text-[30px]!"
+        >
+          Newsletter
+          <br />
+          Subscription
+        </h2>
+        <label className="sr-only" htmlFor={emailId}>
+          E-posta adresi
+        </label>
+        <input
+          ref={emailRef}
+          id={emailId}
+          className="h-[45px] w-full min-w-0 rounded-lg border-0 bg-white px-[25px] py-[3px] font-[inherit]! text-[15px]! leading-none! text-[#0d5792]! backdrop-blur-[30px] placeholder:text-[#0d5792] placeholder:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#005eff]"
+          type="email"
+          autoComplete="email"
+          placeholder="E-Mail"
+          required
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setFeedback(null);
+          }}
+          aria-invalid={feedback?.field === "email"}
+          aria-describedby={
+            feedback?.field === "email" ? feedbackId : undefined
+          }
+        />
+        <button
+          className="h-[45px] cursor-pointer rounded-lg border-0 bg-[#005eff] px-[25px] py-[3px] font-[inherit]! text-[15px]! leading-none! text-white! hover:enabled:bg-[#004bd1] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#005eff] disabled:cursor-not-allowed disabled:opacity-100"
+          type="submit"
+          disabled={requireValidInput && (!validEmail || !consentAccepted)}
+        >
+          Subscribe
+        </button>
+        <label
+          className="flex! min-w-0 cursor-pointer items-start gap-[10px] text-[13px]! leading-[1.3]! text-[#27272a]! md:col-span-3 xl:col-auto xl:leading-[1.15]!"
+          lang="tr"
+        >
+          <span className="relative size-[18px] shrink-0">
+            <input
+              ref={consentRef}
+              className="peer m-0 block! size-[18px] cursor-pointer appearance-none rounded-[4px] border border-[#9eb7d0] bg-white checked:border-[#005eff] checked:bg-[#005eff] hover:border-[#005eff] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#005eff]"
+              type="checkbox"
+              required
+              checked={consentAccepted}
+              onChange={(event) => {
+                setConsentAccepted(event.target.checked);
+                setFeedback(null);
+              }}
+              aria-invalid={feedback?.field === "consent"}
+              aria-describedby={
+                feedback?.field === "consent" ? feedbackId : undefined
+              }
+            />
+            <FiCheck
+              aria-hidden="true"
+              className="pointer-events-none absolute top-[2px] left-[2px] hidden size-[14px] text-white peer-checked:block"
+            />
           </span>
-          <span><span>Aydınlatma Metnini</span> okudum ve <span>Açık Rıza Metni</span>’ni okudum, anladım ve e-posta aboneliği başvurusu yaparak açık rızamı verdiğimi beyan ederim.</span>
+          <span>
+            <span>Aydınlatma Metnini</span> okudum ve{" "}
+            <span>Açık Rıza Metni</span>’ni okudum, anladım ve e-posta aboneliği
+            başvurusu yaparak açık rızamı verdiğimi beyan ederim.
+          </span>
         </label>
       </form>
-      <p id={feedbackId} className="newsletter-feedback [position:absolute] [top:100%] [left:26px] [right:26px] [margin-top:10px] [color:#0d5792]! [font-size:13px]! [line-height:1.3]! [&[data-error='true']]:[color:#9b3131]! max-[768px]:[left:0] max-[768px]:[right:0]" data-error={Boolean(feedback?.field)} role="status" aria-live="polite" aria-atomic="true" lang="tr">
+      <p
+        id={feedbackId}
+        className="absolute top-full right-0 left-0 mt-[10px] text-[13px]! leading-[1.3]! text-[#0d5792]! data-[error=true]:text-[#9b3131]! md:right-[26px] md:left-[26px]"
+        data-error={Boolean(feedback?.field)}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        lang="tr"
+      >
         {feedback?.message}
       </p>
-      
-    </section>);
+    </section>
+  );
 }
-
-// Tailwind presets retain marker classes used by animation and carousel selectors.
-const twNewsletterSubscriptionRules: Record<string, string> = {
-  "newsletter-section": "[position:relative] [width:100%] [max-width:1200px] [margin-top:calc(60_*_var(--newsletter-spacing-unit,_var(--standard-unit,_1px)))] [margin-right:auto] [margin-bottom:0] [margin-left:auto] [letter-spacing:0] max-[768px]:[margin-top:40px]",
-  "newsletter-form": "[display:grid]! [grid-template-columns:212px_308px_135px_minmax(0,_1fr)] [align-items:center] [gap:29px] [min-height:76px] [padding-top:8px] [padding-right:26px] [padding-bottom:8px] [padding-left:26px] [border-radius:8px] [background:#f7f7f7] [&_h2]:[font-size:30px]! [&_h2]:[font-weight:410]! [&_h2]:[line-height:1]! [&_h2]:[color:#0d5792]! [.newsletter-section--scaled_&&]:[grid-template-columns:calc(212_*_var(--mail-unit))_calc(308_*_var(--mail-unit))_calc(135_*_var(--mail-unit))_minmax(0,_1fr)] [.newsletter-section--scaled_&&]:[gap:calc(29_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[min-height:calc(76_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(26_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(26_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&_h2]:[font-size:calc(30_*_var(--mail-unit))]! max-[1200px]:[.newsletter-section--scaled_&&]:[grid-template-columns:212px_minmax(180px,_308px)_135px] max-[1200px]:[.newsletter-section--scaled_&&]:[gap:20px] max-[1200px]:[grid-template-columns:212px_minmax(180px,_308px)_135px] max-[1200px]:[gap:20px] max-[768px]:[.newsletter-section--scaled_&&]:[grid-template-columns:1fr] max-[768px]:[.newsletter-section--scaled_&&]:[padding-top:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-right:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-bottom:24px] max-[768px]:[.newsletter-section--scaled_&&]:[padding-left:24px] max-[768px]:[.newsletter-section--scaled_&&_h2]:[font-size:28px]! max-[768px]:[grid-template-columns:1fr] max-[768px]:[padding-top:24px] max-[768px]:[padding-right:24px] max-[768px]:[padding-bottom:24px] max-[768px]:[padding-left:24px] max-[768px]:[gap:20px] max-[768px]:[&_h2]:[font-size:28px]!",
-  "newsletter-email": "[width:100%] [min-width:0] [height:45px] [padding-top:3px] [padding-right:25px] [padding-bottom:3px] [padding-left:25px] [border:0] [border-radius:8px] [background:#fff] [backdrop-filter:blur(30px)] [color:#0d5792]! [font-style:inherit] [font-variant:inherit] [font-weight:inherit]! [font-stretch:inherit]! [font-size:15px]! [line-height:1]! [font-family:inherit]! [font-feature-settings:inherit] [font-variation-settings:inherit]! [&::placeholder]:[color:#0d5792]! [&::placeholder]:[opacity:1] [&:focus-visible]:[outline:2px_solid_#005eff] [&:focus-visible]:[outline-offset:3px] [.newsletter-section--scaled_&&]:[height:calc(45_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(15_*_var(--mail-unit))]!",
-  "newsletter-submit": "[height:45px] [padding-top:3px] [padding-right:25px] [padding-bottom:3px] [padding-left:25px] [border:0] [border-radius:8px] [background:#005eff] [color:#fff]! [font-style:inherit] [font-variant:inherit] [font-weight:inherit]! [font-stretch:inherit]! [font-size:15px]! [line-height:inherit]! [font-family:inherit]! [font-feature-settings:inherit] [font-variation-settings:inherit]! [cursor:pointer] [&:hover:not(:disabled)]:[background:#004bd1] [&:disabled]:[opacity:0.5] [&:disabled]:[cursor:not-allowed] [&:focus-visible]:[outline:2px_solid_#005eff] [&:focus-visible]:[outline-offset:3px] [.newsletter-section--scaled_&&]:[height:calc(45_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-top:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-right:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-bottom:calc(3_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[padding-left:calc(25_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(15_*_var(--mail-unit))]! [.newsletter-section--scaled_&&:disabled]:[opacity:1]",
-  "newsletter-consent": "[display:flex]! [align-items:flex-start] [gap:10px] [min-width:0] [color:#27272a]! [font-size:13px]! [line-height:1.15]! [cursor:pointer] [.newsletter-section--scaled_&&]:[align-items:center] [.newsletter-section--scaled_&&]:[gap:calc(10_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[font-size:calc(13_*_var(--mail-unit))]! [.newsletter-section--scaled_&&]:[line-height:1]! max-[1200px]:[grid-column:1_/_-1] max-[768px]:[.newsletter-section--scaled_&&]:[align-items:flex-start] max-[768px]:[.newsletter-section--scaled_&&]:[font-size:13px]! max-[768px]:[.newsletter-section--scaled_&&]:[line-height:1.3]! max-[768px]:[font-size:13px]! max-[768px]:[line-height:1.3]!",
-  "newsletter-checkbox": "[position:relative] [flex:0_0_18px] [width:18px] [height:18px] [&_input]:[appearance:none] [&_input]:[display:block]! [&_input]:[width:18px] [&_input]:[height:18px] [&_input]:[margin-top:0] [&_input]:[margin-right:0] [&_input]:[margin-bottom:0] [&_input]:[margin-left:0] [&_input]:[border:1px_solid_#9eb7d0] [&_input]:[border-radius:4px] [&_input]:[background:#fff] [&_input]:[cursor:pointer] [&_input:checked]:[background:#005eff] [&_input:checked]:[border-color:#005eff] [&_input:hover]:[border-color:#005eff] [&_input:focus-visible]:[outline:2px_solid_#005eff] [&_input:focus-visible]:[outline-offset:3px] [&_svg]:[display:none]! [&_svg]:[position:absolute] [&_svg]:[top:2px] [&_svg]:[right:2px] [&_svg]:[bottom:2px] [&_svg]:[left:2px] [&_svg]:[width:14px] [&_svg]:[height:14px] [&_svg]:[color:#fff]! [&_svg]:[pointer-events:none] [&_input:checked_+_svg]:[display:block]! [.newsletter-section--scaled_&&]:[flex-basis:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[width:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&]:[height:calc(18_*_var(--mail-unit))] [.newsletter-section--scaled_&&_input]:[width:100%] [.newsletter-section--scaled_&&_input]:[height:100%] [.newsletter-section--scaled_&&_input]:[border-radius:calc(4_*_var(--mail-unit))] [.newsletter-section--scaled_&&_svg]:[top:12%] [.newsletter-section--scaled_&&_svg]:[right:12%] [.newsletter-section--scaled_&&_svg]:[bottom:12%] [.newsletter-section--scaled_&&_svg]:[left:12%] [.newsletter-section--scaled_&&_svg]:[width:76%] [.newsletter-section--scaled_&&_svg]:[height:76%]",
-  "newsletter-feedback": "[position:absolute] [top:100%] [left:26px] [right:26px] [margin-top:10px] [color:#0d5792]! [font-size:13px]! [line-height:1.3]! [&[data-error='true']]:[color:#9b3131]! max-[768px]:[left:0] max-[768px]:[right:0]",
-  "newsletter-section--scaled": "[&&]:[--mail-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [&&]:[max-width:calc(1200_*_var(--mail-unit))] [margin-top:0] max-[1200px]:[&&]:[--mail-unit:1px]"
-};
-const twNewsletterSubscriptionPriority: Record<string, number> = {"[position:relative]":84,"[width:100%]":24,"[max-width:1200px]":3,"[margin-top:calc(60_*_var(--newsletter-spacing-unit,_var(--standard-unit,_1px)))]":4,"[margin-right:auto]":5,"[margin-bottom:0]":6,"[margin-left:auto]":7,"[letter-spacing:0]":8,"[display:grid]!":9,"[grid-template-columns:212px_308px_135px_minmax(0,_1fr)]":10,"[align-items:center]":11,"[gap:29px]":12,"[min-height:76px]":13,"[padding-top:8px]":14,"[padding-right:26px]":15,"[padding-bottom:8px]":16,"[padding-left:26px]":17,"[border-radius:8px]":55,"[background:#f7f7f7]":19,"[&_h2]:[font-size:30px]!":20,"[&_h2]:[font-weight:410]!":21,"[&_h2]:[line-height:1]!":22,"[&_h2]:[color:#0d5792]!":23,"[min-width:0]":79,"[height:45px]":49,"[padding-top:3px]":50,"[padding-right:25px]":51,"[padding-bottom:3px]":52,"[padding-left:25px]":53,"[border:0]":54,"[background:#fff]":33,"[backdrop-filter:blur(30px)]":34,"[color:#0d5792]!":121,"[font-style:inherit]":58,"[font-variant:inherit]":59,"[font-weight:inherit]!":60,"[font-stretch:inherit]!":61,"[font-size:inherit]!":62,"[line-height:inherit]!":63,"[font-family:inherit]!":64,"[font-feature-settings:inherit]":65,"[font-variation-settings:inherit]!":66,"[font-size:15px]!":67,"[line-height:1]!":46,"[&::placeholder]:[color:#0d5792]!":47,"[&::placeholder]:[opacity:1]":48,"[background:#005eff]":56,"[color:#fff]!":57,"[cursor:pointer]":83,"[&:hover:not(:disabled)]:[background:#004bd1]":69,"[&:disabled]:[opacity:0.5]":70,"[&:disabled]:[cursor:not-allowed]":71,"[&:focus-visible]:[outline:2px_solid_#005eff]":74,"[&:focus-visible]:[outline-offset:3px]":75,"[display:flex]!":76,"[align-items:flex-start]":77,"[gap:10px]":78,"[color:#27272a]!":80,"[font-size:13px]!":122,"[line-height:1.15]!":82,"[flex:0_0_18px]":85,"[width:18px]":86,"[height:18px]":87,"[&_input]:[appearance:none]":88,"[&_input]:[display:block]!":89,"[&_input]:[width:18px]":90,"[&_input]:[height:18px]":91,"[&_input]:[margin-top:0]":92,"[&_input]:[margin-right:0]":93,"[&_input]:[margin-bottom:0]":94,"[&_input]:[margin-left:0]":95,"[&_input]:[border:1px_solid_#9eb7d0]":96,"[&_input]:[border-radius:4px]":97,"[&_input]:[background:#fff]":98,"[&_input]:[cursor:pointer]":99,"[&_input:checked]:[background:#005eff]":100,"[&_input:checked]:[border-color:#005eff]":101,"[&_input:hover]:[border-color:#005eff]":102,"[&_input:focus-visible]:[outline:2px_solid_#005eff]":103,"[&_input:focus-visible]:[outline-offset:3px]":104,"[&_svg]:[display:none]!":105,"[&_svg]:[position:absolute]":106,"[&_svg]:[top:2px]":107,"[&_svg]:[right:2px]":108,"[&_svg]:[bottom:2px]":109,"[&_svg]:[left:2px]":110,"[&_svg]:[width:14px]":111,"[&_svg]:[height:14px]":112,"[&_svg]:[color:#fff]!":113,"[&_svg]:[pointer-events:none]":114,"[&_input:checked_+_svg]:[display:block]!":115,"[position:absolute]":116,"[top:100%]":117,"[left:26px]":118,"[right:26px]":119,"[margin-top:10px]":120,"[line-height:1.3]!":123,"[&[data-error='true']]:[color:#9b3131]!":124,"[&&]:[--mail-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)]":125,"[&&]:[max-width:calc(1200_*_var(--mail-unit))]":126,"[margin-top:0]":127,"[.newsletter-section--scaled_&&]:[grid-template-columns:calc(212_*_var(--mail-unit))_calc(308_*_var(--mail-unit))_calc(135_*_var(--mail-unit))_minmax(0,_1fr)]":128,"[.newsletter-section--scaled_&&]:[gap:calc(29_*_var(--mail-unit))]":129,"[.newsletter-section--scaled_&&]:[min-height:calc(76_*_var(--mail-unit))]":130,"[.newsletter-section--scaled_&&]:[padding-top:calc(8_*_var(--mail-unit))]":131,"[.newsletter-section--scaled_&&]:[padding-right:calc(26_*_var(--mail-unit))]":132,"[.newsletter-section--scaled_&&]:[padding-bottom:calc(8_*_var(--mail-unit))]":133,"[.newsletter-section--scaled_&&]:[padding-left:calc(26_*_var(--mail-unit))]":134,"[.newsletter-section--scaled_&&]:[border-radius:calc(8_*_var(--mail-unit))]":149,"[.newsletter-section--scaled_&&_h2]:[font-size:calc(30_*_var(--mail-unit))]!":136,"[.newsletter-section--scaled_&&]:[height:calc(45_*_var(--mail-unit))]":144,"[.newsletter-section--scaled_&&]:[padding-top:calc(3_*_var(--mail-unit))]":145,"[.newsletter-section--scaled_&&]:[padding-right:calc(25_*_var(--mail-unit))]":146,"[.newsletter-section--scaled_&&]:[padding-bottom:calc(3_*_var(--mail-unit))]":147,"[.newsletter-section--scaled_&&]:[padding-left:calc(25_*_var(--mail-unit))]":148,"[.newsletter-section--scaled_&&]:[font-size:calc(15_*_var(--mail-unit))]!":150,"[.newsletter-section--scaled_&&:disabled]:[opacity:1]":151,"[.newsletter-section--scaled_&&]:[align-items:center]":152,"[.newsletter-section--scaled_&&]:[gap:calc(10_*_var(--mail-unit))]":153,"[.newsletter-section--scaled_&&]:[font-size:calc(13_*_var(--mail-unit))]!":154,"[.newsletter-section--scaled_&&]:[line-height:1]!":155,"[.newsletter-section--scaled_&&]:[flex-basis:calc(18_*_var(--mail-unit))]":156,"[.newsletter-section--scaled_&&]:[width:calc(18_*_var(--mail-unit))]":157,"[.newsletter-section--scaled_&&]:[height:calc(18_*_var(--mail-unit))]":158,"[.newsletter-section--scaled_&&_input]:[width:100%]":159,"[.newsletter-section--scaled_&&_input]:[height:100%]":160,"[.newsletter-section--scaled_&&_input]:[border-radius:calc(4_*_var(--mail-unit))]":161,"[.newsletter-section--scaled_&&_svg]:[top:12%]":162,"[.newsletter-section--scaled_&&_svg]:[right:12%]":163,"[.newsletter-section--scaled_&&_svg]:[bottom:12%]":164,"[.newsletter-section--scaled_&&_svg]:[left:12%]":165,"[.newsletter-section--scaled_&&_svg]:[width:76%]":166,"[.newsletter-section--scaled_&&_svg]:[height:76%]":167,"max-[1200px]:[&&]:[--mail-unit:1px]":168,"max-[1200px]:[.newsletter-section--scaled_&&]:[grid-template-columns:212px_minmax(180px,_308px)_135px]":169,"max-[1200px]:[.newsletter-section--scaled_&&]:[gap:20px]":170,"max-[1200px]:[grid-template-columns:212px_minmax(180px,_308px)_135px]":171,"max-[1200px]:[gap:20px]":172,"max-[1200px]:[grid-column:1_/_-1]":173,"max-[768px]:[.newsletter-section--scaled_&&]:[grid-template-columns:1fr]":174,"max-[768px]:[.newsletter-section--scaled_&&]:[padding-top:24px]":175,"max-[768px]:[.newsletter-section--scaled_&&]:[padding-right:24px]":176,"max-[768px]:[.newsletter-section--scaled_&&]:[padding-bottom:24px]":177,"max-[768px]:[.newsletter-section--scaled_&&]:[padding-left:24px]":178,"max-[768px]:[.newsletter-section--scaled_&&_h2]:[font-size:28px]!":179,"max-[768px]:[.newsletter-section--scaled_&&]:[align-items:flex-start]":180,"max-[768px]:[.newsletter-section--scaled_&&]:[font-size:13px]!":181,"max-[768px]:[.newsletter-section--scaled_&&]:[line-height:1.3]!":182,"max-[768px]:[margin-top:40px]":183,"max-[768px]:[grid-template-columns:1fr]":184,"max-[768px]:[padding-top:24px]":185,"max-[768px]:[padding-right:24px]":186,"max-[768px]:[padding-bottom:24px]":187,"max-[768px]:[padding-left:24px]":188,"max-[768px]:[gap:20px]":189,"max-[768px]:[&_h2]:[font-size:28px]!":190,"max-[768px]:[font-size:13px]!":191,"max-[768px]:[line-height:1.3]!":192,"max-[768px]:[left:0]":193,"max-[768px]:[right:0]":194};
-function twNewsletterSubscription(value: string | undefined): string { const names = (value ?? "").split(/\s+/).filter(Boolean); const selected = new Map<string, string>(); for (const name of names) for (const token of (twNewsletterSubscriptionRules[name] ?? "").split(" ").filter(Boolean)) { const matches = [...token.matchAll(/\[([\w-]+):/g)]; const match = matches[matches.length - 1]; const key = match ? token.slice(0, match.index) + "|" + match[1] : token.replace(/animate-[\w-]+!?$/, "animation"); const old = selected.get(key); if (!old || (twNewsletterSubscriptionPriority[token] ?? 0) >= (twNewsletterSubscriptionPriority[old] ?? 0)) selected.set(key, token); } return [...names, ...selected.values()].join(" "); }

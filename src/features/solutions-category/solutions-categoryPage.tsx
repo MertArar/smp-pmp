@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import ViewAllButton from "@/components/ui/ViewAllButton";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
-import useScrollReveal from "@/components/ui/useScrollReveal";
 import useViewportVideo from "@/components/media/useViewportVideo";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   useEffect,
   useRef,
@@ -13,6 +13,45 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import { FiArrowDownRight, FiArrowLeft, FiArrowRight } from "react-icons/fi";
+type RevealDirection = "up" | "left" | "right";
+const revealEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+function reveal(
+  direction: RevealDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.18,
+) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : {
+          opacity: 0,
+          x: direction === "left" ? -34 : direction === "right" ? 34 : 0,
+          y: direction === "up" ? 32 : 0,
+          filter: "blur(5px)",
+        },
+    whileInView: { opacity: 1, x: 0, y: 0, filter: "blur(0px)" },
+    viewport: { once: false, amount, margin: "0px 0px -10% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.92,
+      delay: reduced ? 0 : delay,
+      ease: revealEase,
+    },
+  };
+}
+function heroEnter(reduced: boolean, delay = 0) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : { opacity: 0, y: 26, filter: "blur(7px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 1.02,
+      delay: reduced ? 0 : delay,
+      ease: revealEase,
+    },
+  };
+}
 
 const categoryDescription =
   "Developing sustainable solutions and creating integrated systems is our area of expertise.";
@@ -156,9 +195,19 @@ function CategorySubLink({ link }: { link: CategoryLink }) {
     </button>
   );
 }
-function SolutionCategoryCard({ category }: { category: SolutionCategory }) {
+function SolutionCategoryCard({
+  category,
+  index,
+}: {
+  category: SolutionCategory;
+  index: number;
+}) {
+  const reduced = useReducedMotion() ?? false;
   return (
-    <section
+    <motion.section
+      {...(index === 0
+        ? heroEnter(reduced, 0.12)
+        : reveal("up", 0.04, reduced, 0.15))}
       className="solution-category-card [.solutions-category-page_&]:[position:relative] [.solutions-category-page_&]:[isolation:isolate] [.solutions-category-page_&]:[overflow:hidden] [.solutions-category-page_&]:[min-height:calc(490_*_var(--category-unit))] [.solutions-category-page_&]:[border:0.5px_solid_#ffffffb3] [.solutions-category-page_&]:[border-radius:calc(30_*_var(--category-unit))] [.solutions-category-page_&]:[background:#f7f7f7] [.solutions-category-page_&]:[box-shadow:0_calc(15_*_var(--category-unit))_calc(40_*_var(--category-unit))_#005eff0d]"
       aria-labelledby={`category-title-${category.id}`}
     >
@@ -169,12 +218,23 @@ function SolutionCategoryCard({ category }: { category: SolutionCategory }) {
       />
       <div className="category-card-content [.solutions-category-page_&]:[display:flex]! [.solutions-category-page_&]:[flex-direction:column] [.solutions-category-page_&]:[justify-content:space-between] [.solutions-category-page_&]:[gap:calc(50_*_var(--category-unit))] [.solutions-category-page_&]:[min-height:calc(490_*_var(--category-unit))] [.solutions-category-page_&]:[padding-top:calc(70_*_var(--category-unit))] [.solutions-category-page_&]:[padding-right:calc(67_*_var(--category-unit))] [.solutions-category-page_&]:[padding-bottom:calc(85_*_var(--category-unit))] [.solutions-category-page_&]:[padding-left:calc(67_*_var(--category-unit))] max-xl:[.solutions-category-page_&]:[padding-left:40px] max-xl:[.solutions-category-page_&]:[padding-right:40px] max-md:[.solutions-category-page_&]:[min-height:580px] max-md:[.solutions-category-page_&]:[padding-top:40px] max-md:[.solutions-category-page_&]:[padding-right:24px] max-md:[.solutions-category-page_&]:[padding-bottom:32px] max-md:[.solutions-category-page_&]:[padding-left:24px] max-md:[.solutions-category-page_&]:[justify-content:flex-start] max-md:[.solutions-category-page_&]:[gap:0]">
         <div className="category-card-copy [.solutions-category-page_&]:[max-width:calc(400_*_var(--category-unit))] [.solutions-category-page_&_h2]:[margin-top:0] [.solutions-category-page_&_h2]:[margin-right:0] [.solutions-category-page_&_h2]:[margin-bottom:0] [.solutions-category-page_&_h2]:[margin-left:0] [.solutions-category-page_&_h2]:[font-size:calc(25_*_var(--category-unit))]! [.solutions-category-page_&_h2]:[font-weight:540]! [.solutions-category-page_&_h2]:[font-variation-settings:'wght'_540,_'wdth'_125]! [.solutions-category-page_&_h2]:[line-height:1.12]! [.solutions-category-page_&_h2]:[letter-spacing:0] [.solutions-category-page_&_h2]:[color:transparent]! [.solutions-category-page_&_h2]:[background-image:linear-gradient(90deg,_#005eff,_#001ea2)] [.solutions-category-page_&_h2]:[background-clip:text] [.solutions-category-page_&_h2]:[-webkit-background-clip:text] [.solutions-category-page_&_h2_span]:[display:block]! [.solutions-category-page_&_p]:[width:calc(346_*_var(--category-unit))] [.solutions-category-page_&_p]:[max-width:100%] [.solutions-category-page_&_p]:[margin-top:calc(26_*_var(--category-unit))] [.solutions-category-page_&_p]:[margin-right:0] [.solutions-category-page_&_p]:[margin-bottom:0] [.solutions-category-page_&_p]:[margin-left:0] [.solutions-category-page_&_p]:[color:#000]! [.solutions-category-page_&_p]:[font-size:calc(15_*_var(--category-unit))]! [.solutions-category-page_&_p]:[line-height:1]! [.solutions-category-page_&_p]:[letter-spacing:-0.04em] max-md:[.solutions-category-page_&_h2]:[font-size:clamp(20px,_6.4vw,_25px)]! max-md:[.solutions-category-page_&_p]:[margin-top:14px] max-md:[.solutions-category-page_&_p]:[line-height:1.07]!">
-          <h2 id={`category-title-${category.id}`}>
+          <motion.h2
+            id={`category-title-${category.id}`}
+            {...(index === 0
+              ? heroEnter(reduced, 0.44)
+              : reveal("left", 0.09, reduced, 0.22))}
+          >
             {category.title.map((line) => (
               <span key={line}>{line}</span>
             ))}
-          </h2>
-          <p>{categoryDescription}</p>
+          </motion.h2>
+          <motion.p
+            {...(index === 0
+              ? heroEnter(reduced, 0.61)
+              : reveal("up", 0.17, reduced, 0.18))}
+          >
+            {categoryDescription}
+          </motion.p>
         </div>
         <CategoryViewAll
           href={category.href}
@@ -188,7 +248,7 @@ function SolutionCategoryCard({ category }: { category: SolutionCategory }) {
           </div>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }
 // One verified thumbnail is currently available; repeats are preview items.
@@ -198,6 +258,7 @@ const relatedProducts = Array.from({ length: 20 }, (_, index) => ({
   alt: "Sempa pump",
 }));
 function RelatedProductsCarousel() {
+  const reduced = useReducedMotion() ?? false;
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLOListElement>(null);
@@ -286,17 +347,20 @@ function RelatedProductsCarousel() {
       aria-labelledby="category-related-title"
     >
       <div className="category-related-header [.solutions-category-page_&]:[display:grid]! [.solutions-category-page_&]:[grid-template-columns:minmax(0,_539fr)_minmax(0,_601fr)_auto] [.solutions-category-page_&]:[align-items:center] [.solutions-category-page_&]:[gap:calc(35_*_var(--category-unit))] [.solutions-category-page_&_h2]:[margin-top:0] [.solutions-category-page_&_h2]:[margin-right:0] [.solutions-category-page_&_h2]:[margin-bottom:0] [.solutions-category-page_&_h2]:[margin-left:0] [.solutions-category-page_&_h2]:[font-size:calc(50_*_var(--category-unit))]! [.solutions-category-page_&_h2]:[font-weight:410]! [.solutions-category-page_&_h2]:[line-height:1]! [.solutions-category-page_&_h2]:[color:#0d5792]! [.solutions-category-page_&_>_p]:[margin-top:0] [.solutions-category-page_&_>_p]:[margin-right:0] [.solutions-category-page_&_>_p]:[margin-bottom:0] [.solutions-category-page_&_>_p]:[margin-left:0] [.solutions-category-page_&_>_p]:[font-size:calc(15_*_var(--category-unit))]! [.solutions-category-page_&_>_p]:[line-height:1]! [.solutions-category-page_&_>_p]:[color:#1d2049]! max-xl:[.solutions-category-page_&]:[grid-template-columns:minmax(0,_1fr)_minmax(0,_1.2fr)] max-xl:[.solutions-category-page_&]:[gap:28px] max-xl:[.solutions-category-page_&_h2]:[font-size:clamp(32px,_4vw,_50px)]! max-xl:[.solutions-category-page_&_>_p]:[line-height:1.2]! max-md:[.solutions-category-page_&]:[grid-template-columns:1fr] max-md:[.solutions-category-page_&]:[gap:24px] max-md:[.solutions-category-page_&]:[padding-left:24px] max-md:[.solutions-category-page_&]:[padding-right:24px] max-md:[.solutions-category-page_&_h2]:[font-size:clamp(30px,_8vw,_42px)]! max-md:[.solutions-category-page_&_>_p]:[line-height:1.1]! max-md:[.solutions-category-page_&_>_p]:[text-align:justify]">
-        <h2 id="category-related-title">
+        <motion.h2
+          id="category-related-title"
+          {...reveal("left", 0.03, reduced, 0.22)}
+        >
           Related Other
           <br />
           Products
-        </h2>
-        <p>
+        </motion.h2>
+        <motion.p {...reveal("right", 0.12, reduced, 0.22)}>
           Discover the most efficient pumping solution in seconds. Simply enter
           your technical parameters such as flow rate, pressure, and fluid type,
           and let our advanced configurator select the ideal Sempa pump for your
           specific industry needs.
-        </p>
+        </motion.p>
         <div className="category-product-navigation [.solutions-category-page_&]:[display:flex]! [.solutions-category-page_&]:[gap:calc(16_*_var(--category-unit))] [.solutions-category-page_&_button]:[display:grid]! [.solutions-category-page_&_button]:[place-items:center] [.solutions-category-page_&_button]:[width:max(32px,_calc(32_*_var(--category-unit)))] [.solutions-category-page_&_button]:[height:max(32px,_calc(32_*_var(--category-unit)))] [.solutions-category-page_&_button]:[padding-top:0] [.solutions-category-page_&_button]:[padding-right:0] [.solutions-category-page_&_button]:[padding-bottom:0] [.solutions-category-page_&_button]:[padding-left:0] [.solutions-category-page_&_button]:[border:0] [.solutions-category-page_&_button]:[background:transparent] [.solutions-category-page_&_button]:[color:#9eb7d0]! [.solutions-category-page_&_button]:[cursor:pointer] [.solutions-category-page_&_button:hover:not(:disabled)]:[color:#0d5792]! [.solutions-category-page_&_button:disabled]:[opacity:.35] [.solutions-category-page_&_button:disabled]:[cursor:default] [.solutions-category-page_&_svg]:[width:75%] [.solutions-category-page_&_svg]:[height:75%] max-xl:[.solutions-category-page_&]:[grid-column:1_/_-1] max-xl:[.solutions-category-page_&]:[justify-content:center] max-xl:[.solutions-category-page_&]:[margin-top:16px] max-md:[.solutions-category-page_&]:[margin-top:20px] max-md:[.solutions-category-page_&]:[gap:20px] max-md:[.solutions-category-page_&_button]:[width:44px] max-md:[.solutions-category-page_&_button]:[height:44px] max-md:[.solutions-category-page_&_svg]:[width:70%] max-md:[.solutions-category-page_&_svg]:[height:70%]">
           <button
             type="button"
@@ -349,8 +413,9 @@ function RelatedProductsCarousel() {
           className="category-product-track [.solutions-category-page_&]:[display:flex]! [.solutions-category-page_&]:[gap:calc(14_*_var(--category-unit))] [.solutions-category-page_&]:[margin-top:0] [.solutions-category-page_&]:[margin-right:0] [.solutions-category-page_&]:[margin-bottom:0] [.solutions-category-page_&]:[margin-left:0] [.solutions-category-page_&]:[padding-top:0] [.solutions-category-page_&]:[padding-right:0] [.solutions-category-page_&]:[padding-bottom:0] [.solutions-category-page_&]:[padding-left:0] [.solutions-category-page_&]:[list-style:none] [.solutions-category-page_&]:[transition:transform_450ms_ease-in-out]"
           style={{ transform: `translateX(${-position.offset}px)` }}
         >
-          {relatedProducts.map((product) => (
-            <li
+          {relatedProducts.map((product, index) => (
+            <motion.li
+              {...reveal("up", Math.min(index, 5) * 0.04, reduced, 0.12)}
               key={product.id}
               className="category-product-card [.solutions-category-page_&]:[position:relative] [.solutions-category-page_&]:[flex:0_0_calc(136_*_var(--category-unit))] [.solutions-category-page_&]:[height:calc(136_*_var(--category-unit))] [.solutions-category-page_&]:[border-radius:calc(20_*_var(--category-unit))] [.solutions-category-page_&]:[overflow:hidden] [.solutions-category-page_&]:[background:#fff] [.solutions-category-page_&_img]:[object-fit:contain] [.solutions-category-page_&_img]:[padding-top:calc(10_*_var(--category-unit))] [.solutions-category-page_&_img]:[padding-right:calc(10_*_var(--category-unit))] [.solutions-category-page_&_img]:[padding-bottom:calc(10_*_var(--category-unit))] [.solutions-category-page_&_img]:[padding-left:calc(10_*_var(--category-unit))]"
             >
@@ -361,7 +426,7 @@ function RelatedProductsCarousel() {
                 sizes="(min-width: 1280px) 10vw, 136px"
                 draggable={false}
               />
-            </li>
+            </motion.li>
           ))}
         </ol>
         <div
@@ -385,12 +450,9 @@ function RelatedProductsCarousel() {
   );
 }
 export default function SolutionsCategoryPage() {
-  const pageRef = useScrollReveal(
-    ".category-card-copy, .category-view-all, .category-sub-links, .category-related-header, .category-product-viewport, [data-category-newsletter]",
-  );
+  const reduced = useReducedMotion() ?? false;
   return (
     <main
-      ref={pageRef}
       data-header-underlay
       className="-mt-[var(--site-header-height,97px)] solutions-category-page overflow-x-clip font-sans [--category-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [width:100%] [padding-top:calc(80_*_var(--category-unit))] [padding-right:24px] [padding-bottom:calc(110_*_var(--category-unit))] [padding-left:24px] [background:linear-gradient(180deg,_#fff_0%,_#ffffff00_30%),_radial-gradient(ellipse_at_8%_85%,_#d1e7ff99,_transparent_65%),_radial-gradient(ellipse_at_60%_35%,_#e3f1ff66,_transparent_65%),_linear-gradient(110deg,_#f0f7ff,_#fff_75%)] [&_button:focus-visible]:[outline:2px_solid_#005eff] [&_button:focus-visible]:[outline-offset:3px] [&_a:focus-visible]:[outline:2px_solid_#005eff] [&_a:focus-visible]:[outline-offset:3px] max-xl:[--category-unit:1px] max-xl:[padding-top:64px] max-xl:[padding-bottom:80px] max-md:[padding-top:48px] max-md:[padding-right:10px] max-md:[padding-bottom:80px] max-md:[padding-left:10px] motion-reduce:[&_*]:[transition:none]! [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]"
     >
@@ -401,14 +463,21 @@ export default function SolutionsCategoryPage() {
       />
       <div className="solutions-category-inner [.solutions-category-page_&]:[width:100%] [.solutions-category-page_&]:[max-width:calc(1200_*_var(--category-unit))] [.solutions-category-page_&]:[margin-left:auto] [.solutions-category-page_&]:[margin-right:auto]">
         <div className="solutions-category-cards [.solutions-category-page_&]:[display:grid]! [.solutions-category-page_&]:[gap:calc(45_*_var(--category-unit))]">
-          {solutionCategories.map((category) => (
-            <SolutionCategoryCard key={category.id} category={category} />
+          {solutionCategories.map((category, index) => (
+            <SolutionCategoryCard
+              key={category.id}
+              category={category}
+              index={index}
+            />
           ))}
         </div>
         <RelatedProductsCarousel />
-        <div data-category-newsletter>
+        <motion.div
+          data-category-newsletter
+          {...reveal("up", 0.05, reduced, 0.12)}
+        >
           <NewsletterSubscription scaled requireValidInput />
-        </div>
+        </motion.div>
       </div>
     </main>
   );

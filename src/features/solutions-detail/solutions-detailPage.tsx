@@ -1,9 +1,9 @@
 "use client";
 import Image from "next/image";
 import SendButton from "@/components/ui/SendButton";
-import useScrollReveal from "@/components/ui/useScrollReveal";
 import NewsletterSubscription from "@/components/newsletter/NewsletterSubscription";
 import useRepeatingTitle from "@/components/ui/useRepeatingTitle";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   useCallback,
   useEffect,
@@ -26,6 +26,46 @@ import {
   FiUpload,
   FiX,
 } from "react-icons/fi";
+
+type RevealDirection = "up" | "left" | "right";
+const revealEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+function reveal(
+  direction: RevealDirection = "up",
+  delay = 0,
+  reduced = false,
+  amount = 0.17,
+) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : {
+          opacity: 0,
+          x: direction === "left" ? -34 : direction === "right" ? 34 : 0,
+          y: direction === "up" ? 34 : 0,
+          filter: "blur(5px)",
+        },
+    whileInView: { opacity: 1, x: 0, y: 0, filter: "blur(0px)" },
+    viewport: { once: false, amount, margin: "0px 0px -10% 0px" },
+    transition: {
+      duration: reduced ? 0 : 0.92,
+      delay: reduced ? 0 : delay,
+      ease: revealEase,
+    },
+  };
+}
+function heroEnter(reduced: boolean, delay = 0, y = 24) {
+  return {
+    initial: reduced
+      ? (false as const)
+      : { opacity: 0, y, filter: "blur(7px)" },
+    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+    transition: {
+      duration: reduced ? 0 : 1.02,
+      delay: reduced ? 0 : delay,
+      ease: revealEase,
+    },
+  };
+}
 const INDUSTRY_HERO_IMAGE = "/solutions-detail/solutions-detail%20hero.webp";
 
 type IndustryHotspotData = {
@@ -324,6 +364,7 @@ function IndustryPopup({
   );
 }
 function SolutionDetailsHero() {
+  const reduced = useReducedMotion() ?? false;
   const flowTitle = useRepeatingTitle(2700);
   const [imageUnavailable, setImageUnavailable] = useState(false);
   const [activeHotspot, setActiveHotspot] =
@@ -346,7 +387,10 @@ function SolutionDetailsHero() {
         aria-hidden="true"
         className="h-[var(--site-header-height,97px)] shrink-0"
       />
-      <div className="industry-hero-heading [.solutions-detail-page_&]:[text-align:center] [.solutions-detail-page_&_h1]:[margin-top:0] [.solutions-detail-page_&_h1]:[margin-right:0] [.solutions-detail-page_&_h1]:[margin-bottom:0] [.solutions-detail-page_&_h1]:[margin-left:0] [.solutions-detail-page_&_h1]:[font-size:calc(50_*_var(--industry-unit))]! [.solutions-detail-page_&_h1]:[font-weight:410]! [.solutions-detail-page_&_h1]:[line-height:1]! [.solutions-detail-page_&_h1]:[color:#0d5792]! [.solutions-detail-page_&_>_p]:[width:calc(690_*_var(--industry-unit))] [.solutions-detail-page_&_>_p]:[max-width:100%] [.solutions-detail-page_&_>_p]:[margin-top:calc(36_*_var(--industry-unit))] [.solutions-detail-page_&_>_p]:[margin-right:auto] [.solutions-detail-page_&_>_p]:[margin-bottom:0] [.solutions-detail-page_&_>_p]:[margin-left:auto] [.solutions-detail-page_&_>_p]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&_>_p]:[line-height:1]! [.solutions-detail-page_&_>_p]:[color:#27272a]! max-xl:[.solutions-detail-page_&_h1]:[font-size:clamp(30px,_4.1vw,_50px)]! max-xl:[.solutions-detail-page_&_>_p]:[line-height:1.2]! max-md:[.solutions-detail-page_&_h1]:[font-size:clamp(27px,_7.5vw,_40px)]! max-md:[.solutions-detail-page_&_h1]:[line-height:1.1]!">
+      <motion.div
+        {...heroEnter(reduced, 0.1)}
+        className="industry-hero-heading [.solutions-detail-page_&]:[text-align:center] [.solutions-detail-page_&_h1]:[margin-top:0] [.solutions-detail-page_&_h1]:[margin-right:0] [.solutions-detail-page_&_h1]:[margin-bottom:0] [.solutions-detail-page_&_h1]:[margin-left:0] [.solutions-detail-page_&_h1]:[font-size:calc(50_*_var(--industry-unit))]! [.solutions-detail-page_&_h1]:[font-weight:410]! [.solutions-detail-page_&_h1]:[line-height:1]! [.solutions-detail-page_&_h1]:[color:#0d5792]! [.solutions-detail-page_&_>_p]:[width:calc(690_*_var(--industry-unit))] [.solutions-detail-page_&_>_p]:[max-width:100%] [.solutions-detail-page_&_>_p]:[margin-top:calc(36_*_var(--industry-unit))] [.solutions-detail-page_&_>_p]:[margin-right:auto] [.solutions-detail-page_&_>_p]:[margin-bottom:0] [.solutions-detail-page_&_>_p]:[margin-left:auto] [.solutions-detail-page_&_>_p]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&_>_p]:[line-height:1]! [.solutions-detail-page_&_>_p]:[color:#27272a]! max-xl:[.solutions-detail-page_&_h1]:[font-size:clamp(30px,_4.1vw,_50px)]! max-xl:[.solutions-detail-page_&_>_p]:[line-height:1.2]! max-md:[.solutions-detail-page_&_h1]:[font-size:clamp(27px,_7.5vw,_40px)]! max-md:[.solutions-detail-page_&_h1]:[line-height:1.1]!"
+      >
         <h1
           ref={flowTitle}
           id="industry-page-title"
@@ -417,8 +461,11 @@ function SolutionDetailsHero() {
           steel production, artificial snowmaking, and various industrial
           sectors.
         </p>
-      </div>
-      <div className="industry-illustration [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[width:100%] [.solutions-detail-page_&]:[max-width:calc(1440_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-top:calc(40_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-right:auto] [.solutions-detail-page_&]:[margin-bottom:0] [.solutions-detail-page_&]:[margin-left:auto]">
+      </motion.div>
+      <motion.div
+        {...heroEnter(reduced, 0.43, 30)}
+        className="industry-illustration [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[width:100%] [.solutions-detail-page_&]:[max-width:calc(1440_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-top:calc(40_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-right:auto] [.solutions-detail-page_&]:[margin-bottom:0] [.solutions-detail-page_&]:[margin-left:auto]"
+      >
         <div className="industry-artwork [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[width:100%] [.solutions-detail-page_&]:[aspect-ratio:1376_/_768] [.solutions-detail-page_&::before]:[content:''] [.solutions-detail-page_&::before]:[position:absolute] [.solutions-detail-page_&::before]:[top:0] [.solutions-detail-page_&::before]:[right:0] [.solutions-detail-page_&::before]:[bottom:0] [.solutions-detail-page_&::before]:[left:0] [.solutions-detail-page_&::before]:[background:radial-gradient(ellipse_at_50%_52%,_#e6f1fa35,_transparent_72%)] [.solutions-detail-page_&::before]:[pointer-events:none]">
           {!imageUnavailable ? (
             <Image
@@ -458,7 +505,7 @@ function SolutionDetailsHero() {
             onClose={closePopup}
           />
         )}
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -554,6 +601,7 @@ export function IndustryCarousel({
 }: {
   items?: IndustryItem[];
 }) {
+  const reduced = useReducedMotion() ?? false;
   const [selectedIndex, setSelectedIndex] = useState(() =>
     Math.min(2, Math.max(0, items.length - 1)),
   );
@@ -728,7 +776,8 @@ export function IndustryCarousel({
       (current) => current + getIndustryRotation(current, index, items.length),
     );
   return (
-    <section
+    <motion.section
+      {...reveal("up", 0.04, reduced, 0.13)}
       className="industry-carousel-section [.solutions-detail-page_&]:[padding-top:calc(90_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-right:24px] [.solutions-detail-page_&]:[padding-bottom:calc(100_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-left:24px] max-md:[.solutions-detail-page_&]:[padding-left:20px] max-md:[.solutions-detail-page_&]:[padding-right:20px]"
       aria-label="Specialized industry solutions"
     >
@@ -789,14 +838,18 @@ export function IndustryCarousel({
       <p className="sr-only" role="status" aria-live="polite">
         {items[activeIndex]?.title}
       </p>
-    </section>
+    </motion.section>
   );
 }
 const CONSULTATION_BANNER_IMAGE =
   "/solutions-detail/solutions-detail-request-engineering.webp";
 function EngineeringConsultationBanner() {
+  const reduced = useReducedMotion() ?? false;
   return (
-    <div className="consultation-banner [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[isolation:isolate] [.solutions-detail-page_&]:[overflow:hidden] [.solutions-detail-page_&]:[min-height:calc(401_*_var(--industry-unit))] [.solutions-detail-page_&]:[border-radius:calc(30_*_var(--industry-unit))] [.solutions-detail-page_&]:[background:linear-gradient(110deg,_#0657ce_0%,_#006eff_46%,_#051a44_100%)] max-md:[.solutions-detail-page_&]:[display:flex]! max-md:[.solutions-detail-page_&]:[flex-direction:column] max-md:[.solutions-detail-page_&]:[min-height:0]">
+    <motion.div
+      {...reveal("up", 0.03, reduced, 0.16)}
+      className="consultation-banner [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[isolation:isolate] [.solutions-detail-page_&]:[overflow:hidden] [.solutions-detail-page_&]:[min-height:calc(401_*_var(--industry-unit))] [.solutions-detail-page_&]:[border-radius:calc(30_*_var(--industry-unit))] [.solutions-detail-page_&]:[background:linear-gradient(110deg,_#0657ce_0%,_#006eff_46%,_#051a44_100%)] max-md:[.solutions-detail-page_&]:[display:flex]! max-md:[.solutions-detail-page_&]:[flex-direction:column] max-md:[.solutions-detail-page_&]:[min-height:0]"
+    >
       {CONSULTATION_BANNER_IMAGE && (
         <Image
           src={CONSULTATION_BANNER_IMAGE}
@@ -835,7 +888,7 @@ function EngineeringConsultationBanner() {
           system.
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 type ConsultationValues = {
@@ -1048,6 +1101,7 @@ function TechnicalDocumentUpload({
   );
 }
 function EngineeringConsultationForm() {
+  const reduced = useReducedMotion() ?? false;
   const [values, setValues] = useState<ConsultationValues>({
     fullName: "",
     company: "",
@@ -1078,7 +1132,7 @@ function EngineeringConsultationForm() {
       noValidate
       onSubmit={submitPreview}
     >
-      <fieldset>
+      <motion.fieldset {...reveal("up", 0.03, reduced, 0.13)}>
         <legend>Contact Information</legend>
         <div className="consultation-input-grid [.solutions-detail-page_&]:[display:grid]! [.solutions-detail-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] [.solutions-detail-page_&]:[gap:calc(23_*_var(--industry-unit))_calc(37_*_var(--industry-unit))] max-md:[.solutions-detail-page_&]:[grid-template-columns:1fr] max-md:[.solutions-detail-page_&]:[gap:10px]">
           {contactFields.map((field) => (
@@ -1090,8 +1144,8 @@ function EngineeringConsultationForm() {
             />
           ))}
         </div>
-      </fieldset>
-      <fieldset>
+      </motion.fieldset>
+      <motion.fieldset {...reveal("up", 0.05, reduced, 0.13)}>
         <legend>Project Specifications</legend>
         <div className="consultation-input-grid [.solutions-detail-page_&]:[display:grid]! [.solutions-detail-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] [.solutions-detail-page_&]:[gap:calc(23_*_var(--industry-unit))_calc(37_*_var(--industry-unit))] max-md:[.solutions-detail-page_&]:[grid-template-columns:1fr] max-md:[.solutions-detail-page_&]:[gap:10px]">
           {specificationFields.map((field) => (
@@ -1103,8 +1157,8 @@ function EngineeringConsultationForm() {
             />
           ))}
         </div>
-      </fieldset>
-      <fieldset>
+      </motion.fieldset>
+      <motion.fieldset {...reveal("up", 0.07, reduced, 0.13)}>
         <legend>Details &amp; Attachments</legend>
         <div className="consultation-details-grid [.solutions-detail-page_&]:[display:grid]! [.solutions-detail-page_&]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] [.solutions-detail-page_&]:[gap:calc(23_*_var(--industry-unit))_calc(37_*_var(--industry-unit))] max-md:[.solutions-detail-page_&]:[grid-template-columns:1fr] max-md:[.solutions-detail-page_&]:[gap:10px]">
           <div className="consultation-field [.solutions-detail-page_&]:[min-width:0] [.solutions-detail-page_&_input]:[display:block]! [.solutions-detail-page_&_input]:[width:100%] [.solutions-detail-page_&_input]:[height:calc(45_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[min-height:44px] [.solutions-detail-page_&_input]:[padding-top:calc(12_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[padding-right:calc(37_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[padding-bottom:calc(12_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[padding-left:calc(37_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[border:1px_solid_transparent] [.solutions-detail-page_&_input]:[border-radius:calc(8_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[background:#f7f7f7] [.solutions-detail-page_&_input]:[color:#334155]! [.solutions-detail-page_&_input]:[font-style:inherit] [.solutions-detail-page_&_input]:[font-variant:inherit] [.solutions-detail-page_&_input]:[font-weight:inherit]! [.solutions-detail-page_&_input]:[font-stretch:inherit]! [.solutions-detail-page_&_input]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&_input]:[line-height:1.07]! [.solutions-detail-page_&_input]:[font-family:inherit]! [.solutions-detail-page_&_input]:[font-feature-settings:inherit] [.solutions-detail-page_&_input]:[font-variation-settings:inherit]! [.solutions-detail-page_&_textarea]:[display:block]! [.solutions-detail-page_&_textarea]:[width:100%] [.solutions-detail-page_&_textarea]:[height:calc(188_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[min-height:44px] [.solutions-detail-page_&_textarea]:[padding-top:calc(23_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[padding-right:calc(37_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[padding-bottom:calc(23_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[padding-left:calc(37_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[border:1px_solid_transparent] [.solutions-detail-page_&_textarea]:[border-radius:calc(8_*_var(--industry-unit))] [.solutions-detail-page_&_textarea]:[background:#f7f7f7] [.solutions-detail-page_&_textarea]:[color:#334155]! [.solutions-detail-page_&_textarea]:[font-style:inherit] [.solutions-detail-page_&_textarea]:[font-variant:inherit] [.solutions-detail-page_&_textarea]:[font-weight:inherit]! [.solutions-detail-page_&_textarea]:[font-stretch:inherit]! [.solutions-detail-page_&_textarea]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&_textarea]:[line-height:1.07]! [.solutions-detail-page_&_textarea]:[font-family:inherit]! [.solutions-detail-page_&_textarea]:[font-feature-settings:inherit] [.solutions-detail-page_&_textarea]:[font-variation-settings:inherit]! [.solutions-detail-page_&_input::placeholder]:[color:#9eb7d0]! [.solutions-detail-page_&_input::placeholder]:[opacity:1] [.solutions-detail-page_&_textarea::placeholder]:[color:#9eb7d0]! [.solutions-detail-page_&_textarea::placeholder]:[opacity:1] [.solutions-detail-page_&_textarea]:[resize:vertical] [.solutions-detail-page_&_input:focus]:[outline:none] [.solutions-detail-page_&_input:focus]:[border-color:#005eff] [.solutions-detail-page_&_input:focus]:[box-shadow:0_0_0_2px_#005eff12] [.solutions-detail-page_&_textarea:focus]:[outline:none] [.solutions-detail-page_&_textarea:focus]:[border-color:#005eff] [.solutions-detail-page_&_textarea:focus]:[box-shadow:0_0_0_2px_#005eff12] max-md:[.solutions-detail-page_&[data-field='phone']]:[order:2] max-md:[.solutions-detail-page_&[data-field='email']]:[order:3] max-md:[.solutions-detail-page_&_input]:[padding-left:22px] max-md:[.solutions-detail-page_&_input]:[padding-right:22px] max-md:[.solutions-detail-page_&_textarea]:[padding-left:22px] max-md:[.solutions-detail-page_&_textarea]:[padding-right:22px] max-md:[.solutions-detail-page_&_textarea]:[height:188px] max-md:[.solutions-detail-page_&_textarea]:[resize:vertical]">
@@ -1127,8 +1181,11 @@ function EngineeringConsultationForm() {
             }}
           />
         </div>
-      </fieldset>
-      <div className="consultation-form-footer [.solutions-detail-page_&]:[display:flex]! [.solutions-detail-page_&]:[align-items:center] [.solutions-detail-page_&]:[justify-content:space-between] [.solutions-detail-page_&]:[gap:24px] max-md:[.solutions-detail-page_&]:[align-items:center] max-md:[.solutions-detail-page_&]:[flex-direction:column] max-md:[.solutions-detail-page_&]:[gap:18px]">
+      </motion.fieldset>
+      <motion.div
+        {...reveal("up", 0.1, reduced, 0.22)}
+        className="consultation-form-footer [.solutions-detail-page_&]:[display:flex]! [.solutions-detail-page_&]:[align-items:center] [.solutions-detail-page_&]:[justify-content:space-between] [.solutions-detail-page_&]:[gap:24px] max-md:[.solutions-detail-page_&]:[align-items:center] max-md:[.solutions-detail-page_&]:[flex-direction:column] max-md:[.solutions-detail-page_&]:[gap:18px]"
+      >
         <label className="consultation-consent [.solutions-detail-page_&]:[display:flex]! [.solutions-detail-page_&]:[align-items:center] [.solutions-detail-page_&]:[gap:calc(12_*_var(--industry-unit))] [.solutions-detail-page_&]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&]:[line-height:1.07]! [.solutions-detail-page_&]:[letter-spacing:0] [.solutions-detail-page_&]:[color:#000]! [.solutions-detail-page_&]:[cursor:pointer] max-md:[.solutions-detail-page_&]:[width:100%] max-md:[.solutions-detail-page_&]:[align-items:flex-start] max-md:[.solutions-detail-page_&]:[gap:20px] max-md:[.solutions-detail-page_&_>_span:last-child]:[flex:1] max-md:[.solutions-detail-page_&_>_span:last-child]:[text-align:center] max-md:[.solutions-detail-page_&_>_span:last-child]:[line-height:1.2]!">
           <span className="consultation-checkbox [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[flex-shrink:0] [.solutions-detail-page_&]:[width:calc(16_*_var(--industry-unit))] [.solutions-detail-page_&]:[height:calc(16_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[appearance:none] [.solutions-detail-page_&_input]:[display:block]! [.solutions-detail-page_&_input]:[width:100%] [.solutions-detail-page_&_input]:[height:100%] [.solutions-detail-page_&_input]:[margin-top:0] [.solutions-detail-page_&_input]:[margin-right:0] [.solutions-detail-page_&_input]:[margin-bottom:0] [.solutions-detail-page_&_input]:[margin-left:0] [.solutions-detail-page_&_input]:[border:0] [.solutions-detail-page_&_input]:[border-radius:calc(3_*_var(--industry-unit))] [.solutions-detail-page_&_input]:[background:#d9d9d9] [.solutions-detail-page_&_input]:[cursor:pointer] [.solutions-detail-page_&_input:checked]:[background:#005eff] [.solutions-detail-page_&_svg]:[position:absolute] [.solutions-detail-page_&_svg]:[top:10%] [.solutions-detail-page_&_svg]:[right:10%] [.solutions-detail-page_&_svg]:[bottom:10%] [.solutions-detail-page_&_svg]:[left:10%] [.solutions-detail-page_&_svg]:[width:80%] [.solutions-detail-page_&_svg]:[height:80%] [.solutions-detail-page_&_svg]:[color:#fff]! [.solutions-detail-page_&_svg]:[opacity:0] [.solutions-detail-page_&_svg]:[pointer-events:none] [.solutions-detail-page_&_input:checked_+_svg]:[opacity:1] [.solutions-detail-page_&_input:focus-visible]:[outline:2px_solid_#005eff] [.solutions-detail-page_&_input:focus-visible]:[outline-offset:3px]">
             <input
@@ -1145,7 +1202,7 @@ function EngineeringConsultationForm() {
           <span>I have read and agree to the Privacy Policy.</span>
         </label>
         <SendButton />
-      </div>
+      </motion.div>
       <p
         className="consultation-feedback [.solutions-detail-page_&]:[min-height:20px] [.solutions-detail-page_&]:[margin-top:16px] [.solutions-detail-page_&]:[margin-right:0] [.solutions-detail-page_&]:[margin-bottom:0] [.solutions-detail-page_&]:[margin-left:0] [.solutions-detail-page_&]:[font-size:calc(12_*_var(--industry-unit))]! [.solutions-detail-page_&]:[color:#0d5792]!"
         role="status"
@@ -1391,6 +1448,7 @@ function SolutionSliderEdgeBlur() {
   );
 }
 function OtherSolutionsHeading() {
+  const reduced = useReducedMotion() ?? false;
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLOListElement>(null);
   const slider = useSolutionSlider(
@@ -1405,7 +1463,12 @@ function OtherSolutionsHeading() {
       aria-labelledby="other-solutions-title"
     >
       <div className="other-solutions-inner [.solutions-detail-page_&]:[width:100%] [.solutions-detail-page_&]:[max-width:calc(1200_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-left:auto] [.solutions-detail-page_&]:[margin-right:auto] [.solutions-detail-page_&_h2]:[margin-top:0] [.solutions-detail-page_&_h2]:[margin-right:0] [.solutions-detail-page_&_h2]:[margin-bottom:0] [.solutions-detail-page_&_h2]:[margin-left:0] [.solutions-detail-page_&_h2]:[font-size:calc(50_*_var(--industry-unit))]! [.solutions-detail-page_&_h2]:[font-weight:410]! [.solutions-detail-page_&_h2]:[line-height:1]! [.solutions-detail-page_&_h2]:[color:#0d5792]! [.solutions-detail-page_&_h2]:[text-align:center] max-md:[.solutions-detail-page_&_h2]:[font-size:clamp(30px,_8vw,_42px)]!">
-        <h2 id="other-solutions-title">Other Solutions</h2>
+        <motion.h2
+          id="other-solutions-title"
+          {...reveal("left", 0.02, reduced, 0.22)}
+        >
+          Other Solutions
+        </motion.h2>
         <SolutionSliderArrows
           slider={slider}
           label="solution"
@@ -1427,7 +1490,8 @@ function OtherSolutionsHeading() {
             style={{ transform: `translateX(${-slider.offset}px)` }}
           >
             {otherSolutionSlides.map((slide, index) => (
-              <li
+              <motion.li
+                {...reveal("up", Math.min(index, 5) * 0.045, reduced, 0.12)}
                 key={slide.id}
                 className="other-solution-card [.solutions-detail-page_&]:[flex:0_0_calc(292_*_var(--industry-unit))] [.solutions-detail-page_&]:[min-width:0] [.solutions-detail-page_&]:[min-height:calc(375_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-top:calc(12_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-right:calc(17_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-bottom:calc(12_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-left:calc(17_*_var(--industry-unit))] [.solutions-detail-page_&]:[border-radius:calc(15_*_var(--industry-unit))] [.solutions-detail-page_&]:[background:#f7f7f7] [.solutions-detail-page_&_h3]:[margin-top:calc(25_*_var(--industry-unit))] [.solutions-detail-page_&_h3]:[margin-right:0] [.solutions-detail-page_&_h3]:[margin-bottom:0] [.solutions-detail-page_&_h3]:[margin-left:0] [.solutions-detail-page_&_h3]:[color:#000]! [.solutions-detail-page_&_h3]:[font-size:calc(20_*_var(--industry-unit))]! [.solutions-detail-page_&_h3]:[font-weight:410]! [.solutions-detail-page_&_h3]:[line-height:1.07]! [.solutions-detail-page_&_h3]:[text-align:center] [.solutions-detail-page_&_h3_span]:[display:block]! max-md:[.solutions-detail-page_&]:[flex-basis:min(292px,_calc(100vw_-_56px))]"
                 aria-hidden={!slider.visible(index)}
@@ -1446,7 +1510,7 @@ function OtherSolutionsHeading() {
                     <span key={line}>{line}</span>
                   ))}
                 </h3>
-              </li>
+              </motion.li>
             ))}
           </ol>
           <SolutionSliderEdgeBlur />
@@ -1456,6 +1520,7 @@ function OtherSolutionsHeading() {
   );
 }
 function InfrastructurePumpSolutions() {
+  const reduced = useReducedMotion() ?? false;
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLOListElement>(null);
   const slider = useSolutionSlider(
@@ -1470,17 +1535,20 @@ function InfrastructurePumpSolutions() {
     >
       <div className="infrastructure-pump-inner [.solutions-detail-page_&]:[width:100%] [.solutions-detail-page_&]:[max-width:calc(1200_*_var(--industry-unit))] [.solutions-detail-page_&]:[margin-left:auto] [.solutions-detail-page_&]:[margin-right:auto]">
         <div className="infrastructure-pump-header [.solutions-detail-page_&]:[display:grid]! [.solutions-detail-page_&]:[grid-template-columns:minmax(0,_539fr)_minmax(0,_449fr)_auto] [.solutions-detail-page_&]:[align-items:center] [.solutions-detail-page_&]:[gap:calc(45_*_var(--industry-unit))] [.solutions-detail-page_&_h2]:[margin-top:0] [.solutions-detail-page_&_h2]:[margin-right:0] [.solutions-detail-page_&_h2]:[margin-bottom:0] [.solutions-detail-page_&_h2]:[margin-left:0] [.solutions-detail-page_&_h2]:[color:#0d5792]! [.solutions-detail-page_&_h2]:[font-size:calc(50_*_var(--industry-unit))]! [.solutions-detail-page_&_h2]:[font-weight:410]! [.solutions-detail-page_&_h2]:[line-height:1]! [.solutions-detail-page_&_p]:[margin-top:0] [.solutions-detail-page_&_p]:[margin-right:0] [.solutions-detail-page_&_p]:[margin-bottom:0] [.solutions-detail-page_&_p]:[margin-left:0] [.solutions-detail-page_&_p]:[color:#1d2049]! [.solutions-detail-page_&_p]:[font-size:calc(15_*_var(--industry-unit))]! [.solutions-detail-page_&_p]:[line-height:1]! [.solutions-detail-page_&_p]:[letter-spacing:0] max-xl:[.solutions-detail-page_&]:[grid-template-columns:minmax(0,_1.2fr)_minmax(0,_1fr)] max-xl:[.solutions-detail-page_&]:[gap:28px] max-xl:[.solutions-detail-page_&_h2]:[font-size:clamp(32px,_4.1vw,_50px)]! max-xl:[.solutions-detail-page_&_p]:[line-height:1.2]! max-md:[.solutions-detail-page_&]:[grid-template-columns:1fr] max-md:[.solutions-detail-page_&]:[gap:22px] max-md:[.solutions-detail-page_&]:[padding-left:32px] max-md:[.solutions-detail-page_&]:[padding-right:32px] max-md:[.solutions-detail-page_&_h2]:[font-size:clamp(27px,_7.2vw,_42px)]! max-md:[.solutions-detail-page_&_p]:[text-align:justify] max-md:[.solutions-detail-page_&_p]:[font-size:15px]! max-md:[.solutions-detail-page_&_p]:[line-height:1.07]!">
-          <h2 id="infrastructure-pump-title">
+          <motion.h2
+            id="infrastructure-pump-title"
+            {...reveal("left", 0.03, reduced, 0.22)}
+          >
             Our Pump Solutions
             <br />
             for Infrastructure
-          </h2>
-          <p>
+          </motion.h2>
+          <motion.p {...reveal("right", 0.12, reduced, 0.22)}>
             Discover the most efficient pumping solution in seconds. Simply
             enter your technical parameters such as flow rate, pressure, and
             fluid type, and let our advanced configurator select the ideal Sempa
             pump for your specific industry needs.
-          </p>
+          </motion.p>
           <SolutionSliderArrows
             slider={slider}
             label="pump"
@@ -1503,7 +1571,8 @@ function InfrastructurePumpSolutions() {
             style={{ transform: `translateX(${-slider.offset}px)` }}
           >
             {infrastructurePumpSlides.map((pump, index) => (
-              <li
+              <motion.li
+                {...reveal("up", Math.min(index, 5) * 0.04, reduced, 0.12)}
                 key={pump.id}
                 className="infrastructure-pump-card [.solutions-detail-page_&]:[position:relative] [.solutions-detail-page_&]:[flex:0_0_calc(136.28_*_var(--industry-unit))] [.solutions-detail-page_&]:[height:calc(136.28_*_var(--industry-unit))] [.solutions-detail-page_&]:[border-radius:calc(20.44_*_var(--industry-unit))] [.solutions-detail-page_&]:[overflow:hidden] [.solutions-detail-page_&]:[background:#fff] [.solutions-detail-page_&_img]:[object-fit:contain] [.solutions-detail-page_&_img]:[padding-top:calc(10_*_var(--industry-unit))] [.solutions-detail-page_&_img]:[padding-right:calc(10_*_var(--industry-unit))] [.solutions-detail-page_&_img]:[padding-bottom:calc(10_*_var(--industry-unit))] [.solutions-detail-page_&_img]:[padding-left:calc(10_*_var(--industry-unit))] max-md:[.solutions-detail-page_&]:[flex-basis:34.5vw] max-md:[.solutions-detail-page_&]:[height:34.5vw] max-md:[.solutions-detail-page_&]:[border-radius:20px]"
                 aria-hidden={!slider.visible(index)}
@@ -1515,7 +1584,7 @@ function InfrastructurePumpSolutions() {
                   sizes="(min-width: 1280px) 10vw, 136px"
                   draggable={false}
                 />
-              </li>
+              </motion.li>
             ))}
           </ol>
           <SolutionSliderEdgeBlur />
@@ -1563,12 +1632,9 @@ const solutionsResponsive = [
 ].join(" ");
 
 export default function SolutionDetailsPage() {
-  const pageRef = useScrollReveal(
-    ".industry-hero-heading, .industry-illustration, .industry-carousel-viewport, .consultation-banner, .consultation-form fieldset, .consultation-form-footer, .other-solutions-inner > h2, .other-solutions-inner > .solution-slider-navigation, .other-solutions-viewport, .infrastructure-pump-header, .infrastructure-pump-viewport, .solution-newsletter",
-  );
+  const reduced = useReducedMotion() ?? false;
   return (
     <main
-      ref={pageRef}
       data-header-underlay
       className={`${solutionsResponsive} -mt-[var(--site-header-height,97px)] solutions-detail-page overflow-x-clip font-sans [--industry-unit:clamp(0.833333px,_0.0694444444vw,_1.777778px)] [width:100%] [background:radial-gradient(ellipse_at_28%_65%,_#acd5ff24,_transparent_62%),_radial-gradient(ellipse_at_48%_90%,_#c5e5ff33,_transparent_65%),_linear-gradient(105deg,_#d2e8ff_0%,_#dceeff_28%,_#ebf5ff_56%,_#fafcff_84%,_#fff_100%)] [letter-spacing:-0.04em] [body:has(&)_>_.site-header]:[background:#fff] [&_button:focus-visible]:[outline:2px_solid_#005eff] [&_button:focus-visible]:[outline-offset:3px] [&_a:focus-visible]:[outline:2px_solid_#005eff] [&_a:focus-visible]:[outline-offset:3px] max-xl:[--industry-unit:1px] motion-reduce:[&_*]:[transition:none]! motion-reduce:[&_*]:[animation:none]! [font-weight:410]! [font-stretch:125%]! [font-variation-settings:'wght'_410,_'wdth'_125]! [font-optical-sizing:auto]`}
     >
@@ -1577,9 +1643,12 @@ export default function SolutionDetailsPage() {
       <EngineeringConsultationSection />
       <OtherSolutionsHeading />
       <InfrastructurePumpSolutions />
-      <div className="solution-newsletter [.solutions-detail-page_&]:[padding-top:0] [.solutions-detail-page_&]:[padding-right:24px] [.solutions-detail-page_&]:[padding-bottom:calc(110_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-left:24px] max-md:[.solutions-detail-page_&]:[padding-top:0] max-md:[.solutions-detail-page_&]:[padding-right:20px] max-md:[.solutions-detail-page_&]:[padding-bottom:80px] max-md:[.solutions-detail-page_&]:[padding-left:20px]">
+      <motion.div
+        {...reveal("up", 0.03, reduced, 0.12)}
+        className="solution-newsletter [.solutions-detail-page_&]:[padding-top:0] [.solutions-detail-page_&]:[padding-right:24px] [.solutions-detail-page_&]:[padding-bottom:calc(110_*_var(--industry-unit))] [.solutions-detail-page_&]:[padding-left:24px] max-md:[.solutions-detail-page_&]:[padding-top:0] max-md:[.solutions-detail-page_&]:[padding-right:20px] max-md:[.solutions-detail-page_&]:[padding-bottom:80px] max-md:[.solutions-detail-page_&]:[padding-left:20px]"
+      >
         <NewsletterSubscription scaled requireValidInput />
-      </div>
+      </motion.div>
       <style jsx global>{`
         /* Keep the complete map and its heading within the initial desktop viewport. */
 

@@ -189,7 +189,7 @@ export default function PumpSeriesPage({
           </motion.nav>
           <motion.div
             {...seriesHeroEnter(reduced, 0.28, 18)}
-            className="relative w-full md:ml-auto md:w-[250px]"
+            className="relative w-full md:ml-auto md:w-[280px]"
           >
             <label className="sr-only" htmlFor={searchId}>
               Search product series
@@ -199,7 +199,7 @@ export default function PumpSeriesPage({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="SEARCH PRODUCT"
-              className="h-12 w-full rounded-[22px] border border-white/70 bg-white/20 pr-14 pl-6 text-xs tracking-[-.025em] shadow-[0_8px_22px_#005eff25,inset_0_0_10px_#ffffff20] outline-none placeholder:text-[#9eb7d0] focus:border-[#005eff] md:text-[13px] [font-variation-settings:'wdth'_110,'wght'_410]"
+              className="h-12 w-full rounded-[22px] border border-white/70 bg-white/20 pr-12 pl-6 text-xs tracking-[-.025em] shadow-[0_8px_22px_#005eff25,inset_0_0_10px_#ffffff20] outline-none placeholder:text-[#9eb7d0] focus:border-[#005eff] md:text-[13px] [font-variation-settings:'wdth'_110,'wght'_410]"
             />
             {query ? (
               <button
